@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+source ~/.config/herbstluftwm/variables.autostart
+
+# --------------------------------
+# Keybindings
+
+# herbstluft
+hc keybind $ModPri-Shift-q quit     # quit herbstluft
+hc keybind $ModPri-Shift-r reload   # reload herbstluft
+
+# frames
+hc keybind $ModPri-q remove                 # remove frame
+hc keybind $ModPri-Up split top 0.5         # split out a new frame
+hc keybind $ModPri-Down split bottom 0.5
+hc keybind $ModPri-Left split left 0.5
+hc keybind $ModPri-Right split right 0.5
+#hc keybind $ModPri-Control-space split explode
+hc keybind $ModPri-q remove                 # quit frame
+
+# clients (windows)
+hc keybind $ModSup-q close                  # quit current
+hc keybind $ModSup-Left  focus left         # focus
+hc keybind $ModSup-Down  focus down
+hc keybind $ModSup-Up    focus up
+hc keybind $ModSup-Right focus right
+hc keybind $ModSup-Shift-Left  shift left   # move
+hc keybind $ModSup-Shift-Down  shift down
+hc keybind $ModSup-Shift-Up    shift up
+hc keybind $ModSup-Shift-Right shift right
+
+# layouts
+# hc keybind $ModSup-f fullscreen toggle
+hc keybind $ModPri-f set_attr clients.focus.floating toggle
+hc keybind $ModPri-d set_attr clients.focus.minimized true
+hc keybind $ModPri-Shift-d jumpto last-minimized
+# hc keybind $ModSup-p pseudotile toggle
+
+# The following cycles through the available layouts within a frame, but skips
+# layouts, if the layout change wouldn't affect the actual window positions.
+# I.e. if there are two windows within a frame, the grid layout is skipped.
+hc keybind $ModPri-space                                                        \
+            or , and . compare tags.focus.curframe_wcount = 2                   \
+                     . cycle_layout +1 vertical horizontal max vertical grid    \
+               , cycle_layout +1
+
+# resizing
+resizestep=0.02
+hc keybind $ModPri-Shift-Left resize left +$resizestep   # resize frames, floating clients
+hc keybind $ModPri-Shift-Down resize down +$resizestep
+hc keybind $ModPri-Shift-Up resize up +$resizestep
+hc keybind $ModPri-Shift-Right resize right +$resizestep
+
+# tags 
+hc keybind $ModPri-period use_index +1 --skip-visible
+hc keybind $ModPri-comma  use_index -1 --skip-visible
+
+# focus
+hc keybind $ModSup-BackSpace   cycle_monitor
+hc keybind $ModSup-Shift-Tab   cycle_all +1
+hc keybind $ModSup-Shift-Control-Tab   cycle_all -1
+hc keybind $ModSup-c cycle
+
+
+# --------------------------------
+# mouse - only works on floating
+
+#leftclick button1
+#rightclick button3
+#middleclick button2
+#middlescroll forward button4
+#middlescroll backward button5
+#back button9
+#forward button8
+#sidescroll left button6
+#sidescroll right button7

@@ -1,0 +1,28 @@
+Things to backup:
+=================
+
+home
+	/.aws -- if any
+	/.config
+		autostart
+		easyeffects/output
+		herbstluftwm
+		Typora 
+			profile.data
+	/.easystroke
+	/.gnupg -- if any keys
+	/.icons -- if any custom icons
+	/.local/share/applications
+	/.ssh
+	.gitconfig, .netrc, .xbindkeysrc, etc...
+
+etc
+	/cron* -- if any crons created
+	/samba -- if set up sambda sharing
+	/skel -- if skeleton user created
+	/X11 -- for monitor settings
+	fstab, 
+
+Chrome
+	Session buddy - export to file in ~/Downloads
+	Reddit res - export settings

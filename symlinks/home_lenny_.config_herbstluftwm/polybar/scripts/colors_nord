@@ -1,0 +1,15 @@
+[colors_nord]
+bg_active = ${env:COLOUR_ACTIVE}
+bg_dark = #CC2E3440
+bg_light = #CC3B4252
+bg_med = #CC434C5E
+bg_transparent = #00000000
+fg_active = ${env:COLOUR_ACTIVE}
+fg_disabled = #33ECEFF4
+fg_error = #BF616A
+fg_label = #77D8DEE9
+fg_monitor_empty = #33ECEFF4
+fg_transparent = #00000000
+fg_white = #ECEFF4
+line_yellow = #EBCB8B
+line_red = #BF616A

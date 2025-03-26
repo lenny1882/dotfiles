@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+hc() {
+    herbstclient "$@"
+}
+
+# based on the vscode dark, mui pallettes
+# https://www.color-hex.com/color-palette/98179
+# https://mui.com/customization/palette/
+col_dark="#252526"
+col_light="#ECEFF4"
+col_grey="#3E3E42"
+col_purple="#7B1FA2"
+col_green="#2E7D32"
+col_active=$col_green
+
+SCRIPTS_DIR=~/.config/herbstluftwm/scripts
+ModPri=Mod4+Mod1    # Super+Alt
+ModSup=Mod4         # Super

@@ -1,0 +1,5 @@
+@theme "custom"
+
+configuration {
+	modi: "drun,run,window,calc";
+}

@@ -1,0 +1,24 @@
+[colors_vscode_dark]
+;https://mui.com/customization/palette/
+;https://www.color-hex.com/color-palette/98179
+bg_active = ${env:COLOUR_ACTIVE}
+bg_urgent = ${env:COLOUR_URGENT}
+bg_dark = #CC252526
+bg_light = #CC3e3e42
+bg_med = #CC2d2d30
+bg_transparent = #00000000
+bg_dark_translucent = #553e3e42
+bg_green = ${env:COLOUR_ACTIVE}
+bg_yellow = #ff9800
+bg_red = #d32f2f
+fg_active = ${env:COLOUR_ACTIVE}
+fg_urgent = ${env:COLOUR_URGENT}
+fg_disabled = #33ECEFF4
+fg_error = #d32f2f
+fg_label = #77D8DEE9
+fg_monitor_empty = #33ECEFF4
+fg_transparent = #00000000
+fg_white = #ECEFF4
+line_green = ${env:COLOUR_ACTIVE}
+line_yellow = #ff9800
+line_red = #d32f2f

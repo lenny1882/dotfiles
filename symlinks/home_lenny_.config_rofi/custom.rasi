@@ -1,0 +1,113 @@
+/*******************************************************************************
+ * ROFI SQUARED THEME USING THE NORD PALETTE 
+ * User                 : LR-Tech               
+ * Theme Repo           : https://github.com/lr-tech/rofi-themes-collection
+ *******************************************************************************/
+
+* {
+    font:   "DejaVu Sans Mono 11";
+
+    col-dark1: #252526;
+    col-dark2: #2D2D30;
+    col-grey: #3E3E42;
+    col-light: #ECEFF4;
+
+    col-green: #2E7D32;
+    col-light-green: #87D75F;
+    col-purple: #7B1FA2;
+
+    background-color: transparent;
+    text-color: @col-light;
+
+    margin: 0;
+    padding: 0;
+    spacing: 0;
+}
+
+window {
+    location: center;
+    width: 820;
+    y-offset: -250;
+    background-color: @col-dark1;
+}
+
+inputbar {
+    padding: 12px;
+    spacing: 12px;
+    background-color: @col-grey;
+}
+
+prompt, entry, element-icon, element-text {
+    vertical-align: 0.5;
+}
+
+prompt {
+    text-color: @col-green;
+}
+
+message {
+    padding: 12px;
+}
+
+listview {
+    padding: 0;
+    lines: 10;
+    columns: 2;
+
+    fixed-height: true;
+}
+
+element {
+    padding: 8px;
+    spacing: 8px;
+}
+
+element normal normal {
+    text-color: @col-light;
+}
+
+element normal urgent {
+    text-color: @col-purple;
+}
+
+element normal active {
+    //text-color: @col-green;
+}
+
+element selected {
+    //text-color: @col-dark1;
+}
+
+element selected normal, element selected active {
+    background-color: @col-green;
+    text-color: @col-light;
+}
+
+element selected urgent {
+    background-color: @col-purple;
+}
+
+element-icon {
+    size: 0.75em;
+}
+
+element-text {
+    text-color: inherit;
+}
+
+mode-switcher {
+    background-color: @col-dark2;
+}
+
+button {
+    padding: 8px 0px;
+}
+
+button selected {
+    background-color: @col-purple;
+    //font: "DejaVu Sans Mono Bold 11";
+}
+
+button normal {
+    text-color: @col-light;
+}

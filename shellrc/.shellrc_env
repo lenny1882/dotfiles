@@ -1,0 +1,11 @@
+export USER_DIR="/media/Storage/User"
+#export HISTCONTROL="ignoredupds:ignorespace"
+#export HISTIGNORE="x"
+export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
+
+export VISUAL="micro"
+export EDITOR="micro"
+
+if [ -f ${USER_DIR}/custom.bash ]; then
+	source ${USER_DIR}/custom.bash
+fi

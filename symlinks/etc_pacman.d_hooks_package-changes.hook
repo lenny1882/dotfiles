@@ -1,0 +1,16 @@
+# /etc/pacman.d/hooks/package-changes.hook
+[Trigger]
+Type = Package
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Target = *
+
+[Action]
+Description = Packages have changed
+When = PostTransaction
+# /usr/bin/sudo -u <user> --- run as user
+# bash -c --- a command in a bash instance
+# -p $(pgrep polybar) --- ensure it's the current running polybar
+#Exec = /usr/bin/sudo -u lenny bash -c "polybar-msg -p $(pgrep polybar) action ups hook 0"
+Exec = /usr/bin/sudo -u lenny bash -c "herbstclient emit_hook ipc"

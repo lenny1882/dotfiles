@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+source ~/.config/herbstluftwm/variables.autostart
+
+# --------------------------------
+# rules
+# `xprop`
+# WM_CLASS - first entry is `instance`, second is `class`
+# _NET_WM_WINDOW_TYPE - first value is `windowtype`
+# WM_WINDOW_ROLE - windowrole
+
+hc rule --focus=on # normally focus new clients
+hc rule --floatplacement=smart
+
+hc rule --windowtype~'_NET_WM_WINDOW_TYPE_(DIALOG|UTILITY|SPLASH)' --floating=on
+hc rule --windowtype='_NET_WM_WINDOW_TYPE_DIALOG' --focus=on --floatplacement=center
+hc rule --windowtype='_NET_WM_WINDOW_TYPE_SPLASH' --focus=on --floatplacement=center --hook=splash_opened
+hc rule --windowtype~'_NET_WM_WINDOW_TYPE_(NOTIFICATION|DOCK|DESKTOP)' --manage=off
+
+# autostart rules
+hc rule once --instance=vivaldi-stable --tag="right|2" --index=00
+hc rule once --instance=joplin --tag="right|2" --index=01
+hc rule once --instance=spotify --tag="left|3" --index=00
+hc rule --instance=rambox --tag="left|3" --index=01 --label=rambox-startup-onetime
+# rambox doesn't stay where it should, so naming to unrule down the line
+
+# floating windows
+hc rule --instance=gpick --floating=true --floating_geometry=620x422
+hc rule --instance=pavucontrol --floating=true
+hc rule --instance~'^Minecraft.*$' --floating=true --floatplacement=center
+hc rule --instance='dragon-drop' --floating=true --floatplacement=center
+hc rule --instance~'(urxvt|xterm)' --floating=true --floating_geometry=948x502 --floatplacement=center
+hc rule --instance=wrapper --hook=wrapper_opened --floating=true --floating_geometry=1280x720 --floatplacement=center
+
+hc rule --instance=peek --hook=peek_opened

@@ -1,0 +1,44 @@
+# custom aliases to make things easier
+alias x="exit"
+alias micro="micro  --keymenu=true --softwrap=true"
+alias nano="micro  --keymenu=true --softwrap=true"
+
+alias orca-slicer="WEBKIT_DISABLE_DMABUF_RENDERER=1 orca-slicer"
+
+# command line files
+#alias la="ls -lahF"
+#alias ll="ls -lhF"
+#l  = ls -lav --ingore=.?* --> eza -la -I=.?*
+#ll = ls -lF --> eza -lF
+#la = ls -lahF --> eza -labF --group-directories-first
+#ls = ls --color=auto --> eza --colour=auto
+alias ls="eza -lbhF --group-directories-first"
+alias ll="eza -labhF --group-directories-first"
+alias ld="eza -labhDF --total-size"
+alias lh="eza -labdhF .* --group-directories-first"
+alias lt="eza -labhrF --group-directories-first --sort=modified"
+
+# aliases to make commands safer
+alias chmod="chmod --preserve-root"
+alias chown="chown --preserve-root"
+alias dd='echo "dd command not available"'
+alias rm="rm -i"
+
+# vpn
+alias exv='expressvpn'
+alias 'exv-switch'='_exv-switch() { expressvpn disconnect; expressvpn connect "$1"; x;}; _exv-switch'
+
+# aliases for updating and installing packages
+alias ni="npm install"
+alias nu="npm update"
+
+# =========
+# functions
+
+# bat aliases
+help() {
+    "$@" --help 2>&1 | bat --plain --language=help
+}
+nbat() {
+    urxvt -name wrapper -e sh -c "COLORTERM=truecolor bat --pager=\"less -iFMRsX --mouse +Gg\" --theme=\"Monokai Extended Origin\" $1"
+}

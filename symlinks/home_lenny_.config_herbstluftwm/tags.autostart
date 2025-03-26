@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+source ~/.config/herbstluftwm/variables.autostart
+
+# --------------------------------
+# Tags
+
+tag_names=( "left|3" "middle|1" "right|2" "split|4" "3wayR|5" "3wayL|6" "grid|7" 8 9 )
+tag_keys=( 3 1 2 {4..9} )
+
+hc rename default "${tag_names[0]}" || true
+for i in "${!tag_names[@]}" ; do
+    hc add "${tag_names[$i]}"
+    key="${tag_keys[$i]}"
+    if ! [ -z "$key" ] ; then
+        hc keybind "$ModSup-$key" use_index "$i"
+        hc keybind "$ModSup-Shift-$key" move_index "$i"
+    fi
+done

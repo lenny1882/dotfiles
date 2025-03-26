@@ -1,0 +1,15 @@
+[colors]
+bg_active = ${env:COLOUR_ACTIVE}
+bg_dark = #CC111111
+bg_light = #CC555555
+bg_med = #CC333333
+bg_transparent = #00000000
+fg_active = ${env:COLOUR_ACTIVE}
+fg_disabled = #55151515
+fg_error = #DD0000
+fg_label = #55FFFFFF
+fg_monitor_empty = #55FFFFFF
+fg_transparent = #00000000
+fg_white = #FFFFFF
+line_orange = #FFA500
+line_red = #DD0000

@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+source ~/.config/herbstluftwm/variables.autostart
+
+# --------------------------------
+# commands
+
+# autostart - but only if custom var has not been created
+if hc silent new_attr bool my_not_first_autostart ; then 
+    hc spawn xrdb ~/.Xresources
+    hc spawn picom --config ~/.config/compton.conf &
+    hc spawn numlockx on &
+    hc spawn ~/.fehbg &
+    hc spawn easystroke enable &
+
+    hc spawn rambox &
+    hc spawn vivaldi-stable &
+    hc spawn joplin-desktop &
+    hc spawn spotify &
+fi
+
+# --------------------------------
+# finalise
+
+# unlock before monitors get padded, else panel loads above windows
+hc unlock
+
+# load the panel
+$SCRIPTS_DIR/panel.sh $col_active $col_purple &
+
+herbstclient --idle | while read hook name winid; do
+    $SCRIPTS_DIR/rule_hook.sh $hook $name $winid
+done
+
+sleep 10
+hc unrule rambox-startup-onetime

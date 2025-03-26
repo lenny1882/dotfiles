@@ -1,0 +1,104 @@
+## ====
+## GRUB
+# reduce grub timeout
+sudo nano /etc/default/grub
+GRUB_TIMEOUT = 2
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+
+# set grub resolution
+sudo nano /etc/default/grub
+GRUB_GFXMODE=1920x1080
+GRUB_GFXPAYLOAD_LINUX="keep"
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+
+## =======
+## STARTUP
+
+# DOES NOT WORK - might not be possible, but at least this does proper checks
+# prevent fsck on startup disk _every_ boot
+	# find startup disk
+	# find max count between checks
+	# set max count to random (between 20-40), and max length between checks to 1 month
+sudo fdisk -l
+sudo dumpe2fs -h /dev/sda2 | grep 'mount count'
+sudo tune2fs -c random -i 1m /dev/sda2
+
+# numlock at startup
+yay -S numlockx
+numlockx on # in some autostart script
+
+
+## ==============
+## WINDOW MANAGER
+# herbstluftwm
+# do we need to do this?
+# ly uses it to know what to start, but do other login managers need it?
+ln -s /media/Storage/User/config/usr_share_xsessions_herbstluftwm.desktop /usr/share/xsessions/herbstluftwm.desktop
+
+
+## =======
+## DESKTOP
+# fix against screen-tearing
+# add to ~/.config/compton.conf
+backed = "glx"
+vsync = "opengl-swc"
+
+
+## ====
+## SWAP
+# change swap
+cat /proc/sys/vm/swappiness # if >=60
+sudo nano /etc/sysctl.d/99-swappiness.conf > vm.swappiness=10
+restart
+
+
+## ====
+## APPS
+# set apps as default
+# vivaldi-stable
+~/.config/mimeapps.list 
+	>	[Default Applications]                                                                                                     
+		application/json=sublime_text.desktop;                                                                                     
+		application/pdf=vivaldi-stable.desktop;                                                                                    
+		application/x-xpinstall=vivaldi-stable.desktop;                                                                            
+		application/xhtml+xml=vivaldi-stable.desktop;                                                                              
+		image/gif=org.gnome.gThumb.desktop;                                                                                        
+		image/jpeg=org.gnome.gThumb.desktop;                                                                                       
+		image/png=org.gnome.gThumb.desktop;                                                                                        
+		image/webp=org.gnome.gThumb.desktop;                                                                                       
+		text/html=vivaldi-stable.desktop;                                                                                          
+		text/markdown=sublime_text.desktop;                                                                                        
+		text/x-markdown=sublime_text.desktop;                                                                                      
+		text/xml=sublime_text.desktop;                                                                                             
+		x-scheme-handler/http=vivaldi-stable.desktop;                                                                              
+		x-scheme-handler/https=vivaldi-stable.desktop;                                                                             
+		x-scheme-handler/mailto=vivaldi-stable.desktop;                                                                            
+		inode/directory=xfe.desktop;                                                                                               
+		x-scheme-handler/postman=Postman.desktop;
+~/.profile > $BROWSER=/usr/bin/google-chrome-stable
+
+> may need to: rm ~/.local/share/applications/mimeapps.list && ln -s ~/.config/mimeapps.list ~/.local/share/applications/mimeapps.list
+	> .local copy is legacy, should now be in .config -- if .local version contains things, copy it
+> if making changes, add to two sections: [Default Applications], [Added Associations]
+
+$ xdg-mime query default application/pdf
+$ xdg-mime default google-chrome.desktop application/pdf
+
+
+## ======
+## PACMAN
+# turn off default packages
+sudo nano /etc/makepkg.conf
+# find OPTIONS=(... line
+debug --> !debug
+
+
+## =============
+## POWER OPTIONS
+# allow user to trigger poweroptions without needing to enter a password
+sudo groupadd npwpower
+sudo usermod $(id -nu 1000) -aG !$
+
+sudo visudo
+# add the line, where the sbin commands are what we want to use to shutdown/reboot/{poweroption}
+npwpower ALL=(ALL) NOPASSWD: /sbin/poweroff, /sbin/reboot

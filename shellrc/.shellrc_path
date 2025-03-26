@@ -1,0 +1,9 @@
+export ANDROID_HOME="/media/Storage/User/Programs/Android/Sdk"
+
+export PATH="$PATH"
+export PATH="$PATH:/usr/lib/dart/bin"
+export PATH="$PATH:/media/Storage/User/Programs/android-studio/bin"
+export PATH="$PATH:/media/Storage/User/Programs/flutter/bin"
+export PATH="$PATH:$ANDROID_HOME/tools/bin"
+export PATH="$PATH:$ANDROID_HOME/platform-tools"
+export PATH="$PATH:/home/lenny/.local/bin"

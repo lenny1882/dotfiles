@@ -1,0 +1,167 @@
+# learn the bangs: https://www.redhat.com/sysadmin/bash-bang-commands
+
+# git PS1 info
+source /usr/share/git/git-prompt.sh
+export GIT_PS1_SHOWDIRTYSTATE=1
+export GIT_PS1_SHOWSTASHSTATE=1
+export GIT_PS1_SHOWUNTRACKEDFILES=1
+export GIT_PS1_SHOWUPSTREAM=1
+
+# colourful man
+man() {
+    local ltc_mb=$'\e[1;31m'                # begin bold
+    local ltc_md=$'\e[38;2;0;255;0m'        # begin blink
+    local ltc_so=$'\e[48;2;31;136;162m'     # begin reverse video
+    local ltc_us=$'\e[38;2;211;47;47m'      # begin underline
+    local ltc_me=$'\e[0m'                   # reset bold/blink
+    local ltc_se=$'\e[0m'                   # reset reverse video
+    local ltc_ue=$'\e[0m'                   # reset underline
+    local ltc_mr=$(tput rev)                #
+    local ltc_mh=$(tput dim)                #
+    local ltc_ZN=$(tput ssubm)              #
+    local ltc_ZV=$(tput rsubm)              #
+    local ltc_ZO=$(tput ssupm)              #
+    local ltc_ZW=$(tput rsupm)              #
+
+    env \
+        LESS_TERMCAP_mb=$ltc_mb \
+        LESS_TERMCAP_md=$ltc_md \
+        LESS_TERMCAP_me=$ltc_me \
+        LESS_TERMCAP_se=$ltc_se \
+        LESS_TERMCAP_so=$ltc_so \
+        LESS_TERMCAP_ue=$ltc_ue \
+        LESS_TERMCAP_us=$ltc_us \
+            /usr/bin/man "$@"
+}
+export GROFF_NO_SGR=1
+export PAGER='less -iFJMRsW --mouse +Gg'
+
+# enable CTRL+S to go forward in bash history search
+[[ $- == *i* ]] && stty -ixon
+
+
+# =====================
+# colourful bash prompt
+
+# colours and decorations
+_regular="\[\e[0m\]"
+_bold="\[\e[1m\]"
+_italics="\[\e[4m\]"
+_underline="\[\e[7m\]"
+
+_bgcyan="\[\e[48;2;31;136;162m\]"
+_bgblue="\[\e[48;2;45;119;206m\]"
+_bgdefault="\[\e[49m\]"
+_bggreen="\[\e[48;2;46;125;50m\]"
+_bgseagreen="\[\e[48;2;60;163;65m\]"
+_bggrey="\[\e[48;2;51;51;51m\]"
+_bglightgrey="\[\e[48;2;153;153;153m\]"
+
+_bgpurple="\[\e[48;2;123;31;162m\]"
+_bgred="\[\e[48;2;211;47;47m\]"
+
+_fgcyan="\[\e[38;2;31;136;162m\]"
+_fgblue="\[\e[38;2;45;119;206m\]"
+_fgdefault="\[\e[39m\]"
+_fgwhite="\[\e[38;2;236;239;244m\]"
+_fggreen="\[\e[38;2;46;125;50m\]"
+_fgseagreen="\[\e[38;2;60;163;65m\]"
+_fggrey="\[\e[38;2;51;51;51m\]"
+#_fglightgreen="\[\e[38;2;0;255;0m\]"
+_fglightgrey="\[\e[38;2;153;153;153m\]"
+_fgpurple="\[\e[38;2;123;31;162m\]"
+_fgred="\[\e[38;2;211;47;47m\]"
+
+# funcs
+__prompt_command() {
+    local _lastcommand="$?"
+
+    PS1=""
+    
+    PS1+="$_bold"
+    # PS1+="`last_command_symbol`$fgwhite"
+    PS1+="`last_command_symbol` $HISTCMD $_fgwhite$_bgdefault "
+    # PS1+="$_bggrey$_fglightgrey $HISTCMD $_fgwhite"
+    PS1+="$_bgpurple`current_time`$_fgpurple"
+    [ -n "$NNNLVL" ] && PS1+="$_bgseagreen`separator blockright`$_fgwhite N$NNNLVL $_fgseagreen"
+    PS1+="$_bggreen`separator blockright`$_fgwhite `get_directory` $_fggreen"
+    PS1+="`git_info`"
+    PS1+="$_bggrey`separator blockright`$_regular$_bggrey$_fgwhite \u $_bgdefault$_fggrey`separator blockright`$_fgwhite "
+	if [[ $VSCODE_SHELL_INTEGRATION -ne "1" ]]; then
+    	PS1+="$(echo -ne "\[\e]0;`get_ip` | `hostname -s` : `pwd`\007")"
+    fi
+}
+
+separator () {
+    # note: first two parts escaped, \[\xee\x82\], so that bash treats as two characters -- extra wide unicodes
+    case ${1,,} in
+        branch) printf "\[\xee\x82\]\xa0" ;;            #  - nf-pl-branch
+        line) printf "\[\xee\x82\]\xa1" ;;              #  - nf-pl-line_number
+        padlock) printf "\[\xee\x82\]\xa2" ;;           #  - nf-pl-hostname
+        blockright) printf "\[\xee\x82\]\xb0" ;;        #  - nf-pl-left_hard_divider
+        right) printf "\[\xee\x82\]\xb1" ;;             #  - nf-pl-left_soft_divider
+        blockleft) printf "\[\xee\x82\]\xb2" ;;         #  - nf-pl-right_hard_divider
+        left) printf "\[\xee\x82\]\xb3" ;;              #  - nf-pl-right_soft_divider
+    esac
+}
+last_command_symbol () {
+    # echo ✓ |hexdump -C --> 00000000  e2 9c 93 0a --> \[\xe2\x9c\]\x93
+    # echo ✕ |hexdump -C --> 00000000  e2 9c 95 0a --> \[\xe2\x9c\]\x95
+
+#    if [[ $_lastcommand = 0 ]]; then
+#        printf " $_fglightgreen\[\xe2\x9c\]\x93 "
+#    else
+#        printf "$_fgwhite$_bgred \[\xe2\x9c\]\x95 $_bgdefault"
+#    fi
+
+    if [[ $_lastcommand = 0 ]]; then
+        printf "$_bggrey$_fglightgrey"
+    else
+        printf "$_fgwhite$_bgred"
+    fi
+}
+current_time () {
+    # escape space after time, otherwise up/down history / ctrl+u can
+    # leave the last character of a long command (>half screen width)
+    # still showing
+    echo -n " \t ";
+}
+get_directory () {
+#   if [[ `pwd|wc -c|tr -d " "` > 12 ]]; then
+#         printf "\W" # just the dir
+#   else
+#         printf "\w" # whole path
+#   fi
+    printf "\W"
+}
+git_info() {
+    if [[ `is_git_dir` -eq 1 ]]; then
+        printf $_bgblue$_fgwhite`separator branch`
+        __git_ps1
+        printf ' '$_fgblue
+    fi
+}
+is_git_dir() {
+    if git rev-parse --git-dir > /dev/null 2>&1; then
+      echo "1"
+    fi
+}
+get_ip () {
+    ip=$(ip address | grep -Eo 'inet (addr:)?(192|10)\.([0-9]*\.){2}[0-9]*' | grep -Eo '(192|10)\.([0-9]*\.){2}[0-9]*' | grep -v '127.0.0.1')
+    ipvar=${ip:-"0"}
+    if [[ $ipvar = "0" ]]; then
+        printf "OFFLINE"
+    else
+        printf $ip
+    fi
+}
+add_newline () {
+    IFS=";" read -sdR -p $'\e[6n' CURPOS
+    CURPOS=${CURPOS#*[}
+    C="${CURPOS#*;}"
+
+    [ "$C" -ne 1 ] && echo
+}
+
+PROMPT_COMMAND=__prompt_command
+PROMPT_COMMAND="${PROMPT_COMMAND}${PROMPT_COMMAND:+;} add_newline"

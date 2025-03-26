@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+source ~/.config/herbstluftwm/variables.autostart
+
+# --------------------------------
+# Layouts
+
+hc load "left|3" '(
+    clients max:1
+)'
+hc load "middle|1" '(
+    clients horizontal:0
+)'
+hc load "right|2" '(
+    clients max:1
+)'
+
+hc load "split|4" '(
+    split horizontal:0.5:0
+        (clients vertical:0)
+        (clients vertical:0)
+)'
+hc load "3wayR|5" '(
+    split horizontal:0.5:1 
+        (clients horizontal:0)
+        (split vertical:0.5:1
+            (clients horizontal:0) (clients horizontal:0)
+        )
+)'
+hc load "3wayL|6" '(
+    split horizontal:0.5:1 
+        (split vertical:0.5:0
+            (clients horizontal:0) (clients horizontal:0)
+        )
+        (clients horizontal:0)
+)'
+hc load "grid|7" '(
+    split horizontal:0.5:1
+        (split vertical:0.5:1
+            (clients horizontal:0) (clients horizontal:0)
+        )
+        (split vertical:0.5:0
+            (clients horizontal:0) (clients horizontal:0)
+        )
+)'

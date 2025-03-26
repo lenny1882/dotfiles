@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+# --------------------------------
+# Setup
+source ~/.config/herbstluftwm/variables.autostart
+
+hc emit_hook reload
+hc keyunbind --all
+hc mouseunbind --all
+hc unrule -F
+
+~/.config/herbstluftwm/tags.autostart
+~/.config/herbstluftwm/layouts.autostart
+~/.config/herbstluftwm/keybindings.autostart
+~/.config/herbstluftwm/theme.autostart
+~/.config/herbstluftwm/monitors.autostart
+~/.config/herbstluftwm/rules.autostart
+~/.config/herbstluftwm/shortcuts.autostart
+~/.config/herbstluftwm/startup.autostart
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

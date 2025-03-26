@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+source ~/.config/herbstluftwm/variables.autostart
+
+# --------------------------------
+# apps & functions
+
+#hc keybind $ModSup-Return spawn "${TERMINAL:-xterm}" # use your $TERMINAL with xterm as fallback
+hc keybind $ModSup-Return spawn urxvt
+hc keybind $ModSup-l spawn physlock -dsm
+
+# rofi
+hc keybind $ModSup-space spawn rofi -show drun -modi drun,run,window,calc -show-icons -sidebar-mode
+hc keybind $ModSup-Control-space spawn rofi -show run -modi drun,run,window,calc -show-icons -sidebar-mode
+hc keybind $ModSup-Tab spawn rofi -show window -modi drun,run,window,calc -show-icons -sidebar-mode
+hc keybind $ModSup-c spawn rofi -show calc -modi drun,run,window,calc -show-icons -sidebar-mode
+
+# screenshots
+hc keybind $ModSup-s spawn $SCRIPTS_DIR/screenshot.sh select-clip
+hc keybind $ModSup-Shift-s spawn $SCRIPTS_DIR/screenshot.sh select
+hc keybind $ModSup-Control-s spawn $SCRIPTS_DIR/screenshot.sh area-clip
+hc keybind $ModSup-Shift-Control-s spawn $SCRIPTS_DIR/screenshot.sh area
+
+# tuis
+hc keybind $ModSup-e spawn urxvt -name wrapper -e $SCRIPTS_DIR/nnn-wrap.sh
+hc keybind Control-Alt-Delete spawn urxvt -name wrapper -e btm
+
+# audio
+hc keybind XF86AudioMute spawn $SCRIPTS_DIR/volume.sh "mute"
+hc keybind XF86AudioLowerVolume spawn $SCRIPTS_DIR/volume.sh "dec"
+hc keybind XF86AudioRaiseVolume spawn $SCRIPTS_DIR/volume.sh "inc"
+#stop XF86AudioStop
+#prev XF86AudioPrev
+#play/pause XF86AudioPlay
+#next XF86AudioNext

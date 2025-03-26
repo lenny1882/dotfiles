@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+source ~/.config/herbstluftwm/variables.autostart
+
+# --------------------------------
+# theme & settings
+
+# reset first
+hc attr theme.tiling.reset true
+hc attr theme.floating.reset true
+
+hc set focus_follows_mouse true
+hc set always_show_frame true
+hc set frame_bg_transparent false
+hc set smart_window_surroundings false
+hc set smart_frame_surroundings false
+hc set tree_style '╾│ ├└╼─┐'
+
+hc set frame_border_inner_width 0
+hc set frame_border_width 0
+hc set frame_gap 5
+hc set frame_normal_opacity 25
+hc set frame_padding 0
+hc set frame_transparent_width 5
+hc set mouse_recenter_gap 0
+hc attr theme.active.outer_width 1
+hc attr theme.border_width 3
+hc attr theme.floating.border_width 4
+hc attr theme.floating.outer_width 1
+hc attr theme.inner_width 1
+hc attr theme.padding_top 2  # space below the title's baseline (i.e. text depth)
+hc attr theme.title_height 15
+hc set window_gap 0
+
+hc attr theme.title_font 'Dejavu Sans:pixelsize=12'  # example using Xft
+
+# hex-alpha: rrggbbaa
+hc set frame_bg_active_color "#11111177"
+hc set frame_bg_normal_color "${col_grey}FF"
+hc set frame_border_active_color "${col_grey}cc"
+hc set frame_border_normal_color "${col_grey}cc"
+hc attr theme.active.color $col_active
+hc attr theme.active.inner_color "${col_active}dd"
+hc attr theme.background_color $col_grey
+hc attr theme.floating.outer_color $col_grey
+hc attr theme.inner_color $col_grey
+hc attr theme.normal.color "${col_grey}dd"
+hc attr theme.normal.inner_color $col_grey
+hc attr theme.normal.title_color $col_grey
+hc attr theme.title_color $col_light
+hc attr theme.urgent.color "${col_purple}dd"
+hc attr theme.urgent.inner_color "${col_purple}ff"
+
+# copy inner color to outer_color
+for state in active urgent normal ; do
+    hc substitute C theme.${state}.inner_color \
+        attr theme.${state}.outer_color C
+done

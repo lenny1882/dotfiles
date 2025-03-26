@@ -1,0 +1,11 @@
+# /etc/pacman.d/hooks/clean-cache.hook
+[Trigger]
+Type = Package
+Operation = Install
+Operation = Upgrade
+Target = expressvpn
+
+[Action]
+Description = Restarting expressvpn daemon
+When = PostTransaction
+Exec = /usr/bin/systemctl restart expressvpn.service

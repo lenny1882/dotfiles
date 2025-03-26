@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=OrcaSlicer
+Exec=env WEBKIT_DISABLE_DMABUF_RENDERER=1 /opt/orca-slicer-unstable/bin/orca-slicer %F
+Icon=OrcaSlicer
+Type=Application
+Categories=Utility;
+MimeType=model/stl;application/vnd.ms-3mfdocument;application/prs.wavefront-obj;application/x-amf;
