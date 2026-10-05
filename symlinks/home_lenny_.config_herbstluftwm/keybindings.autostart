@@ -14,8 +14,7 @@ hc keybind $ModPri-Up split top 0.5         # split out a new frame
 hc keybind $ModPri-Down split bottom 0.5
 hc keybind $ModPri-Left split left 0.5
 hc keybind $ModPri-Right split right 0.5
-#hc keybind $ModPri-Control-space split explode
-hc keybind $ModPri-q remove                 # quit frame
+hc keybind $ModPri-Control-space split explode
 
 # clients (windows)
 hc keybind $ModSup-q close                  # quit current
@@ -42,6 +41,11 @@ hc keybind $ModPri-space                                                        
             or , and . compare tags.focus.curframe_wcount = 2                   \
                      . cycle_layout +1 vertical horizontal max vertical grid    \
                , cycle_layout +1
+               
+hc keybind $ModPri-v set_layout vertical
+hc keybind $ModPri-h set_layout horizontal
+hc keybind $ModPri-s set_layout max
+hc keybind $ModPri-g set_layout grid
 
 # resizing
 resizestep=0.02
@@ -55,10 +59,9 @@ hc keybind $ModPri-period use_index +1 --skip-visible
 hc keybind $ModPri-comma  use_index -1 --skip-visible
 
 # focus
-hc keybind $ModSup-BackSpace   cycle_monitor
-hc keybind $ModSup-Shift-Tab   cycle_all +1
-hc keybind $ModSup-Shift-Control-Tab   cycle_all -1
-hc keybind $ModSup-c cycle
+hc keybind $ModPri-Tab   cycle_all +1
+hc keybind $ModPri-Shift-Tab   cycle_all -1
+hc keybind $ModPri-Shift-Control-Tab cycle
 
 
 # --------------------------------

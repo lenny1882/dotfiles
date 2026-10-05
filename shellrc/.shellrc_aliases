@@ -1,5 +1,7 @@
 # custom aliases to make things easier
 alias x="exit"
+alias claude="$HOME/.claude/bin/claude-session"
+alias cl="cd /media/Storage/Development/claude-sandbox && claude"
 alias micro="micro  --keymenu=true --softwrap=true"
 alias nano="micro  --keymenu=true --softwrap=true"
 
@@ -25,8 +27,8 @@ alias dd='echo "dd command not available"'
 alias rm="rm -i"
 
 # vpn
-alias exv='expressvpn'
-alias 'exv-switch'='_exv-switch() { expressvpn disconnect; expressvpn connect "$1"; x;}; _exv-switch'
+alias exv='expressvpnctl'
+alias 'exv-switch'='_exv-switch() { expressvpnctl disconnect; expressvpnctl connect "$1"; x;}; _exv-switch'
 
 # aliases for updating and installing packages
 alias ni="npm install"

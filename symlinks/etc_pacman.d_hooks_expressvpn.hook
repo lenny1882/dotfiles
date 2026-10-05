@@ -8,4 +8,4 @@ Target = expressvpn
 [Action]
 Description = Restarting expressvpn daemon
 When = PostTransaction
-Exec = /usr/bin/systemctl restart expressvpn.service
+Exec = /usr/bin/systemctl restart expressvpn-service.service

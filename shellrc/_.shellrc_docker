@@ -1,0 +1,2 @@
+alias _dri='docker rmi $(docker images -aq)' # docker remove images
+alias _drc='docker rm $(docker ps -aq)' # docker remove containers

@@ -38,4 +38,5 @@ export VISUAL=micro
 stty start undef
 stty stop under
 
+# nnn -deioQRUx -F 0 $*
 nnn -deioQRUx -F 0 -s startup $*

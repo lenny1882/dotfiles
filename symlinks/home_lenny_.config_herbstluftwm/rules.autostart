@@ -18,17 +18,21 @@ hc rule --windowtype~'_NET_WM_WINDOW_TYPE_(NOTIFICATION|DOCK|DESKTOP)' --manage=
 
 # autostart rules
 hc rule once --instance=vivaldi-stable --tag="right|2" --index=00
-hc rule once --instance=joplin --tag="right|2" --index=01
+hc rule once --instance=obsidian --tag="right|2" --index=01
 hc rule once --instance=spotify --tag="left|3" --index=00
 hc rule --instance=rambox --tag="left|3" --index=01 --label=rambox-startup-onetime
 # rambox doesn't stay where it should, so naming to unrule down the line
 
 # floating windows
-hc rule --instance=gpick --floating=true --floating_geometry=620x422
-hc rule --instance=pavucontrol --floating=true
+hc rule --title='Bitwarden - Vivaldi' --floating=true --floatplacement=center
+
+hc rule --instance='bambu-studio' fixedsize --floating=true --floatplacement=center
+hc rule --instance='expressvpn-client' fixedsize --floating=true --floatplacement=center
+hc rule --instance=pavucontrol --floating=true --floatplacement=center
 hc rule --instance~'^Minecraft.*$' --floating=true --floatplacement=center
 hc rule --instance='dragon-drop' --floating=true --floatplacement=center
-hc rule --instance~'(urxvt|xterm)' --floating=true --floating_geometry=948x502 --floatplacement=center
-hc rule --instance=wrapper --hook=wrapper_opened --floating=true --floating_geometry=1280x720 --floatplacement=center
+hc rule --instance=gpick --floating=true --floating_geometry=620x422
+hc rule --instance~'(urxvt|xterm)' --floating=true --floatplacement=center --floating_geometry=948x502
+hc rule --instance=wrapper --hook=wrapper_opened --floating=true --floatplacement=center --floating_geometry=1280x720
 
 hc rule --instance=peek --hook=peek_opened

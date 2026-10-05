@@ -11,8 +11,8 @@ hc attr theme.floating.reset true
 hc set focus_follows_mouse true
 hc set always_show_frame true
 hc set frame_bg_transparent false
-hc set smart_window_surroundings false
-hc set smart_frame_surroundings false
+hc set smart_window_surroundings off
+hc set smart_frame_surroundings off
 hc set tree_style '╾│ ├└╼─┐'
 
 hc set frame_border_inner_width 0
@@ -22,7 +22,7 @@ hc set frame_normal_opacity 25
 hc set frame_padding 0
 hc set frame_transparent_width 5
 hc set mouse_recenter_gap 0
-hc attr theme.active.outer_width 1
+hc attr theme.outer_width 1
 hc attr theme.border_width 3
 hc attr theme.floating.border_width 4
 hc attr theme.floating.outer_width 1

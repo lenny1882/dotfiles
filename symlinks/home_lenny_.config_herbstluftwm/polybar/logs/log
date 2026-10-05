@@ -1,0 +1,42 @@
+polybar|notice:  Parsing config file: /home/lenny/.config/herbstluftwm/polybar/polybar.ini
+polybar|notice:  Listening for IPC messages (PID: 3373)
+polybar|error: Invalid value for "bar/herbstluft.monitor", using default value (reason: Environment var ${MONITOR} does not exist (no fallback set))
+polybar|warn:  No monitor specified, using "DP-0"
+polybar|notice:  Loading module 'sptr' of type 'custom/text'
+polybar|notice:  Loading module 'power-off' of type 'custom/text'
+polybar|notice:  Loading module 'power-reboot' of type 'custom/text'
+polybar|notice:  Loading module 'power-lock' of type 'custom/text'
+polybar|notice:  Loading module 'power-logout' of type 'custom/text'
+polybar|notice:  Loading module 'sptr' of type 'custom/text'
+polybar|notice:  Loading module 'vol' of type 'internal/pulseaudio'
+polybar|notice:  pulseaudio: using default sink alsa_output.pci-0000_05_00.1.hdmi-stereo
+polybar|notice:  Loading module 'sptr' of type 'custom/text'
+polybar|notice:  Loading module 'cpul' of type 'custom/text'
+polybar|notice:  Loading module 'cpu' of type 'internal/cpu'
+polybar|notice:  Loading module 'dsp' of type 'custom/text'
+polybar|notice:  Loading module 'meml' of type 'custom/text'
+polybar|notice:  Loading module 'mem' of type 'internal/memory'
+polybar|notice:  Loading module 'dsp' of type 'custom/text'
+polybar|notice:  Loading module 'netl' of type 'custom/text'
+polybar|notice:  Loading module 'nets' of type 'custom/script'
+polybar|notice:  Loading module 'dsp' of type 'custom/text'
+polybar|notice:  Loading module 'kbl' of type 'custom/text'
+polybar|notice:  Loading module 'kb' of type 'internal/xkeyboard'
+polybar|notice:  Loading module 'sp' of type 'custom/text'
+polybar|notice:  Loading module 'sptr' of type 'custom/text'
+polybar|notice:  Loading module 'ewmh' of type 'internal/xworkspaces'
+polybar|notice:  Loading module 'sptr' of type 'custom/text'
+polybar|notice:  Loading module 'date' of type 'internal/date'
+polybar|notice:  Loading module 'sptr' of type 'custom/text'
+polybar|notice:  Loading module 'upl' of type 'custom/text'
+polybar|notice:  Loading module 'ups' of type 'custom/ipc'
+polybar|notice:  Loading module 'sptr' of type 'custom/text'
+polybar|notice:  Loaded 28 modules
+polybar|notice:  Loaded font "DejaVuSansM Nerd Font:pixelsize=10" (name=DejaVuSansM Nerd Font, offset=3, file=/usr/share/fonts/TTF/DejaVuSansMNerdFont-Regular.ttf)
+polybar|notice:  Loaded font "DejaVuSansM Nerd Font:pixelsize=6" (name=DejaVuSansM Nerd Font, offset=3, file=/usr/share/fonts/TTF/DejaVuSansMNerdFont-Regular.ttf)
+polybar|notice:  Loaded font "DejaVuSansM Nerd Font:pixelsize=12" (name=DejaVuSansM Nerd Font, offset=3, file=/usr/share/fonts/TTF/DejaVuSansMNerdFont-Regular.ttf)
+polybar|notice:  pulseaudio: using default sink alsa_output.pci-0000_00_1b.0.iec958-stereo
+polybar|notice:  pulseaudio: using default sink alsa_output.pci-0000_00_1b.0.iec958-stereo
+polybar|notice:  pulseaudio: using default sink alsa_output.pci-0000_00_1b.0.iec958-stereo
+polybar|notice:  Received signal(15): Terminated
+polybar|notice:  Termination signal received, shutting down...

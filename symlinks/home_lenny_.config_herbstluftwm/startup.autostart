@@ -13,8 +13,8 @@ if hc silent new_attr bool my_not_first_autostart ; then
     hc spawn easystroke enable &
 
     hc spawn rambox &
-    hc spawn vivaldi-stable &
-    hc spawn joplin-desktop &
+    hc spawn bash -c "vivaldi --password-store=basic" &
+    hc spawn obsidian &
     hc spawn spotify &
 fi
 

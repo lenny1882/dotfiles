@@ -1,0 +1,320 @@
+#!/usr/bin/env bash
+
+# --------------------------------
+# Setup
+
+hc() {
+    herbstclient "$@"
+}
+
+hc emit_hook reload
+hc keyunbind --all
+hc mouseunbind --all
+hc unrule -F
+
+
+# --------------------------------
+# Variables
+
+SCRIPTS_DIR=~/.config/herbstluftwm/scripts
+ModPri=Mod4+Mod1    # Super+Alt
+ModSup=Mod4         # Super
+tag_names=( "left|3" "middle|1" "right|2" "split|4" "3wayR|5" "3wayL|6" "grid|7" 8 9 )
+tag_keys=( 3 1 2 {4..9} )
+
+# based on the vscode dark, mui pallettes
+# https://www.color-hex.com/color-palette/98179
+# https://mui.com/customization/palette/
+col_dark="#252526"
+col_light="#ECEFF4"
+col_grey="#3E3E42"
+col_purple="#7B1FA2"
+col_green="#2E7D32"
+col_active=$col_green
+
+# --------------------------------
+# Tags
+
+hc rename default "${tag_names[0]}" || true
+for i in "${!tag_names[@]}" ; do
+    hc add "${tag_names[$i]}"
+    key="${tag_keys[$i]}"
+    if ! [ -z "$key" ] ; then
+        hc keybind "$ModSup-$key" use_index "$i"
+        hc keybind "$ModSup-Shift-$key" move_index "$i"
+    fi
+done
+
+
+# --------------------------------
+# Layouts
+
+hc load "left|3" '(
+    clients max:1
+)'
+hc load "middle|1" '(
+    clients horizontal:0
+)'
+hc load "right|2" '(
+    clients max:1
+)'
+
+hc load "split|4" '(
+    split horizontal:0.5:0
+        (clients vertical:0)
+        (clients vertical:0)
+)'
+hc load "3wayR|5" '(
+    split horizontal:0.5:1 
+        (clients horizontal:0)
+        (split vertical:0.5:1
+            (clients horizontal:0) (clients horizontal:0)
+        )
+)'
+hc load "3wayL|6" '(
+    split horizontal:0.5:1 
+        (split vertical:0.5:0
+            (clients horizontal:0) (clients horizontal:0)
+        )
+        (clients horizontal:0)
+)'
+hc load "grid|7" '(
+    split horizontal:0.5:1
+        (split vertical:0.5:1
+            (clients horizontal:0) (clients horizontal:0)
+        )
+        (split vertical:0.5:0
+            (clients horizontal:0) (clients horizontal:0)
+        )
+)'
+
+
+# --------------------------------
+# Keybindings
+
+# herbstluft
+hc keybind $ModPri-Shift-q quit     # quit herbstluft
+hc keybind $ModPri-Shift-r reload   # reload herbstluft
+
+# frames
+hc keybind $ModPri-q remove                 # remove frame
+hc keybind $ModPri-Up split top 0.5         # split out a new frame
+hc keybind $ModPri-Down split bottom 0.5
+hc keybind $ModPri-Left split left 0.5
+hc keybind $ModPri-Right split right 0.5
+#hc keybind $ModPri-Control-space split explode
+hc keybind $ModPri-q remove                 # quit frame
+
+# clients (windows)
+hc keybind $ModSup-q close                  # quit current
+hc keybind $ModSup-Left  focus left         # focus
+hc keybind $ModSup-Down  focus down
+hc keybind $ModSup-Up    focus up
+hc keybind $ModSup-Right focus right
+hc keybind $ModSup-Shift-Left  shift left   # move
+hc keybind $ModSup-Shift-Down  shift down
+hc keybind $ModSup-Shift-Up    shift up
+hc keybind $ModSup-Shift-Right shift right
+
+# layouts
+# hc keybind $ModSup-f fullscreen toggle
+hc keybind $ModPri-f set_attr clients.focus.floating toggle
+hc keybind $ModPri-d set_attr clients.focus.minimized true
+hc keybind $ModPri-Shift-d jumpto last-minimized
+# hc keybind $ModSup-p pseudotile toggle
+
+# The following cycles through the available layouts within a frame, but skips
+# layouts, if the layout change wouldn't affect the actual window positions.
+# I.e. if there are two windows within a frame, the grid layout is skipped.
+hc keybind $ModPri-space                                                        \
+            or , and . compare tags.focus.curframe_wcount = 2                   \
+                     . cycle_layout +1 vertical horizontal max vertical grid    \
+               , cycle_layout +1
+
+# resizing
+resizestep=0.02
+hc keybind $ModPri-Shift-Left resize left +$resizestep   # resize frames, floating clients
+hc keybind $ModPri-Shift-Down resize down +$resizestep
+hc keybind $ModPri-Shift-Up resize up +$resizestep
+hc keybind $ModPri-Shift-Right resize right +$resizestep
+
+# tags 
+hc keybind $ModPri-period use_index +1 --skip-visible
+hc keybind $ModPri-comma  use_index -1 --skip-visible
+
+# focus
+hc keybind $ModSup-BackSpace   cycle_monitor
+hc keybind $ModSup-Shift-Tab   cycle_all +1
+hc keybind $ModSup-Shift-Control-Tab   cycle_all -1
+hc keybind $ModSup-c cycle
+
+
+# --------------------------------
+# mouse - only works on floating
+
+#leftclick button1
+#rightclick button3
+#middleclick button2
+#middlescroll forward button4
+#middlescroll backward button5
+#back button9
+#forward button8
+#sidescroll left button6
+#sidescroll right button7
+
+
+# --------------------------------
+# theme & settings
+
+# reset first
+hc attr theme.tiling.reset true
+hc attr theme.floating.reset true
+
+hc set focus_follows_mouse true
+hc set always_show_frame true
+hc set frame_bg_transparent false
+hc set smart_window_surroundings false
+hc set smart_frame_surroundings false
+hc set tree_style '╾│ ├└╼─┐'
+
+hc set frame_border_inner_width 0
+hc set frame_border_width 0
+hc set frame_gap 5
+hc set frame_normal_opacity 25
+hc set frame_padding 0
+hc set frame_transparent_width 5
+hc set mouse_recenter_gap 0
+hc attr theme.active.outer_width 1
+hc attr theme.border_width 3
+hc attr theme.floating.border_width 4
+hc attr theme.floating.outer_width 1
+hc attr theme.inner_width 1
+hc attr theme.padding_top 2  # space below the title's baseline (i.e. text depth)
+hc attr theme.title_height 15
+hc set window_gap 0
+
+hc attr theme.title_font 'Dejavu Sans:pixelsize=12'  # example using Xft
+
+# hex-alpha: rrggbbaa
+hc set frame_bg_active_color "#11111177"
+hc set frame_bg_normal_color "${col_grey}FF"
+hc set frame_border_active_color "${col_grey}cc"
+hc set frame_border_normal_color "${col_grey}cc"
+hc attr theme.active.color $col_active
+hc attr theme.active.inner_color "${col_active}dd"
+hc attr theme.background_color $col_grey
+hc attr theme.floating.outer_color $col_grey
+hc attr theme.inner_color $col_grey
+hc attr theme.normal.color "${col_grey}dd"
+hc attr theme.normal.inner_color $col_grey
+hc attr theme.normal.title_color $col_grey
+hc attr theme.title_color $col_light
+hc attr theme.urgent.color "${col_purple}dd"
+hc attr theme.urgent.inner_color "${col_purple}ff"
+
+# copy inner color to outer_color
+for state in active urgent normal ; do
+    hc substitute C theme.${state}.inner_color \
+        attr theme.${state}.outer_color C
+done
+
+
+# --------------------------------
+# monitors
+
+#hc detect_monitors
+hc set_monitors 1280x1440+0+0 2560x1440+1280+0 1280x1440+3840+0
+
+
+# --------------------------------
+# rules
+# `xprop`
+# WM_CLASS - first entry is `instance`, second is `class`
+# _NET_WM_WINDOW_TYPE - first value is `windowtype`
+# WM_WINDOW_ROLE - windowrole
+
+hc rule --focus=on # normally focus new clients
+hc rule --floatplacement=smart
+
+hc rule --windowtype~'_NET_WM_WINDOW_TYPE_(DIALOG|UTILITY|SPLASH)' --floating=on
+hc rule --windowtype='_NET_WM_WINDOW_TYPE_DIALOG' --focus=on --floatplacement=center
+hc rule --windowtype='_NET_WM_WINDOW_TYPE_SPLASH' --focus=on --floatplacement=center --hook=splash_opened
+hc rule --windowtype~'_NET_WM_WINDOW_TYPE_(NOTIFICATION|DOCK|DESKTOP)' --manage=off
+
+# autostart rules
+hc rule once --instance=rambox --tag="left|3" --index=0
+hc rule once --instance=vivaldi-stable --tag="right|2" --index=0
+hc rule once --instance=joplin --tag="right|2" --index=1
+hc rule once --instance=spotify --tag="left|3" --index=1
+
+# floating windows
+hc rule --instance=gpick --floating=true --floating_geometry=620x422
+hc rule --instance=pavucontrol --floating=true
+hc rule --instance~'(urxvt|xterm)' --floating=true --floating_geometry=948x502 --floatplacement=center
+hc rule --instance=wrapper --hook=wrapper_opened --floating=true --floating_geometry=1280x720 --floatplacement=center
+hc rule --instance=peek --hook=peek_opened
+
+
+# --------------------------------
+# apps & functions
+
+#hc keybind $ModSup-Return spawn "${TERMINAL:-xterm}" # use your $TERMINAL with xterm as fallback
+hc keybind $ModSup-Return spawn urxvt
+hc keybind $ModSup-l spawn physlock -dsm
+
+# rofi
+hc keybind $ModSup-space spawn rofi -show drun -modi drun,run,window,calc -show-icons -sidebar-mode
+hc keybind $ModSup-Control-space spawn rofi -show run -modi drun,run,window,calc -show-icons -sidebar-mode
+hc keybind $ModSup-Tab spawn rofi -show window -modi drun,run,window,calc -show-icons -sidebar-mode
+hc keybind $ModSup-c spawn rofi -show calc -modi drun,run,window,calc -show-icons -sidebar-mode
+
+# screenshots
+hc keybind $ModSup-s spawn $SCRIPTS_DIR/screenshot.sh select-clip
+hc keybind $ModSup-Shift-s spawn $SCRIPTS_DIR/screenshot.sh select
+hc keybind $ModSup-Control-s spawn $SCRIPTS_DIR/screenshot.sh area-clip
+hc keybind $ModSup-Shift-Control-s spawn $SCRIPTS_DIR/screenshot.sh area
+
+# tuis
+hc keybind $ModSup-e spawn urxvt -name wrapper -e $SCRIPTS_DIR/nnn-wrap.sh
+hc keybind Control-Alt-Delete spawn urxvt -name wrapper -e btm
+
+# audio
+hc keybind XF86AudioMute spawn $SCRIPTS_DIR/volume.sh "mute"
+hc keybind XF86AudioLowerVolume spawn $SCRIPTS_DIR/volume.sh "dec"
+hc keybind XF86AudioRaiseVolume spawn $SCRIPTS_DIR/volume.sh "inc"
+#stop XF86AudioStop
+#prev XF86AudioPrev
+#play/pause XF86AudioPlay
+#next XF86AudioNext
+
+
+# --------------------------------
+# commands
+
+# autostart - but only if custom var has not been created
+if hc silent new_attr bool my_not_first_autostart ; then 
+    hc spawn xrdb ~/.Xresources
+    hc spawn picom --config ~/.config/compton.conf &
+    hc spawn numlockx on &
+    hc spawn ~/.fehbg &
+    hc spawn easystroke enable &
+
+    hc spawn rambox &
+    hc spawn vivaldi-stable &
+    hc spawn joplin-desktop &
+    hc spawn spotify &
+fi
+
+
+# --------------------------------
+# finalise
+
+# unlock before monitors get padded, else panel loads above windows
+hc unlock
+
+# load the panel
+$SCRIPTS_DIR/panel.sh $col_active $col_purple &
+
+herbstclient --idle | while read hook name winid; do
+    $SCRIPTS_DIR/rule_hook.sh $hook $name $winid
+done

@@ -165,3 +165,4 @@ add_newline () {
 
 PROMPT_COMMAND=__prompt_command
 PROMPT_COMMAND="${PROMPT_COMMAND}${PROMPT_COMMAND:+;} add_newline"
+
