@@ -120,6 +120,43 @@ if grep -qs "^[^#]*[[:space:]]$mnt[[:space:]]" "$FSTAB"; then die "$FSTAB alread
 [[ -d $mnt ]] || run mkdir -p "$mnt"
 
 # 7. mount options
+#
+# what the options mean:
+#   defaults  rw, suid, dev, exec, auto, async (so suid/dev/exec are all ON)
+#   nofail    boot carries on if the drive is missing
+#   exec      allow running programs from the drive (already implied by
+#             defaults; stated so the choice is visible in fstab)
+#   noatime   don't write a last-read time on every read: fewer writes
+#   nosuid    ignore the setuid bit. A setuid-root file on a drive would run
+#             as root; with nosuid it runs as you. Matters for drives that
+#             may hold files you didn't create
+#   nodev     treat device-node files on the drive as plain files, so a
+#             crafted drive can't carry a node pointing at /dev/sda
+#   x-gvfs-show / x-gvfs-name=<name>
+#             show the mount in the file manager sidebar under <name>
+#             (spaces must be written as \040 in fstab)
+#   noauto + x-systemd.automount
+#             mount on first access instead of at boot
+#
+# which preset to pick:
+#   1  a trusted internal/data drive, and the right choice for a drive that
+#      holds installed programs. Don't add nosuid/nodev there: apps that ship
+#      a setuid helper (eg Electron/Chrome chrome-sandbox), containers,
+#      chroots and bundled rootfs trees need suid and dev, and only you write
+#      to the drive so the protection buys little. Use ext4/xfs/btrfs (real
+#      permissions and symlinks), mount at boot, and say yes to the chown so
+#      programs can update themselves. The UUID survives wiping the boot
+#      drive, so afterwards you only need to re-add the fstab line (keep a
+#      copy in the dotfiles)
+#   2  external/removable drives, where the files' origin is unknown.
+#      Programs still run (no noexec), but setuid and device files do not.
+#      Same as what udisks/"user" mounts apply by default
+#   3  custom: choose boot/automount/manual and exec/noexec yourself
+#
+# nosuid,nodev only blocks privilege escalation through planted files. It
+# doesn't stop code running as you (that would need noexec), costs no
+# performance, and is reversible with
+#   sudo mount -o remount,suid,dev <mountpoint>
 echo
 echo "options preset:"
 echo "  1) defaults,nofail,exec,noatime                          (internal/data drive)"
