@@ -1,4 +1,8 @@
-export USER_DIR="/media/Storage/User"
+# locations chosen at install time are exported by the block shell_loader.sh
+# injects ahead of these files; the defaults only apply if that didn't run
+export STORAGE_DIR="${STORAGE_DIR:-/media/Storage}"
+export USER_DIR="${USER_DIR:-$STORAGE_DIR/User}"
+export PROGRAMS_DIR="${PROGRAMS_DIR:-$USER_DIR/Programs}"
 #export HISTCONTROL="ignoredupds:ignorespace"
 #export HISTIGNORE="x"
 export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"

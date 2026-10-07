@@ -1,7 +1,7 @@
 # custom aliases to make things easier
 alias x="exit"
 alias claude="$HOME/.claude/bin/claude-session"
-alias cl="cd /media/Storage/Development/claude-sandbox && claude"
+alias cl="cd ${STORAGE_DIR:-/media/Storage}/Development/claude-sandbox && claude"
 alias micro="micro  --keymenu=true --softwrap=true"
 alias nano="micro  --keymenu=true --softwrap=true"
 
