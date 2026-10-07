@@ -51,11 +51,11 @@ for monitor in $(hc list_monitors | cut -d: -f1); do
         #     "MONITOR=${pb_monitors[${hc_monitors[$monitor]}]} \
         #     COLOUR_ACTIVE=$col_active \
         #     COLOUR_URGENT=$col_urgent \
-        #     polybar --reload herbstluft -c ~/.config/herbstluftwm/polybar/polybar.ini 2>/home/lenny/.config/herbstluftwm/polybar/logs/log &"
+        #     polybar --reload herbstluft -c ~/.config/herbstluftwm/polybar/polybar.ini 2>$HOME/.config/herbstluftwm/polybar/logs/log &"
         MONITOR=${pb_monitors[${hc_monitors[$monitor]}]} \
             COLOUR_ACTIVE=$col_active \
             COLOUR_URGENT=$col_urgent \
-            polybar --reload herbstluft -c ~/.config/herbstluftwm/polybar/polybar.ini 2>/home/lenny/.config/herbstluftwm/polybar/logs/log &
+            polybar --reload herbstluft -c ~/.config/herbstluftwm/polybar/polybar.ini 2>$HOME/.config/herbstluftwm/polybar/logs/log &
     fi
 done
 

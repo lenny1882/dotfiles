@@ -9,8 +9,11 @@ Target = *
 [Action]
 Description = Packages have changed
 When = PostTransaction
-# /usr/bin/sudo -u <user> --- run as user
+# the hook runs as root, so find the user to run as:
+#   1. the active session on seat0 (loginctl), 2. any non-root session,
+#   3. the first regular user (uid 1000)
+# sudo -u <user> --- run as that user
 # bash -c --- a command in a bash instance
 # -p $(pgrep polybar) --- ensure it's the current running polybar
-#Exec = /usr/bin/sudo -u lenny bash -c "polybar-msg -p $(pgrep polybar) action ups hook 0"
-Exec = /usr/bin/sudo -u lenny bash -c "herbstclient emit_hook ipc"
+#Exec = /usr/bin/sudo -u $u bash -c "polybar-msg -p $(pgrep polybar) action ups hook 0"
+Exec = /usr/bin/bash -c "s=$(loginctl show-seat seat0 -p ActiveSession --value 2>/dev/null); [[ -n $s ]] && u=$(loginctl show-session $s -p Name --value 2>/dev/null); [[ -n $u ]] || u=$(loginctl list-sessions --no-legend 2>/dev/null | awk '$2 != 0 {print $3; exit}'); [[ -n $u ]] || u=$(id -nu 1000); sudo -u $u herbstclient emit_hook ipc"

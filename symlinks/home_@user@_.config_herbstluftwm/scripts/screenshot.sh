@@ -4,7 +4,7 @@ action=$1
 
 case $action in
     select)
-        scrot -b -F '/home/lenny/Pictures/screenshots/%Y-%m-%d_%H%M%S_select.png' -l style=solid,width=2,color=red --select=capture
+        scrot -b -F "$HOME/Pictures/screenshots/%Y-%m-%d_%H%M%S_select.png" -l style=solid,width=2,color=red --select=capture
         ;;
 
     select-clip)
@@ -12,7 +12,7 @@ case $action in
         ;;
 
     area)
-        scrot -b -F '/home/lenny/Pictures/screenshots/%Y-%m-%d_%H%M%S_window.png' --focused
+        scrot -b -F "$HOME/Pictures/screenshots/%Y-%m-%d_%H%M%S_window.png" --focused
         ;;
 
     area-clip)

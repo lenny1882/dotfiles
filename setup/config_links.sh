@@ -2,7 +2,9 @@
 
 # symlink every top-level entry in ../symlinks to the real location its name
 # encodes: each "_" is a path separator, so
-#   home_lenny_.config_abc  ->  /home/lenny/.config/abc
+#   etc_pacman.d_hooks_abc.hook  ->  /etc/pacman.d/hooks/abc.hook
+# and @user@ stands for the user running the install, so
+#   home_@user@_.config_abc  ->  /home/<user>/.config/abc
 # entries are linked as-is (a folder is linked as a folder, never drilled into)
 #
 # usage: config_links.sh [-n|--dry-run] [-f|--force]
@@ -12,6 +14,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="$(cd "$SCRIPT_DIR/../symlinks" && pwd)"
 
+link_user=${SUDO_USER:-$(id -un)}
 dry_run=false
 force=false
 for arg in "$@"; do
@@ -46,6 +49,7 @@ linker() {
 			continue
 		fi
 		target="/${name//_//}"
+		target="${target//@user@/$link_user}"
 
 		if [[ -L $target && $(readlink "$target") == "$src" ]]; then
 			echo "ok     $target"
