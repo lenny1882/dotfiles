@@ -33,7 +33,8 @@ numlockx on # in some autostart script
 # herbstluftwm
 # do we need to do this?
 # ly uses it to know what to start, but do other login managers need it?
-ln -s /media/Storage/User/config/usr_share_xsessions_herbstluftwm.desktop /usr/share/xsessions/herbstluftwm.desktop
+# run from the repo root
+sudo ln -s "$PWD/symlinks/usr_share_xsessions_herbstluftwm.desktop" /usr/share/xsessions/herbstluftwm.desktop
 
 
 ## =======

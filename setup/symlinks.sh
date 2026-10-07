@@ -2,9 +2,10 @@
 
 function symlinker () {
 	# vars
-	local home_dir="/home/lenny/"
+	local home_dir="${HOME%/}/"
 	local home_folders=("Documents" "Downloads" "Music" "Pictures" "Videos")
-	local user_dir="/media/Storage/User/"
+	local user_dir="${USER_DIR:-/media/Storage/User}"
+	user_dir="${user_dir%/}/"
 
 	# remove existing and symlink in new
 	for folder in "${home_folders[@]}"; do
