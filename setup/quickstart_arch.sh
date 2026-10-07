@@ -274,6 +274,10 @@ step_symlinks() {
 	{ "$SCRIPT_DIR/symlinks.sh"; } 2>&1 | pinnedOutput
 }
 
+step_config_links() {
+	{ "$SCRIPT_DIR/config_links.sh"; } 2>&1 | pinnedOutput
+}
+
 step_shell_loader() {
 	{
 		case $SHELL in
@@ -466,6 +470,7 @@ STEP_NAMES=(
 	"Nvidia drivers"
 	"SSD trim"
 	"Symlink user directories"
+	"Link config files"
 	"Load shell rc files"
 	"Display manager"
 	"Terminal emulator"
@@ -481,6 +486,7 @@ STEP_FUNCS=(
 	step_nvidia
 	step_ssd_trim
 	step_symlinks
+	step_config_links
 	step_shell_loader
 	step_display_manager
 	step_terminal
@@ -494,7 +500,7 @@ STEP_FUNCS=(
 # groups: name + how many of the STEP_NAMES entries (taken in order,
 # starting where the previous group left off) belong to it
 GROUP_NAMES=("System" "User setup" "Desktop" "Software")
-GROUP_SIZES=(4 2 5 2)
+GROUP_SIZES=(4 3 5 2)
 
 # STEP_NAMES/STEP_FUNCS are index-paired, and GROUP_SIZES assumes STEP_NAMES
 # is laid out as contiguous runs matching GROUP_NAMES in order - none of that
