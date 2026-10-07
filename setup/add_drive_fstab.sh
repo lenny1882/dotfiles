@@ -121,20 +121,35 @@ if grep -qs "^[^#]*[[:space:]]$mnt[[:space:]]" "$FSTAB"; then die "$FSTAB alread
 
 # 7. mount options
 echo
-echo "when should it mount?"
-echo "  b) at boot (default)"
-echo "  a) on first access (systemd automount; boot never waits on it)"
-echo "  m) manually only"
-ask "choice" b
-when=$REPLY
-if confirm "allow running programs from it (exec)?"; then access=exec; else access=noexec; fi
+echo "options preset:"
+echo "  1) defaults,nofail,exec,noatime                          (internal/data drive)"
+echo "  2) nosuid,nodev,nofail,x-gvfs-show,x-gvfs-name=<name>    (shows in the file manager)"
+echo "  3) custom (choose boot/automount/exec)"
+ask "choice" 1
+case $REPLY in
+	1) opts=defaults,nofail,exec,noatime ;;
+	2)
+		ask "name to show in the file manager" "${label:-${mnt##*/}}"
+		opts=nosuid,nodev,nofail,x-gvfs-show,x-gvfs-name=${REPLY// /\\040}
+		;;
+	*)
+		echo
+		echo "when should it mount?"
+		echo "  b) at boot (default)"
+		echo "  a) on first access (systemd automount; boot never waits on it)"
+		echo "  m) manually only"
+		ask "choice" b
+		when=$REPLY
+		if confirm "allow running programs from it (exec)?"; then access=exec; else access=noexec; fi
 
-case $when in
-	a) opts=noauto,x-systemd.automount,x-systemd.device-timeout=10,nofail ;;
-	m) opts=noauto ;;
-	*) opts=defaults,nofail ;;
+		case $when in
+			a) opts=noauto,x-systemd.automount,x-systemd.device-timeout=10,nofail ;;
+			m) opts=noauto ;;
+			*) opts=defaults,nofail ;;
+		esac
+		opts=$opts,$access
+		;;
 esac
-opts=$opts,$access
 case $fstype in
 	vfat|exfat|ntfs|ntfs3) opts=$opts,uid=$(id -u),gid=$(id -g),umask=022 ;;
 esac
