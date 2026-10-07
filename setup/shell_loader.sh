@@ -2,7 +2,7 @@
 
 function loader() {
 	local endString="# END: INJECTED BASHRC FILES"
-	local path="/media/Storage/User"
+	local path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../shellrc" && pwd)"
 	local startString="# START: INJECTED BASHRC FILES"
 	local shellrc=~/.$1rc
 

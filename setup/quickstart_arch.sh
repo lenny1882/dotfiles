@@ -976,6 +976,9 @@ promptLocations() {
 
 promptLocations
 
+# child scripts (symlinks.sh etc.) read these from the environment
+export STORAGE_DIR USER_DIR DOWNLOAD_DIR PROGRAMS_DIR
+
 cd "$DOWNLOAD_DIR" || exit
 
 runMenu
