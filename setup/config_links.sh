@@ -37,6 +37,10 @@ linker() {
 	shopt -s nullglob dotglob
 	for src in "$SOURCE_DIR"/*; do
 		name=${src##*/}
+		if [[ $name == *.bak* ]]; then
+			echo "skip   $name (backup file)"
+			continue
+		fi
 		if [[ $name != *_* ]]; then
 			echo "skip   $name (no _ in name, can't derive a target)"
 			continue
