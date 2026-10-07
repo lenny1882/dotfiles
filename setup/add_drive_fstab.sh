@@ -56,9 +56,17 @@ dev=$REPLY
 if [[ $(lsblk -ndo TYPE "$dev") == disk ]] && [[ -z $(lsblk -nro NAME "$dev" | tail -n +2) ]]; then
 	if [[ -z $(blkid -o value -s TYPE "$dev" 2>/dev/null) ]]; then
 		echo "$dev is an empty disk with no partitions."
-		if confirm "create a GPT table with a single partition spanning $dev? (ERASES $dev)"; then
-			command -v parted >/dev/null || die "parted not found"
-			run parted -s "$dev" mklabel gpt mkpart primary 0% 100%
+		# MBR (fdisk) can't address past 2TiB, so bigger disks get GPT via parted
+		size=$(lsblk -bndo SIZE "$dev")
+		if (( size < 2199023255552 )); then tool=fdisk; else tool=parted; fi
+		if confirm "create a single full-size partition on $dev with $tool? (ERASES $dev)"; then
+			command -v "$tool" >/dev/null || die "$tool not found"
+			if [[ $tool == fdisk ]]; then
+				# o = new DOS table, n/p/1 = primary partition 1, blank lines = default start/end, w = write
+				printf 'o\nn\np\n1\n\n\nw\n' | run fdisk "$dev"
+			else
+				run parted -s "$dev" mklabel gpt mkpart primary 0% 100%
+			fi
 			if ! $dry_run; then
 				run partprobe "$dev"; udevadm settle
 				dev=$(lsblk -nrpo NAME "$dev" | sed -n 2p)
@@ -112,19 +120,30 @@ if grep -qs "^[^#]*[[:space:]]$mnt[[:space:]]" "$FSTAB"; then die "$FSTAB alread
 [[ -d $mnt ]] || run mkdir -p "$mnt"
 
 # 7. mount options
-case $fstype in
-	ext[234]) opts=defaults,nofail ;;
-	xfs|btrfs) opts=defaults,nofail ;;
-	vfat|exfat) opts=defaults,nofail,uid=$(id -u),gid=$(id -g),umask=022 ;;
-	ntfs|ntfs3) opts=defaults,nofail,uid=$(id -u),gid=$(id -g),umask=022 ;;
+echo
+echo "when should it mount?"
+echo "  b) at boot (default)"
+echo "  a) on first access (systemd automount; boot never waits on it)"
+echo "  m) manually only"
+ask "choice" b
+when=$REPLY
+if confirm "allow running programs from it (exec)?"; then access=exec; else access=noexec; fi
+
+case $when in
+	a) opts=noauto,x-systemd.automount,x-systemd.device-timeout=10,nofail ;;
+	m) opts=noauto ;;
 	*) opts=defaults,nofail ;;
 esac
+opts=$opts,$access
+case $fstype in
+	vfat|exfat|ntfs|ntfs3) opts=$opts,uid=$(id -u),gid=$(id -g),umask=022 ;;
+esac
 echo
-echo "suggested options: $opts"
+echo "options: $opts"
 echo "  nofail = boot continues if the drive is missing"
 ask "mount options (enter to accept)" "$opts"
 opts=$REPLY
-case $fstype in ext[234]|xfs|btrfs) pass=2; [[ $fstype == btrfs || $fstype == xfs ]] && pass=0 ;; *) pass=0 ;; esac
+case $fstype in ext[234]) pass=2 ;; *) pass=0 ;; esac
 line="UUID=$uuid  $mnt  $fstype  $opts  0  $pass"
 
 # 8. write to fstab
@@ -139,11 +158,17 @@ fi
 backup="$FSTAB.bak.$(date +%Y%m%d%H%M%S)"
 run cp "$FSTAB" "$backup"
 echo "$line" | run tee -a "$FSTAB" >/dev/null
+command -v systemctl >/dev/null && run systemctl daemon-reload
 
 # prove it works; restore the backup if the mount fails
 if run mount "$mnt"; then
 	echo "mounted $mnt OK (backup of old fstab: $backup)"
 	findmnt "$mnt"
+	# ext4/xfs/btrfs mount root-owned; hand the top directory to the user
+	case $fstype in ext[234]|xfs|btrfs)
+		owner=${SUDO_USER:-$(id -un)}
+		if confirm "chown $mnt to $owner so you can write to it?"; then run chown "$owner": "$mnt"; fi ;;
+	esac
 else
 	run cp "$backup" "$FSTAB"
 	die "mount failed; $FSTAB restored from $backup"
