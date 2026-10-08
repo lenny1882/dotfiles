@@ -494,8 +494,8 @@ STEP_NAMES=(
 	"Link config files"
 	"Load shell rc files"
 	"Display manager"
-	"Terminal emulator"
 	"Window manager (herbstluftwm)"
+	"Terminal emulator"
 	"Fonts"
 	"Printers (CUPS)"
 	"Packages"
@@ -510,8 +510,8 @@ STEP_FUNCS=(
 	step_config_links
 	step_shell_loader
 	step_display_manager
-	step_terminal
 	step_window_manager
+	step_terminal
 	step_fonts
 	step_printers
 	step_packages
