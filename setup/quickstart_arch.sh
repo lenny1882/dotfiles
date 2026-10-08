@@ -76,18 +76,21 @@ beginOutput() {
 # ":: Proceed with installation? [Y/n] " (no trailing newline, waiting on
 # stdin) - so use a short timeout and flush whatever partial line has arrived
 pinnedOutput() {
-	local color=$1 line rc
+	local color=$1 line rc seen=0
 	while true; do
 		IFS= read -r -t 0.2 line
 		rc=$?
 		if (( rc == 0 )); then
+			seen=1
 			printf '%s%s%s\n' "$color" "$line" "${color:+$C_RESET}"
 		elif (( rc > 128 )); then
 			# timed out - print any partial line (the prompt) without a newline
-			[[ -n $line ]] && printf '%s%s%s' "$color" "$line" "${color:+$C_RESET}"
+			[[ -n $line ]] && { seen=1; printf '%s%s%s' "$color" "$line" "${color:+$C_RESET}"; }
 		else
 			# EOF - flush a final unterminated line, if any
-			[[ -n $line ]] && printf '%s%s%s\n' "$color" "$line" "${color:+$C_RESET}"
+			[[ -n $line ]] && { seen=1; printf '%s%s%s\n' "$color" "$line" "${color:+$C_RESET}"; }
+			# silent commands (eg. systemctl enable) look like they did nothing
+			(( seen )) || printf '%s(completed, no output)%s\n' "$C_DIM" "$C_RESET"
 			break
 		fi
 	done
