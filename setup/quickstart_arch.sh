@@ -354,7 +354,10 @@ step_printers() {
 }
 
 step_ssd_trim() {
-	{ systemctl enable fstrim.timer; } 2>&1 | pinnedOutput
+	{
+		sudo systemctl enable fstrim.timer
+		echo "fstrim.timer: $(systemctl is-enabled fstrim.timer)"
+	} 2>&1 | pinnedOutput
 }
 
 step_terminal() {
