@@ -71,10 +71,25 @@ beginOutput() {
 # scroll region is set, no per-line action needed:
 #   { installer foo; systemctl enable foo; } 2>&1 | pinnedOutput
 #   { installer foo; systemctl enable foo; } 2>&1 | pinnedOutput "$C_DIM"
+#
+# a plain `read` only returns on a newline, which hides prompts like pacman's
+# ":: Proceed with installation? [Y/n] " (no trailing newline, waiting on
+# stdin) - so use a short timeout and flush whatever partial line has arrived
 pinnedOutput() {
-	local color=$1 line
-	while IFS= read -r line; do
-		printf '%s%s%s\n' "$color" "$line" "${color:+$C_RESET}"
+	local color=$1 line rc
+	while true; do
+		IFS= read -r -t 0.2 line
+		rc=$?
+		if (( rc == 0 )); then
+			printf '%s%s%s\n' "$color" "$line" "${color:+$C_RESET}"
+		elif (( rc > 128 )); then
+			# timed out - print any partial line (the prompt) without a newline
+			[[ -n $line ]] && printf '%s%s%s' "$color" "$line" "${color:+$C_RESET}"
+		else
+			# EOF - flush a final unterminated line, if any
+			[[ -n $line ]] && printf '%s%s%s\n' "$color" "$line" "${color:+$C_RESET}"
+			break
+		fi
 	done
 }
 
