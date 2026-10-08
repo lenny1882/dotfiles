@@ -375,7 +375,19 @@ step_terminal() {
 
 step_window_manager() {
 	{
-		installer herbstluftwm
+		# the herbstluftwm package ships its own xsession file, so the install
+		# fails while our symlink is in the way: unlink it (remembering where
+		# it pointed), install, and put the same link back if that succeeded
+		local session=/usr/share/xsessions/herbstluftwm.desktop session_target=""
+		if [[ -L $session ]]; then
+			session_target=$(readlink "$session")
+			sudo rm "$session"
+		fi
+		if installer herbstluftwm; then
+			[[ -n $session_target ]] && sudo ln -s "$session_target" "$session" && echo "relinked $session -> $session_target"
+		else
+			[[ -n $session_target ]] && echo "herbstluftwm install failed - removed symlink was $session -> $session_target"
+		fi
 		installer polybar
 		mkdir -p ~/.config/herbstluftwm
 		# -n: ~/.config/herbstluftwm is usually a symlink into this repo (see
