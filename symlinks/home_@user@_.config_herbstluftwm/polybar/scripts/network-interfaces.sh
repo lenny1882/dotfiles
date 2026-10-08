@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 output=""
-for interface in $(route | grep '^default' | grep -o '[^ ]*$'); do
-	ip=$(ifconfig | sed -n '/^'"$interface"'/,$p' | grep inet | grep -oE '((1?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\.){3}(1?[0-9][0-9]?|2[0-4][0-9]|25[0-5])' | head -1)
+for interface in $(ip -4 route show default | awk '{for (i = 1; i < NF; i++) if ($i == "dev") print $(i + 1)}'); do
+	ip=$(ip -4 -o addr show dev "$interface" | awk '{split($4, a, "/"); print a[1]; exit}')
 	if [[ ${#output} > 0 ]]; then
 		output="$output | "
 	fi
