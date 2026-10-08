@@ -16,4 +16,4 @@ When = PostTransaction
 # bash -c --- a command in a bash instance
 # -p $(pgrep polybar) --- ensure it's the current running polybar
 #Exec = /usr/bin/sudo -u $u bash -c "polybar-msg -p $(pgrep polybar) action ups hook 0"
-Exec = /usr/bin/bash -c "s=$(loginctl show-seat seat0 -p ActiveSession --value 2>/dev/null); [[ -n $s ]] && u=$(loginctl show-session $s -p Name --value 2>/dev/null); [[ -n $u ]] || u=$(loginctl list-sessions --no-legend 2>/dev/null | awk '$2 != 0 {print $3; exit}'); [[ -n $u ]] || u=$(id -nu 1000); sudo -u $u herbstclient emit_hook ipc"
+Exec = /usr/bin/bash -c "command -v herbstclient >/dev/null || exit 0; s=$(loginctl show-seat seat0 -p ActiveSession --value 2>/dev/null); [[ -n $s ]] && u=$(loginctl show-session $s -p Name --value 2>/dev/null); [[ -n $u ]] || u=$(loginctl list-sessions --no-legend 2>/dev/null | awk '$2 != 0 {print $3; exit}'); [[ -n $u ]] || u=$(id -nu 1000); sudo -u $u herbstclient emit_hook ipc 2>/dev/null || true"
