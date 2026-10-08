@@ -379,12 +379,21 @@ step_window_manager() {
 		# fails while our symlink is in the way: unlink it (remembering where
 		# it pointed), install, and put the same link back if that succeeded
 		local session=/usr/share/xsessions/herbstluftwm.desktop session_target=""
+		if [[ -e $session || -L $session ]]; then
+			pacman -Qi herbstluftwm >/dev/null 2>&1 && echo "note: herbstluftwm is already installed ($session exists)"
+		fi
 		if [[ -L $session ]]; then
 			session_target=$(readlink "$session")
 			sudo rm "$session"
 		fi
 		if installer herbstluftwm; then
-			[[ -n $session_target ]] && sudo ln -s "$session_target" "$session" && echo "relinked $session -> $session_target"
+			if [[ -n $session_target ]]; then
+				# the package puts its own file at that path - keep it as a .bak
+				if [[ -e $session || -L $session ]]; then
+					sudo mv -f "$session" "$session.bak" && echo "moved packaged $session -> $session.bak"
+				fi
+				sudo ln -s "$session_target" "$session" && echo "relinked $session -> $session_target"
+			fi
 		else
 			[[ -n $session_target ]] && echo "herbstluftwm install failed - removed symlink was $session -> $session_target"
 		fi
