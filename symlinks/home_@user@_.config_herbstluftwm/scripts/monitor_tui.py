@@ -1,35 +1,10 @@
 #!/usr/bin/env python3
-"""Curses TUI for herbstluftwm layouts and monitors.
+"""Curses TUI for herbstluftwm layouts and monitors (Super+Alt+L through monitor-tui-wrap.sh).
 
-The overview shows two rows: the focused tag's layout (tag name, layout name, a
-drawing of its frame tree) and the monitors (to scale, numbered, * on the
-primary, details underneath).
+  monitor_tui.py [--print [layout] [WIDTH [HEIGHT]]]
 
-  Up / Down   select a row       Enter  open it       Left  back       q  quit
-
-The Layout screen (Enter on Layout) shows the focused tag above a grid of the layouts in
-hlwm_layouts.conf: arrows select, Enter sets (asks first), e edits, d deletes (asks first), s saves a
-custom layout, Esc goes back. Create new is the first cell.
-
-The Monitors screen (Enter on Monitors) shows the active monitors to scale, numbered, * on the primary,
-with an info panel for the selected one. Arrows select; p makes it primary (asks first); m moves it
-(arrows 10 px, Ctrl 1 px, Shift 100 px, Alt hops to the other side of the next monitor; Ctrl-S applies,
-Esc cancels); r opens a list of resolutions and refresh rates with Custom first; e edits the WxH+X+Y
-string. Changes are applied at once through monitor_reconcile.sh --layout.
-
-Layout name: the focused tag's entry for the current set of connected monitors
-in hlwm_tag_layouts.conf gives a layout variable; hlwm_layouts.conf gives its
-`# lname:` text. If the tag's live frame tree no longer has the same structure
-as that layout (ignoring window ids, split fractions and selection) it shows
-"custom"; with no entry it shows "unassigned".
-
-  monitor_tui.py --print [WIDTH]   print the overview as plain text and exit
-
-Environment (for testing): HERBSTCLIENT (command to use instead of herbstclient),
-XRANDR_FIXTURE (file holding `xrandr --query` output), HLWM_LAYOUTS and
-HLWM_TAG_LAYOUTS (paths to the two conf files).
-
-Not handled: rotation (positions assume unrotated outputs).
+Environment for testing: HERBSTCLIENT, XRANDR_FIXTURE, HLWM_LAYOUTS, HLWM_TAG_LAYOUTS, MONITOR_TUI_DRY.
+Rotation is not handled.
 """
 import copy
 import curses
@@ -40,13 +15,10 @@ import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 RECONCILE = os.path.join(SCRIPT_DIR, "monitor_reconcile.sh")
-LAYOUTS_CONF = os.environ.get("LAYOUTS_CONF", os.path.join(SCRIPT_DIR, "monitor_layouts.conf"))
 HLWM_LAYOUTS = os.environ.get("HLWM_LAYOUTS", os.path.join(SCRIPT_DIR, "hlwm_layouts.conf"))
 HLWM_TAG_LAYOUTS = os.environ.get("HLWM_TAG_LAYOUTS", os.path.join(SCRIPT_DIR, "hlwm_tag_layouts.conf"))
 HC = os.environ.get("HERBSTCLIENT", "herbstclient")
 DRY = bool(os.environ.get("MONITOR_TUI_DRY"))
-NUDGE = 10
-SAVED_COMMENT = "# Saved by monitor_tui.py:"
 
 GEOM = re.compile(r"^(\d+)x(\d+)\+(-?\d+)\+(-?\d+)$")
 GEOM_SIGNED = re.compile(r"^(\d+)x(\d+)([+-]\d+)([+-]\d+)$")
@@ -63,11 +35,11 @@ def dims(mode):
 class Output:
     def __init__(self, name):
         self.name = name
-        self.modes = []      # as listed, _custom stripped
-        self.pref = None     # the preferred mode
-        self.rates = []      # (mode, rate, current, preferred) for every line of the mode list
-        self.rate = None     # a refresh rate chosen in the TUI; None leaves it to xrandr
-        self.mode = "off"    # off | auto | WxH
+        self.modes = []
+        self.pref = None
+        self.rates = []
+        self.rate = None
+        self.mode = "off"
         self.x = self.y = self.w = self.h = 0
         self.primary = False
 
@@ -77,7 +49,6 @@ class Output:
 
 
 def parse_xrandr(text):
-    """Connected outputs from `xrandr --query` output."""
     outs, cur = [], None
     for line in text.splitlines():
         if line and not line[0].isspace():
@@ -137,35 +108,6 @@ class Model:
     def active(self):
         return [o for o in self.outs if o.on]
 
-    def overlaps_any(self, o, x, y):
-        for a in self.active():
-            if a is not o and x < a.x + a.w and a.x < x + o.w and y < a.y + a.h and a.y < y + o.h:
-                return True
-        return False
-
-    def has_overlap(self):
-        return any(self.overlaps_any(o, o.x, o.y) for o in self.active())
-
-    def toggle(self, o):
-        """Returns an error message, or '' on success."""
-        if o.on:
-            if len(self.active()) < 2:
-                return "at least one output must stay on"
-            o.mode = "off"
-            if o.primary:
-                o.primary = False
-                self.active()[0].primary = True
-        else:
-            others = self.active()
-            o.mode = "auto"
-            d = dims(o.pref or (o.modes[0] if o.modes else None))
-            if d:
-                o.w, o.h = d
-            if others:
-                o.x = max(a.x + a.w for a in others)
-                o.y = min(a.y for a in others)
-        return ""
-
     def set_mode(self, o, mode):
         o.mode = mode
         d = dims(o.pref or (o.modes[0] if o.modes else None)) if mode == "auto" else dims(mode)
@@ -179,50 +121,11 @@ class Model:
             a.primary = a is o
         return ""
 
-    def snap(self, o, dx, dy):
-        """Jump to the next edge-aligned spot in a direction that doesn't overlap."""
-        others = [a for a in self.active() if a is not o]
-        if not o.on or not others:
-            return False
-        if dx:
-            cands = set()
-            for a in others:
-                cands |= {a.x, a.x + a.w, a.x - o.w, a.x + a.w - o.w}
-            pool = sorted(v for v in cands if (v > o.x if dx > 0 else v < o.x)
-                          and not self.overlaps_any(o, v, o.y))
-            if not pool:
-                return False
-            o.x = pool[0] if dx > 0 else pool[-1]
-        else:
-            cands = set()
-            for a in others:
-                cands |= {a.y, a.y + a.h, a.y - o.h, a.y + a.h - o.h}
-            pool = sorted(v for v in cands if (v > o.y if dy > 0 else v < o.y)
-                          and not self.overlaps_any(o, o.x, v))
-            if not pool:
-                return False
-            o.y = pool[0] if dy > 0 else pool[-1]
-        return True
-
-    def nudge(self, o, dx, dy):
-        if o.on:
-            o.x += dx * NUDGE
-            o.y += dy * NUDGE
-
-    def normalise(self):
-        """Shift the active outputs so the top-left of all of them is 0,0 (as xrandr reports)."""
-        act = self.active()
-        if act:
-            minx, miny = min(o.x for o in act), min(o.y for o in act)
-            for o in act:
-                o.x, o.y = o.x - minx, o.y - miny
-
     def geometry(self, o):
-        """WxH+X+Y as xrandr and herbstluftwm write it (a minus sign if it has been moved past 0)."""
+        """WxH+X+Y, with a minus sign once moved past 0."""
         return f"{o.w}x{o.h}{o.x:+d}{o.y:+d}"
 
     def move_by(self, o, dx, dy):
-        """Move o by dx,dy pixels; refuses (returns the reason) if it would overlap another output."""
         return self.move_to(o, o.x + dx, o.y + dy)
 
     def move_to(self, o, x, y):
@@ -233,7 +136,7 @@ class Model:
         return ""
 
     def hop(self, o, dx, dy):
-        """Jump to the other side of the nearest output in a direction, keeping the other coordinate."""
+        """Jump to the other side of the nearest output that way, keeping the other coordinate."""
         cx, cy = o.x + o.w / 2, o.y + o.h / 2
         ahead = [a for a in self.active() if a is not o
                  and ((a.x + a.w / 2 - cx) * dx > 0 or (a.y + a.h / 2 - cy) * dy > 0)]
@@ -245,7 +148,7 @@ class Model:
         return self.move_to(o, o.x, a.y - o.h if dy < 0 else a.y + a.h)
 
     def layout_lines(self):
-        """Layout lines for monitor_reconcile.sh; positions start at 0x0."""
+        """Lines for monitor_reconcile.sh, positions from 0x0."""
         act = self.active()
         minx = min((o.x for o in act), default=0)
         miny = min((o.y for o in act), default=0)
@@ -281,28 +184,6 @@ def apply_lines(lines):
     return run_reconcile(args, "\n".join(lines) + "\n")
 
 
-def save_conf(conf, key, lines):
-    """Replace the key's active LAYOUTS entry in conf, or append one."""
-    with open(conf) as f:
-        text = f.read()
-    start = f'LAYOUTS["{key}"]="'
-    kept, skipping = [], False
-    for line in text.split("\n"):
-        if skipping:
-            skipping = line != '"'
-            continue
-        if line.startswith(start):
-            skipping = True
-            if kept and kept[-1] == SAVED_COMMENT:
-                kept.pop()
-            continue
-        kept.append(line)
-    body = "\n".join(kept).rstrip("\n")
-    body += f"\n\n{SAVED_COMMENT}\n{start}\n" + "\n".join(lines) + '\n"\n'
-    with open(conf, "w") as f:
-        f.write(body)
-
-
 # ------------------------------------------------------------- herbstluftwm
 
 class HlwmError(Exception):
@@ -320,11 +201,10 @@ def hc(*args):
 
 
 class Node:
-    """A frame: a split (two children) or a leaf holding clients."""
 
     def __init__(self, kind, direction="", frac=0.5, algo="", nclients=0):
-        self.kind = kind            # split | clients
-        self.direction = direction  # horizontal (side by side) | vertical (stacked)
+        self.kind = kind
+        self.direction = direction
         self.frac = frac
         self.algo = algo
         self.nclients = nclients
@@ -335,10 +215,7 @@ ALGOS = ("vertical", "horizontal", "max", "grid")
 
 
 def parse_tree(text, strict=False):
-    """Parse a `hc dump` / `hc load` frame tree string.
-
-    strict also checks the words and numbers (for layouts typed by hand): the split
-    direction, the fraction, the algorithm, and that any selection is a number."""
+    """Parse a `hc dump` / `hc load` frame tree; strict also checks the words and numbers."""
     toks = re.findall(r"\(|\)|[^\s()]+", text)
     pos = 0
 
@@ -395,7 +272,6 @@ def parse_tree(text, strict=False):
 
 
 def tree_key(n):
-    """The structure of a tree: ignores window ids, fractions and selection."""
     if n.kind == "split":
         return ("split", n.direction, tree_key(n.children[0]), tree_key(n.children[1]))
     return ("clients", n.algo)
@@ -405,12 +281,11 @@ _UP, _DOWN, _LEFT, _RIGHT = 1, 2, 4, 8
 _BOX = {_UP | _DOWN: "┃", _LEFT | _RIGHT: "━", _DOWN | _RIGHT: "┏", _DOWN | _LEFT: "┓",
         _UP | _RIGHT: "┗", _UP | _LEFT: "┛", _UP | _DOWN | _RIGHT: "┣", _UP | _DOWN | _LEFT: "┫",
         _LEFT | _RIGHT | _DOWN: "┳", _LEFT | _RIGHT | _UP: "┻",
-        _UP | _DOWN | _LEFT | _RIGHT: "╋", _UP: "┃", _DOWN: "┃", _LEFT: "━", _RIGHT: "━"}   # heavy lines
+        _UP | _DOWN | _LEFT | _RIGHT: "╋", _UP: "┃", _DOWN: "┃", _LEFT: "━", _RIGHT: "━"}
 
 
 def draw_tree(root, w, h, labels=True):
-    """The frame tree as h lines of w characters, algorithm named in each frame
-    (labels=False draws the boxes only)."""
+    """The frame tree as h lines of w characters."""
     bits = [[0] * w for _ in range(h)]
     labels_ = []
 
@@ -447,7 +322,7 @@ def draw_tree(root, w, h, labels=True):
 # -------------------------------------------------------------- layout files
 
 def parse_definitions(text):
-    """{variable: (lname or '', layout string)} from hlwm_layouts.conf."""
+    """{variable: (lname, layout)} from hlwm_layouts.conf."""
     defs, pending, lines, i = {}, "", text.split("\n"), 0
     while i < len(lines):
         line = lines[i]
@@ -471,7 +346,7 @@ def parse_definitions(text):
 
 
 def parse_assignments(text):
-    """{connected-set key: {tag: variable}} from hlwm_tag_layouts.conf."""
+    """{set key: {tag: variable}} from hlwm_tag_layouts.conf."""
     out, lines, i = {}, text.split("\n"), 0
     while i < len(lines):
         m = re.match(r'^TAG_LAYOUTS\["(.*)"\]="(.*)$', lines[i])
@@ -503,7 +378,6 @@ def read_file(path):
 
 
 def layout_label(tag, dump, key, defs, assigns):
-    """The name to show for a tag: the layout's lname, 'custom' or 'unassigned'."""
     var = assigns.get(key, {}).get(tag)
     if not var:
         return "unassigned"
@@ -548,53 +422,25 @@ def gather():
 
 
 def numbered(model):
-    """Outputs in display order: active left to right, then the ones that are off."""
+    """Active outputs left to right, then the ones that are off."""
     on = sorted(model.active(), key=lambda o: (o.x, o.y))
     return on + [o for o in model.outs if not o.on]
 
 
 def monitor_diagram(model, avail, max_rows=None):
-    """The active monitors to scale (80 px per column, 160 per row), numbered.
-
-    Shrinks, keeping the proportions, to fit `avail` columns and `max_rows` rows."""
-    return ["".join(r) for r in draw_monitors(model, avail, max_rows)[0]]
-
-
-def draw_monitors(model, avail, max_rows=None):
-    """(character grid, {id(output): (x0, y0, x1, y1)}) behind monitor_diagram."""
+    """The active monitors to scale, shrunk to fit avail columns and max_rows rows."""
     act = model.active()
     if not act:
-        return [], {}
-    boxes = {}
-    nums = {id(o): i + 1 for i, o in enumerate(numbered(model))}
+        return []
     minx, miny = min(o.x for o in act), min(o.y for o in act)
     tw = max(o.x + o.w for o in act) - minx
     th = max(o.y + o.h for o in act) - miny
     px = max(80.0, tw / max(avail, 1), th / (2 * max_rows) if max_rows else 0)
-    cols = max(int(round((o.x - minx + o.w) / px)) for o in act)
-    rows = max(int(round((o.y - miny + o.h) / (2 * px))) for o in act)
-    grid = [[" "] * cols for _ in range(rows)]
-    for o in act:
-        x0, y0 = int(round((o.x - minx) / px)), int(round((o.y - miny) / (2 * px)))
-        x1 = max(x0 + 5, int(round((o.x - minx + o.w) / px)) - 1)
-        y1 = max(y0 + 2, int(round((o.y - miny + o.h) / (2 * px))) - 1)
-        x1, y1 = min(x1, cols - 1), min(y1, rows - 1)
-        boxes[id(o)] = (x0, y0, x1, y1)
-        for x in range(x0, x1 + 1):
-            for y in (y0, y1):
-                grid[y][x] = "━"
-        for y in range(y0, y1 + 1):
-            for x in (x0, x1):
-                grid[y][x] = "┃"
-        for (x, y), ch in (((x0, y0), "┏"), ((x1, y0), "┓"), ((x0, y1), "┗"), ((x1, y1), "┛")):
-            grid[y][x] = ch
-        for x in range(x0 + 1, x1):
-            for y in range(y0 + 1, y1):
-                grid[y][x] = " "
-        label = f"{nums[id(o)]}{'*' if o.primary else ''}"
-        for i, ch in enumerate(label):
-            grid[y0 + 1][x0 + 2 + i] = ch
-    return grid, boxes
+    frame = (minx, miny, px)
+    nums = {o.name: i + 1 for i, o in enumerate(numbered(model))}
+    boxes = monitor_boxes(model, frame)
+    rows = draw_canvas(model, max(b[3] for b in boxes) + 1, max(b[4] for b in boxes) + 1, frame, nums)
+    return ["".join(t for t, _ in r) for r in rows]
 
 
 def monitor_details(model):
@@ -609,30 +455,25 @@ def monitor_details(model):
     return lines
 
 
-PAD = 2                 # spaces between a panel's border and its content, each side
-PAD_V = 1               # blank rows between a panel's border and its content, top and bottom
+PAD = 2
+PAD_V = 1
 FOOTER = "↑/↓ select   Enter open   ← back   q quit"
-FOOTER_ROWS = 2         # the rule and the hint line
-MIN_PANEL_ROWS = 3 + 2 * PAD_V   # a border, padding, one line of content, padding, a border
+FOOTER_ROWS = 2
+MIN_PANEL_ROWS = 3 + 2 * PAD_V
 
 
 def panel(title, content, w, h, selected):
-    """A bordered panel as h rows of (text, role) segments, label in the top left.
-
-    Only the lines of the border carry a role (border / border_sel); the label and the
-    content are plain.
-    """
+    """A bordered panel as h rows of (text, role) segments; only the border lines carry the border role."""
     role = "border_sel" if selected else "border"
     iw, ih = w - 2, h - 2
     label = (" " + title + " ")[: max(0, iw - 1)]
-    # the label sits on the top border line but stays plain; only the lines are coloured
     rows = [[("┌─", role), (label, "text"), ("─" * (iw - 1 - len(label)) + "┐", role)]]
     for i in range(ih):
         j = i - PAD_V
         item = content[j] if 0 <= j < min(len(content), ih - 2 * PAD_V) else ""
         if isinstance(item, str):
             body = [((" " * PAD + item)[: iw - PAD].ljust(iw), "text")]
-        else:   # already (text, role) segments, e.g. other panels
+        else:
             room, clipped = iw - PAD, []
             for text, seg_role in item:
                 clipped.append((text[: max(0, room)], seg_role))
@@ -644,18 +485,16 @@ def panel(title, content, w, h, selected):
 
 
 def layout_content(data, cw, ch):
-    """What goes inside the Layout panel: tag, layout name, the frame drawing."""
     if data.tree is None:
         return [data.error or "no layout"]
     lines = [f"Tag      {data.tag}", f"Layout   {data.label}", ""]
     th, tw = min(9, ch - len(lines)), min(36, cw)
     if th >= 3 and tw >= 8:
-        lines += [[(l, "art")] for l in draw_tree(data.tree, tw, th)]   # drawings are grey
+        lines += [[(l, "art")] for l in draw_tree(data.tree, tw, th)]
     return lines
 
 
 def monitors_content(data, cw, ch):
-    """What goes inside the Monitors panel: the diagram, then the numbered details."""
     if not data.model.outs:
         return [data.error or "no monitors"]
     details = monitor_details(data.model)
@@ -665,13 +504,12 @@ def monitors_content(data, cw, ch):
 
 
 def split_height(height):
-    """Heights of the two panels: half each of what the footer leaves, the odd row to the bottom one."""
     avail = height - FOOTER_ROWS
     return avail // 2, avail - avail // 2
 
 
 def footer_width(footer):
-    """The least width the footer needs: title, a gap, the hints, and the unwritable last cell."""
+    """Least width for a footer: title, gap, hints and the unwritable last cell."""
     title, hints = footer
     return len(title) + 2 + len(hints) + 1
 
@@ -681,16 +519,10 @@ def fits(height, width, footer):
 
 
 def overview_footer():
-    """(page title, key hints): the title goes on the left, the hints on the right."""
     return "Overview", FOOTER
 
 
-def placeholder_footer(name):
-    return name, "Esc back   q quit"
-
-
 def render_overview(data, sel, width, height):
-    """The overview as (rows, footer): rows are lists of (text, role) segments."""
     h1, h2 = split_height(height)
     cw = width - 2 - 2 * PAD
     rows = panel("Layout", layout_content(data, cw, h1 - 2 - 2 * PAD_V), width, h1, sel == 0)
@@ -698,28 +530,23 @@ def render_overview(data, sel, width, height):
     return rows, overview_footer()
 
 
-def render_placeholder(name, width, height):
-    rows = panel(name, ["Not built yet."], width, height - FOOTER_ROWS, True)
-    return rows, placeholder_footer(name)
-
-
 # ------------------------------------------------------------- layout screen
 
-SCROLLBAR_W = 2                         # a gap and the bar, kept free so the grid does not shift
-CELL_W, CELL_H, CELL_GAP = 28, 11, 1    # one cell of the layouts grid
-THUMB_W, THUMB_H = 22, 7                # the drawing inside a cell (about a monitor's shape: a character is twice as tall as wide)
-CUR_DRAW_W, CUR_DRAW_H = 26, 8          # the drawing in the Current panel
-CUR_H = CUR_DRAW_H + 2 + 2 * PAD_V      # border, padding, drawing, padding, border
+SCROLLBAR_W = 2
+CELL_W, CELL_H, CELL_GAP = 28, 11, 1
+THUMB_W, THUMB_H = 22, 7
+CUR_DRAW_W, CUR_DRAW_H = 26, 8
+CUR_H = CUR_DRAW_H + 2 + 2 * PAD_V
 LAYOUT_MIN_ROWS = FOOTER_ROWS + CUR_H + CELL_H + 2 + 2 * PAD_V
 NEW_LAYOUT = "(\n    clients vertical:0\n)"
 
 HINTS_MOVE = "↑↓←→ select"
 HINTS_END = "Esc back   q quit"
-PLUS = ["", "", "  ┃  ", "━━╋━━", "  ┃  ", "", ""]   # THUMB_H rows, 5 wide
+PLUS = ["", "", "  ┃  ", "━━╋━━", "  ┃  ", "", ""]
 
 
-REF_W = 50                  # the syntax column of the editor
-EDIT_TWO_COLUMNS = 100      # narrower windows get the editor alone
+REF_W = 50
+EDIT_TWO_COLUMNS = 100
 
 def _title(text, desc="", width=0):
     return [(text.ljust(width), "bold")] + ([("  " + desc, "dim")] if desc else [])
@@ -735,7 +562,6 @@ _NESTED = ["(split horizontal:0.5:0",
            "        (clients max:0)",
            "        (clients max:0)))"]
 
-# bold white for each thing, light grey for what it means
 SYNTAX = [
     _title("(clients ALGO:SEL)"),
     _desc("  a frame that holds windows"),
@@ -767,8 +593,7 @@ def entry_text(var, lname, string):
 
 
 def entry_span(lines, var):
-    """(first, last) line numbers of var's definition in hlwm_layouts.conf, including the
-    `# lname:` line directly above it; None if there is no such variable."""
+    """(first, last) lines of var's definition, with its `# lname:` line above."""
     i = 0
     while i < len(lines):
         m = re.match(r"^([A-Za-z_]\w*)='(.*)$", lines[i])
@@ -786,7 +611,6 @@ def entry_span(lines, var):
 
 
 def put_entry(text, var, lname, string):
-    """The file text with var's definition replaced, or added at the end."""
     lines, new = text.split("\n"), entry_text(var, lname, string).split("\n")
     span = entry_span(lines, var)
     if span:
@@ -799,7 +623,6 @@ def put_entry(text, var, lname, string):
 
 
 def drop_entry(text, var):
-    """The file text without var's definition (and the blank line after it)."""
     lines = text.split("\n")
     span = entry_span(lines, var)
     if not span:
@@ -814,7 +637,6 @@ def drop_entry(text, var):
 
 
 def make_var(lname, taken):
-    """A variable name made up from an lname: lowercase, digits, underscores, unused."""
     base = re.sub(r"[^a-z0-9]+", "_", lname.lower()).strip("_") or "layout"
     if base[0].isdigit():
         base = "layout_" + base
@@ -825,12 +647,9 @@ def make_var(lname, taken):
 
 
 def check_edit(text, orig_var, defs):
-    """(variable, lname, layout) from what the editor holds, or ValueError saying what is wrong.
-
-    A new layout (orig_var None) gets its variable made up from the lname; an existing
-    one must keep its variable."""
+    """(variable, lname, layout) from the editor text, or ValueError saying what is wrong."""
     if text.count("'") != 2:
-        raise ValueError("the layout goes in one pair of single quotes, with none inside it")
+        raise ValueError("the layout goes in one pair of single quotes, and there is no other single quote in the text")
     m = re.fullmatch(r"\s*#\s*lname:[ \t]*([^\n]*?)[ \t]*\n([A-Za-z_]\w*)='(.*)'\s*", text, re.S)
     if not m:
         raise ValueError("expected a '# lname: NAME' line, then variable='( ... )'")
@@ -849,7 +668,6 @@ def check_edit(text, orig_var, defs):
 
 
 def format_tree(n):
-    """A frame tree as a layout string in the style of hlwm_layouts.conf (no window ids)."""
     def lines(n, ind):
         pad = " " * ind
         if n.kind == "clients":
@@ -868,7 +686,7 @@ def format_tree(n):
 
 
 def current_name(tree, defs):
-    """(name, is_custom): the lname of the first saved layout with the tree's structure."""
+    """(name, is_custom) of the first saved layout with this tree's structure."""
     for var, (lname, string) in defs.items():
         try:
             if tree_key(parse_tree(string)) == tree_key(tree):
@@ -886,14 +704,19 @@ def thumbnail(string):
 
 
 def grid_geometry(width, height):
-    """(columns of cells, lines of grid showing) in the Layouts panel."""
+    """(columns, lines) of the layouts grid."""
     ncols = max(1, (width - 2 - 2 * PAD - SCROLLBAR_W + CELL_GAP) // (CELL_W + CELL_GAP))
     lines = max(1, height - FOOTER_ROWS - CUR_H - 2 - 2 * PAD_V)
     return ncols, lines
 
 
+def layout_hints(create):
+    keys = ["Enter create"] if create else ["Enter set", "e edit", "d delete"]
+    return "   ".join([HINTS_MOVE, *keys, HINTS_END])
+
+
 def layout_min_width():
-    return footer_width(("Layout", f"{HINTS_MOVE}   Enter set   e edit   d delete   s save   {HINTS_END}"))
+    return footer_width(("Layout", layout_hints(False)))
 
 
 def write_file(path, text):
@@ -902,7 +725,6 @@ def write_file(path, text):
 
 
 class Editor:
-    """A small multi-line text editor: lines, a cursor, scroll offsets."""
 
     def __init__(self, text):
         self.lines = text.split("\n")
@@ -954,23 +776,20 @@ class Editor:
         self.row, self.col = r, min(c, len(lines[r]))
 
     def scroll(self, ih, iw):
-        """Keep the cursor inside an ih x iw window onto the text."""
         self.top = max(0, min(self.top, self.row), self.row - ih + 1)
         self.left = max(0, min(self.left, self.col), self.col - iw + 1)
 
 
 class LayoutScreen:
-    """The Layout screen: the focused tag's layout above a grid of the saved layouts.
-
-    handle() takes the key names from norm_key() and returns "back", "quit" or None."""
+    """The Layout screen. handle() returns "back", "quit" or None."""
 
     def __init__(self):
-        self.sel = self.top = 0         # sel 0 is the Create new cell, then the layouts in file order
-        self.mode = "browse"            # browse | confirm | edit
+        self.sel = self.top = 0
+        self.mode = "browse"
         self.message = ""
-        self.confirm = None             # ("set" | "delete", variable)
+        self.confirm = None
         self.editor = None
-        self.edit_var = None            # variable being edited; None for a new layout
+        self.edit_var = None
         self.refresh()
 
     def refresh(self):
@@ -985,7 +804,6 @@ class LayoutScreen:
         self.sel = min(self.sel, len(self.defs))
 
     def var(self):
-        """The selected cell's variable; None on Create new."""
         return None if self.sel == 0 else list(self.defs)[self.sel - 1]
 
     def title(self, var):
@@ -995,7 +813,6 @@ class LayoutScreen:
         assigns = parse_assignments(read_file(HLWM_TAG_LAYOUTS))
         return sum(1 for blk in assigns.values() for v in blk.values() if v == var)
 
-    # ---- keys
 
     def handle(self, key, ncols):
         self.message = ""
@@ -1075,7 +892,6 @@ class LayoutScreen:
             self.refresh()
         return None
 
-    # ---- drawing
 
     def footer(self):
         if self.mode == "confirm":
@@ -1088,12 +904,9 @@ class LayoutScreen:
             return prompt, "y yes   n no"
         if self.mode == "edit":
             return self.message or "Edit", "Ctrl-S save   Esc cancel"
-        keys = ["Enter create"] if self.sel == 0 else ["Enter set", "e edit", "d delete"]
-        return self.message or "Layout", "   ".join([HINTS_MOVE, *keys, HINTS_END])
+        return self.message or "Layout", layout_hints(self.sel == 0)
 
     def scroll(self, ncols, lines, total):
-        """The grid scrolls a line at a time inside its panel (self.top is the first line
-        showing), by the least that brings the selected cell fully into view."""
         first = self.sel // ncols * CELL_H
         self.top = max(0, min(self.top, first), first + CELL_H - lines)
         self.top = min(self.top, max(0, total - lines))
@@ -1106,7 +919,6 @@ class LayoutScreen:
         return panel(self.title(var), [[(line, "art")] for line in thumbnail(self.defs[var][1])], CELL_W, CELL_H, selected)
 
     def current_content(self, cw):
-        """The Current panel: Tag and Layout (bold label, plain value) with the drawing beside them."""
         if self.tree is None:
             return [self.error or "no layout"]
         note = [[("Not saved as a layout.", "dim")], [("s", "bold"), (" to save it", "dim")]] if self.custom else []
@@ -1124,7 +936,6 @@ class LayoutScreen:
         return rows
 
     def render(self, width, height):
-        """(rows, footer, cursor)."""
         if self.mode == "edit":
             return self.render_edit(width, height)
         ncols, lines = grid_geometry(width, height)
@@ -1144,18 +955,14 @@ class LayoutScreen:
         self.scroll(ncols, lines, len(grid))
         total = len(grid)
         grid = grid[self.top: self.top + lines]
-        if total > lines:   # a scroll bar at the right edge: a light track and a white thumb
-            thumb = max(1, round(lines * lines / total))
-            start = round(self.top / (total - lines) * (lines - thumb))
+        if total > lines:
             for k, line in enumerate(grid):
                 used = sum(len(t) for t, _ in line)
-                bar = ("█", "text") if start <= k < start + thumb else ("░", "dim")
-                grid[k] = line + [(" " * (cw - 1 - used), "text"), bar]
+                grid[k] = line + [(" " * (cw - 1 - used), "text"), scroll_bar(k, total, lines, self.top)]
         rows += panel("Layouts", grid, width, height - FOOTER_ROWS - CUR_H, False)
         return rows, self.footer(), None
 
     def render_edit(self, width, height):
-        """The editor on the left; on a wide enough window the syntax reference on the right."""
         ed = self.editor
         h = height - FOOTER_ROWS
         left_w = width - REF_W - 1 if width >= EDIT_TWO_COLUMNS else width
@@ -1172,13 +979,13 @@ class LayoutScreen:
 # ----------------------------------------------------------- monitors screen
 
 ARROW_DIRS = {"UP": (0, -1), "DOWN": (0, 1), "LEFT": (-1, 0), "RIGHT": (1, 0)}
-MON_INFO_H = 3 + 2 + 2 * PAD_V          # the info panel: three lines in a bordered, padded panel
+MON_INFO_H = 3 + 2 + 2 * PAD_V
 MONITORS_MIN_ROWS = FOOTER_ROWS + MON_INFO_H + 2 + 2 * PAD_V + 7
 BROWSE_HINTS = "←↑↓→ select   p primary   m move   r resolution   e edit   Esc back   q quit"
 MOVE_HINTS = "←↑↓→ 10px   Ctrl 1px   Shift 100px   Alt hop   Ctrl-S done   Esc cancel"
 INPUT_HINTS = "Ctrl-S apply   Esc cancel"
 RES_HINTS = "↑↓ select   Enter choose   Esc cancel"
-RES_W = 44                              # width of the resolution overlay
+RES_W = 44
 CUSTOM_ROW = ("Custom…", "", False, False)
 
 
@@ -1187,7 +994,6 @@ def monitors_min_width():
 
 
 def neighbour(model, o, dx, dy):
-    """The nearest other active output in a direction (the offset across counts double), or None."""
     cx, cy = o.x + o.w / 2, o.y + o.h / 2
     best, best_score = None, None
     for a in model.active():
@@ -1205,8 +1011,7 @@ def neighbour(model, o, dx, dy):
 
 
 def frame_for(model, avail, rows):
-    """(origin x, origin y, px per column) of a canvas avail x rows with the group centred in it,
-    scaled so the group takes at most 80% of either side (room to move it about)."""
+    """(origin x, origin y, px per column) of a canvas with the monitors centred in it."""
     act = model.active()
     minx, miny = min(o.x for o in act), min(o.y for o in act)
     tw = max(o.x + o.w for o in act) - minx
@@ -1215,15 +1020,22 @@ def frame_for(model, avail, rows):
     return minx + tw / 2 - px * avail / 2, miny + th / 2 - px * rows, px
 
 
-def draw_canvas(model, avail, rows, frame, nums, selected=None):
-    """The whole canvas as `rows` rows of (text, role) segments: monitors at their place in `frame`,
-    numbered by `nums` {name: number}, the selected one's lines and number in border_sel."""
+def monitor_boxes(model, frame):
+    """[(output, x0, y0, x1, y1)] on a canvas where a character is px wide and 2 px tall."""
     ox, oy, px = frame
-    grid = [[(" ", "art")] * avail for _ in range(rows)]
-    for o in sorted(model.active(), key=lambda a: a is selected):
+    boxes = []
+    for o in model.active():
         x0, y0 = round((o.x - ox) / px), round((o.y - oy) / (2 * px))
         x1 = max(x0 + 5, round((o.x + o.w - ox) / px) - 1)
         y1 = max(y0 + 2, round((o.y + o.h - oy) / (2 * px)) - 1)
+        boxes.append((o, x0, y0, x1, y1))
+    return boxes
+
+
+def draw_canvas(model, avail, rows, frame, nums, selected=None):
+    """The canvas as rows of (text, role) segments; the selected monitor is drawn in border_sel."""
+    grid = [[(" ", "art")] * avail for _ in range(rows)]
+    for o, x0, y0, x1, y1 in sorted(monitor_boxes(model, frame), key=lambda b: b[0] is selected):
         role = "border_sel" if o is selected else "art"
         cells = {}
         for x in range(x0, x1 + 1):
@@ -1256,7 +1068,6 @@ def runs_of(cells):
 
 
 def overlay(rows, box, top, left, width):
-    """The rows with the panel `box` drawn over them at (top, left)."""
     out = []
     for y, row in enumerate(rows):
         if top <= y < top + len(box):
@@ -1269,7 +1080,6 @@ def overlay(rows, box, top, left, width):
 
 
 def scroll_bar(k, total, shown, top):
-    """The scroll bar cell for line k of `shown` lines in a list of `total` starting at `top`."""
     thumb = max(1, round(shown * shown / total))
     start = round(top / (total - shown) * (shown - thumb))
     return ("█", "text") if start <= k < start + thumb else ("░", "dim")
@@ -1280,16 +1090,13 @@ def kv(label, value):
 
 
 class MonitorScreen:
-    """The Monitors screen: the monitors to scale above an info panel for the selected one.
-
-    handle() takes the key names from read_key() and returns "back", "quit" or None.
-    Changes are applied through monitor_reconcile.sh --layout as soon as they are confirmed."""
+    """The Monitors screen. Changes are applied through monitor_reconcile.sh --layout."""
 
     def __init__(self):
         self.mode, self.message, self.name = "browse", "", ""
         self.confirm = self.editor = self.before = None
         self.prev = "browse"
-        self.frame = self.nums = None       # a move keeps its canvas and its numbering until saved
+        self.frame = self.nums = None
         self.res_rows, self.res_sel, self.res_top = [], 0, 0
         self.reload()
 
@@ -1305,7 +1112,6 @@ class MonitorScreen:
     def cur(self):
         return next((o for o in self.model.active() if o.name == self.name), None)
 
-    # ---- keys
 
     def handle(self, key, ncols=0):
         self.message = ""
@@ -1331,7 +1137,7 @@ class MonitorScreen:
         elif key == "m":
             self.before = self.model.copy()
             self.nums = {a.name: i + 1 for i, a in enumerate(numbered(self.model))}
-            self.frame = None           # taken on the first draw, then held
+            self.frame = None
             self.mode = "move"
         elif key == "e":
             self.begin_edit()
@@ -1392,7 +1198,7 @@ class MonitorScreen:
         return None
 
     def set_size_and_position(self, mode, rate, x=None, y=None):
-        """Try a resolution (and position) on a copy; apply it unless it would overlap another output."""
+        """Try on a copy and apply, unless it would overlap another output."""
         trial = self.model.copy()
         o = next(a for a in trial.active() if a.name == self.name)
         if mode != o.mode:
@@ -1457,19 +1263,21 @@ class MonitorScreen:
         return None
 
     def apply(self):
-        """Apply self.model through monitor_reconcile.sh; on failure put self.before back."""
+        """Apply the model through monitor_reconcile.sh; on failure show what xrandr has."""
         self.mode = "browse"
-        self.frame = self.nums = None       # saved: centre the group again and number by position
+        self.frame = self.nums = None
         rc, err = apply_lines(self.model.layout_lines())
         if rc != 0:
-            self.model = self.before
             self.message = err.splitlines()[-1] if err else "applying failed"
+            if DRY:
+                self.model = self.before
+            else:
+                self.reload(keep=self.name)     # xrandr may have changed part of it: show what it has
             return
         if not DRY:
             self.reload(keep=self.name)
         self.message = "applied"
 
-    # ---- drawing
 
     def footer(self):
         if self.mode == "confirm":
@@ -1483,18 +1291,16 @@ class MonitorScreen:
         return self.message or "Monitors", BROWSE_HINTS
 
     def diagram(self, avail, rows):
-        """The monitors on a canvas filling the panel. Browsing centres the group and numbers it by
-        position; a move holds the canvas and the numbers as they were, so the monitor moves freely."""
         if not self.model.active():
             return []
         if self.mode == "move" and self.frame is None:
             self.frame = frame_for(self.model, avail, rows)
-        frame = self.frame if self.mode == "move" else frame_for(self.model, avail, rows)
+        frame = self.frame or frame_for(self.model, avail, rows)
         return draw_canvas(self.model, avail, rows, frame, self.numbers(), self.cur())
 
     def numbers(self):
-        return self.nums if self.mode in ("move", "edit", "custom", "resolution") and self.nums else \
-            {a.name: i + 1 for i, a in enumerate(numbered(self.model))}
+        """Numbers by position, but a move keeps the ones it began with."""
+        return self.nums or {a.name: i + 1 for i, a in enumerate(numbered(self.model))}
 
     def info(self):
         o = self.cur()
@@ -1509,7 +1315,6 @@ class MonitorScreen:
         return f"{nums[o.name]}{'*' if o.primary else ''}  {o.name}", lines
 
     def render(self, width, height):
-        """(rows, footer, cursor)."""
         top_h = height - FOOTER_ROWS - MON_INFO_H
         cw = width - 2 - 2 * PAD
         o = self.cur()
@@ -1577,23 +1382,21 @@ def put(win, y, x, s, attr=0):
         pass
 
 
-ART_GREY = 245                  # xterm #8a8a8a; the footer descriptions use 248
-SELECT_SLOT = 200               # a colour slot we redefine to the exact green
-SELECT_RGB = (0x2E, 0x7D, 0x32)  # col_green
+ART_GREY = 245
+SELECT_SLOT = 200
+SELECT_RGB = (0x2E, 0x7D, 0x32)
 ATTR = {"art": 0, "bold": curses.A_BOLD, "label": 0, "key": 0, "dim": 0, "border": 0, "border_sel": 0, "text": 0}
 
 
 def cube_rgb(n):
-    """The standard xterm 256-colour value of slot n (16..231), to restore it."""
     levels = (0, 95, 135, 175, 215, 255)
     n -= 16
     return levels[n // 36], levels[(n // 6) % 6], levels[n % 6]
 
 
 def init_colours():
-    """Set up colours; returns a function that puts the terminal's colours back."""
-    # wrapper() starts colour mode, which otherwise paints explicit white-on-black
-    # over the terminal's own (here translucent) background
+    """Set up colours; returns a function that restores them."""
+    # wrapper() starts colour mode, which would paint white-on-black over the terminal's background
     try:
         curses.use_default_colors()
     except curses.error:
@@ -1602,10 +1405,9 @@ def init_colours():
     green = curses.COLOR_GREEN
     dim_fg = curses.COLOR_WHITE
     if curses.COLORS >= 256:
-        dim_fg = 248                # C_DIM in setup/quickstart_arch.sh
-        green = 28                  # fallback: the nearest green hue in the fixed palette
+        dim_fg = 248
+        green = 28
         if curses.can_change_color():
-            # the fixed palette has nothing close to #2E7D32, so define it exactly
             try:
                 curses.init_color(SELECT_SLOT, *(round(v * 1000 / 255) for v in SELECT_RGB))
                 green = SELECT_SLOT
@@ -1613,22 +1415,20 @@ def init_colours():
             except curses.error:
                 pass
     try:
-        curses.init_pair(1, green, -1)          # the one green: selected border, footer label, rule
-        curses.init_pair(2, dim_fg, -1)         # footer descriptions, like C_DIM
+        curses.init_pair(1, green, -1)
+        curses.init_pair(2, dim_fg, -1)
         ATTR["border_sel"] = curses.color_pair(1)
-        ATTR["label"] = curses.color_pair(1) | curses.A_BOLD   # bold like C_PROMPT, same green
-        ATTR["key"] = curses.A_BOLD             # footer keys, like C_PKG: bold, default colour
+        ATTR["label"] = curses.color_pair(1) | curses.A_BOLD
+        ATTR["key"] = curses.A_BOLD
         ATTR["dim"] = curses.color_pair(2) | (0 if curses.COLORS >= 256 else curses.A_DIM)
         curses.init_pair(3, ART_GREY if curses.COLORS >= 256 else curses.COLOR_WHITE, -1)
-        ATTR["art"] = curses.color_pair(3)      # the drawings: light grey, lighter than the footer's grey
+        ATTR["art"] = curses.color_pair(3)
     except curses.error:
         pass
     return restore
 
 
 def put_footer(win, y, footer):
-    """The page title on the left (bold, the one green); the key hints on the right as in
-    the quickstart menu: key bold, description grey, 3 spaces apart."""
     title, hints = footer
     _, w = win.getmaxyx()
     x = w - 1 - len(hints)
@@ -1641,7 +1441,6 @@ def put_footer(win, y, footer):
 
 
 def put_rule(win, y, w):
-    """A solid bold green rule across the whole window, like the quickstart's hr."""
     try:
         win.addstr(y, 0, "─" * w, ATTR["label"])
     except curses.error:
@@ -1649,9 +1448,6 @@ def put_rule(win, y, w):
 
 
 def paint(win, rows, footer, cursor=None):
-    """The panels from the top; a rule and the footer pinned to the bottom.
-
-    cursor is a (y, x) to show the text cursor at, or None to hide it."""
     win.erase()
     h, w = win.getmaxyx()
     for y, row in enumerate(rows):
@@ -1666,7 +1462,10 @@ def paint(win, rows, footer, cursor=None):
     except curses.error:
         pass
     if cursor:
-        win.move(*cursor)
+        try:
+            win.move(*cursor)
+        except curses.error:
+            pass
     win.refresh()
 
 
@@ -1678,7 +1477,6 @@ def paint_too_small(win, height, width, footer, need=None):
 
 
 def norm_key(ch):
-    """A get_wch() result as a name ("UP", "ENTER", "ESC", "CTRL_S", ...) or the character."""
     names = {curses.KEY_UP: "UP", curses.KEY_DOWN: "DOWN", curses.KEY_LEFT: "LEFT",
              curses.KEY_RIGHT: "RIGHT", curses.KEY_HOME: "HOME", curses.KEY_END: "END",
              curses.KEY_DC: "DELETE", curses.KEY_BACKSPACE: "BACKSPACE",
@@ -1694,7 +1492,7 @@ def norm_key(ch):
 
 
 def terminfo_arrow(code):
-    """Name a key that only the terminfo knows (kUP5 is Ctrl+Up, kLFT3 Alt+Left, kDN Shift+Down)."""
+    """Name keys only the terminfo knows (kUP5 is Ctrl+Up)."""
     try:
         name = curses.keyname(code).decode()
     except (ValueError, curses.error):
@@ -1707,25 +1505,22 @@ def terminfo_arrow(code):
     return (mods + direction) if mods else ""
 
 
-ESC_WAIT_MS = 40        # how long after Esc to wait for the rest of an escape sequence
+ESC_WAIT_MS = 40
 CSI_ARROWS = {"A": "UP", "B": "DOWN", "C": "RIGHT", "D": "LEFT"}
 RXVT_ARROWS = {"a": "UP", "b": "DOWN", "c": "RIGHT", "d": "LEFT"}
-XTERM_MODS = {"2": "SHIFT_", "3": "ALT_", "5": "CTRL_"}   # ESC [ 1 ; MOD A
+XTERM_MODS = {"2": "SHIFT_", "3": "ALT_", "5": "CTRL_"}
 DIRECTIONS = ("UP", "DOWN", "LEFT", "RIGHT")
 
 
 def decode_escape(nxt):
-    """The key name for what follows an Esc, reading with nxt() (None when nothing more comes).
-
-    urxvt sends Shift+arrow as ESC [ a..d, Ctrl+arrow as ESC O a..d and Alt+arrow as ESC then
-    the plain arrow; xterm sends ESC [ 1 ; MOD A..D. A lone Esc is "ESC"."""
+    """Key name for what follows an Esc; nxt() gives the next key or None."""
     c = nxt()
     if c is None:
         return "ESC"
-    if isinstance(c, int):          # Esc, then a key curses already knew: Alt+arrow
+    if isinstance(c, int):
         name = norm_key(c)
         return "ALT_" + name if name in DIRECTIONS else "ESC"
-    if c == "\x1b":                 # Esc Esc [ A: Alt+arrow in a terminal that sends the Esc first
+    if c == "\x1b":
         name = decode_escape(nxt)
         return "ALT_" + name if name in DIRECTIONS else name
     if c in "[O":
@@ -1743,7 +1538,6 @@ def decode_escape(nxt):
 
 
 def read_key(win):
-    """The next key as a name: norm_key's, plus SHIFT_/CTRL_/ALT_ with UP, DOWN, LEFT, RIGHT."""
     ch = win.get_wch()
     if ch != "\x1b":
         return norm_key(ch)
@@ -1782,17 +1576,13 @@ def loop(win, stack, sel, data):
             footer = overview_footer()
         elif name == "Layout":
             need = (LAYOUT_MIN_ROWS, layout_min_width())
-        elif name == "Monitors":
-            need = (MONITORS_MIN_ROWS, monitors_min_width())
         else:
-            footer = placeholder_footer(name)
+            need = (MONITORS_MIN_ROWS, monitors_min_width())
         if (h >= need[0] and w >= need[1]) if need else fits(h, w, footer):
             if name == "overview":
                 rows, _ = render_overview(data, sel, w, h)
-            elif name in screens:
-                rows, footer, cursor = screens[name].render(w, h)
             else:
-                rows, _ = render_placeholder(name, w, h)
+                rows, footer, cursor = screens[name].render(w, h)
             paint(win, rows, footer, cursor)
         else:
             paint_too_small(win, h, w, footer, need)
@@ -1802,7 +1592,7 @@ def loop(win, stack, sel, data):
             continue
         if key in ("RESIZE", ""):
             continue
-        if name in screens:
+        if name != "overview":
             act = screens[name].handle(key, grid_geometry(w, h)[0])
             if act == "quit":
                 return
@@ -1812,18 +1602,14 @@ def loop(win, stack, sel, data):
             continue
         if key in ("q", "CTRL_C"):
             return
-        if name == "overview":
-            if key == "UP":
-                sel = 0
-            elif key == "DOWN":
-                sel = 1
-            elif key == "ENTER":
-                name = "Layout" if sel == 0 else "Monitors"
-                stack.append(name)
-                screens[name] = LayoutScreen() if sel == 0 else MonitorScreen()
-        elif key in ("LEFT", "ESC"):
-            stack.pop()
-            data = gather()
+        if key == "UP":
+            sel = 0
+        elif key == "DOWN":
+            sel = 1
+        elif key == "ENTER":
+            name = "Layout" if sel == 0 else "Monitors"
+            stack.append(name)
+            screens[name] = LayoutScreen() if sel == 0 else MonitorScreen()
 
 
 def main():

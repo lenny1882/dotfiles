@@ -3,10 +3,6 @@
 # changes, no herbstclient calls. Run it before restarting or reloading.
 #
 #   .planning/monitor_changes/monitor_check.sh
-#
-# 1. syntax of every script (and shellcheck, if installed)
-# 2. reconcile against built-in fixtures, with --dry-run
-# 3. the same read-only queries against the live display, if there is one
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../symlinks/home_@user@_.config_herbstluftwm/scripts" && pwd)"
 CONF_DIR="$(dirname "$DIR")"
@@ -19,13 +15,10 @@ bad()  { printf '  FAIL  %s\n' "$1"; fail=$((fail + 1)); }
 skp()  { printf '  skip  %s\n' "$1"; skip=$((skip + 1)); }
 head_() { printf '\n%s\n' "$1"; }
 
-# expect <description> <file> <pattern>: the file must match the pattern
 expect() { if grep -Eq -- "$3" "$2"; then ok "$1"; else bad "$1 (no match for: $3)"; sed 's/^/        /' "$2"; fi; }
-# reject <description> <file> <pattern>: the file must not match the pattern
 reject() { if grep -Eq -- "$3" "$2"; then bad "$1 (found: $3)"; sed 's/^/        /' "$2"; else ok "$1"; fi; }
 
 # ---------------------------------------------------------------- fixtures
-# xrandr --query: only the lines the scripts read.
 cat >"$TMP/laptop.q" <<'EOF'
 eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
    2560x1600    165.00*+
@@ -62,7 +55,6 @@ Monitors: 2
  1: +DP-4 640/0x480/0+2560+0  DP-4
 EOF
 
-# the custom mode was already added on an earlier run
 cat >"$TMP/custom.q" <<'EOF'
 eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
    2560x1600    165.00*+
@@ -126,7 +118,7 @@ done
 if bash -n "$DIR/monitor_layouts.conf" 2>"$TMP/syntax.out"; then ok "bash -n scripts/monitor_layouts.conf"; else bad "bash -n scripts/monitor_layouts.conf"; cat "$TMP/syntax.out"; fi
 
 if command -v shellcheck >/dev/null; then
-    if shellcheck -x -S warning "$DIR"/monitor_changes.sh "$DIR"/monitor_reconcile.sh "$DIR"/background.sh >"$TMP/sc.out" 2>&1; then
+    if shellcheck -x -S warning "$DIR"/monitor_changes.sh "$DIR"/monitor_reconcile.sh "$DIR"/background.sh "$DIR"/rule_hook.sh >"$TMP/sc.out" 2>&1; then
         ok "shellcheck"
     else
         bad "shellcheck"; sed 's/^/        /' "$TMP/sc.out"
@@ -135,7 +127,7 @@ else
     skp "shellcheck not installed"
 fi
 
-for s in monitor_reconcile.sh monitor_changes.sh background.sh; do
+for s in monitor_reconcile.sh monitor_changes.sh background.sh rule_hook.sh; do
     [[ -x $DIR/$s ]] && ok "$s is executable" || bad "$s is not executable"
 done
 
@@ -169,17 +161,14 @@ run lay-docked docked "$TMP/dock.conf" "$RECONCILE" --dry-run --force
 expect "docked, panel-off layout: DP-4 is set first" "$TMP/lay-docked.out" 'DP-4 --mode 1920x1080 --primary --pos 0x0'
 expect "docked, panel-off layout: panel is switched off after" "$TMP/lay-docked.out" 'eDP-1 --off'
 
-# the guard: the external never got a mode, so the panel must stay on
 run guard failed "$TMP/dock.conf" XRANDR_AFTER_FIXTURE="$TMP/failed.q" "$RECONCILE" --dry-run --force
 expect "guard: failed external keeps the panel on" "$TMP/guard.out" 'keeping the panel on'
 reject "guard: the panel is not switched off" "$TMP/guard.out" 'output eDP-1 --off'
 
-# the guard: a layout that turns every output off
 run alloff laptop "$TMP/alloff.conf" "$RECONCILE" --dry-run --force
 expect "guard: a layout with nothing active keeps the panel on" "$TMP/alloff.out" 'keeping the panel on'
 reject "guard: the panel is not switched off" "$TMP/alloff.out" 'output eDP-1 --off'
 
-# custom modes for a monitor whose EDID was rejected
 run nomode nomode "$TMP/dock.conf" "$RECONCILE" --dry-run --force
 expect "no EDID: the missing 1920x1080 is announced" "$TMP/nomode.out" 'DP-4 does not list 1920x1080'
 expect "no EDID: the mode is created" "$TMP/nomode.out" 'xrandr --newmode 1920x1080_custom 148.50 1920 2008 2052 2200 1080 1084 1089 1125'
@@ -223,6 +212,32 @@ else
         printf '        monitor_changes.sh watchers running: %s (expect 1)\n' "$n"
     fi
 fi
+
+# ---------------------------------------------------------------- hooks
+head_ "3b. hook dispatch (rule_hook.sh, with stubs for everything it runs)"
+H="$TMP/hooks"; mkdir -p "$H/bin"
+cp "$DIR/rule_hook.sh" "$H/rule_hook.sh"
+for stub in monitor_reconcile.sh panel.sh background.sh; do
+    printf '#!/bin/sh\necho "%s $*" >> "$STUBLOG"\n' "$stub" >"$H/$stub"; chmod +x "$H/$stub"
+done
+printf '#!/bin/sh\necho "herbstclient $*" >> "$STUBLOG"\n' >"$H/bin/herbstclient"; chmod +x "$H/bin/herbstclient"
+printf '#!/bin/sh\necho "polybar-msg $*" >> "$STUBLOG"\n' >"$H/bin/polybar-msg"; chmod +x "$H/bin/polybar-msg"
+hook() { : >"$TMP/hooks.log"; PATH="$H/bin:$PATH" STUBLOG="$TMP/hooks.log" bash "$H/rule_hook.sh" "$@" >/dev/null 2>&1; }
+
+hook monitors_changed
+expect "monitors_changed runs monitor_reconcile.sh" "$TMP/hooks.log" '^monitor_reconcile.sh *$'
+reject "monitors_changed runs nothing else" "$TMP/hooks.log" 'panel|background'
+hook monitors_applied
+expect "monitors_applied runs panel.sh with the active and urgent colours" "$TMP/hooks.log" '^panel.sh #[0-9A-Fa-f]{6} #[0-9A-Fa-f]{6}$'
+expect "monitors_applied then resets the background" "$TMP/hooks.log" '^background.sh'
+reject "monitors_applied does not reconcile again" "$TMP/hooks.log" 'monitor_reconcile'
+hook rule peek_opened
+expect "window rules still work" "$TMP/hooks.log" 'herbstclient set_attr clients.focus.decorated false'
+reject "window hooks leave the monitor scripts alone" "$TMP/hooks.log" 'monitor_reconcile|panel|background'
+hook tag_changed 1 0
+reject "an unrelated hook runs nothing" "$TMP/hooks.log" '.'
+reject "monitor_changes.sh no longer listens for hooks" "$DIR/monitor_changes.sh" 'herbstclient --idle|handle_hooks'
+expect "monitor_changes.sh still emits monitors_changed" "$DIR/monitor_changes.sh" 'emit_hook "\$HOOK"'
 
 # ---------------------------------------------------------------- tui
 head_ "4. monitor_tui.py (no display needed)"

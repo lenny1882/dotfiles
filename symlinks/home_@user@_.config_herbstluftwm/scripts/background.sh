@@ -5,7 +5,6 @@
 # a 1x1 image, which --bg-fill stretches over every monitor.
 source ~/.config/herbstluftwm/variables.autostart
 
-# args: #rrggbb. Prints a 1x1 binary PPM of that colour.
 solid_ppm() {
     local hex=${1#\#}
     printf 'P6 1 1 255\n'

@@ -7,8 +7,7 @@
 #   monitor_reconcile.sh --known                 exit 0 if the connected set is known
 #   monitor_reconcile.sh --layout FILE           apply the layout lines in FILE (implies --force)
 #
-# --layout is what monitor_tui.py uses. The key is stored as usual, so the choice
-# holds until the connected set changes; a restart goes back to the configured layout.
+# --layout is what monitor_tui.py uses; the choice holds until the connected set changes.
 #
 # Test without a display: XRANDR_FIXTURE=<xrandr --query output>,
 # LISTMONITORS_FIXTURE=<xrandr --listmonitors output>, with --dry-run.
@@ -29,10 +28,8 @@ query_listmonitors() {
     if [[ -n $LISTMONITORS_FIXTURE ]]; then cat "$LISTMONITORS_FIXTURE"; else xrandr --listmonitors; fi
 }
 
-# stdin: xrandr --query
 connected_outputs() { awk '$2 == "connected" { print $1 }'; }
 
-# Disconnected outputs that still hold a mode, and need switching off.
 stale_outputs() { awk '$2 == "disconnected" && $3 ~ /^[0-9]+x[0-9]+\+/ { print $1 }'; }
 
 # stdin: xrandr --listmonitors. Prints WxH+X+Y per monitor, left to right.
@@ -63,7 +60,6 @@ fallback_layout() {
 }
 
 # Known: the set has a layout in the config, or is only the internal panel(s).
-# args: key, then the outputs.
 is_known_set() {
     local key=$1 o; shift
     [[ -v LAYOUTS[$key] ]] && return 0
@@ -81,14 +77,11 @@ layout_for_key() {
     fi
 }
 
-# Modes an output lists. args: xrandr --query output, output name.
 output_modes() {
     awk -v o="$2" '$1 == o { f = 1; next } f && /^[^ \t]/ { f = 0 } f { print $1 }' <<<"$1"
 }
 
-# Timing for a mode the monitor does not list (a missing or rejected EDID
-# leaves only low fallback modes). 1920x1080 uses the standard HDMI timing,
-# anything else the CVT one. args: WxH. Prints the xrandr --newmode arguments.
+# xrandr --newmode arguments for a mode the monitor lacks: HDMI timing for 1920x1080, CVT otherwise. args: WxH.
 mode_timing() {
     case $1 in
         1920x1080) echo "148.50 1920 2008 2052 2200 1080 1084 1089 1125 +hsync +vsync" ;;
@@ -101,9 +94,7 @@ quiet() {
     if [[ -n $DRY_RUN ]]; then run "$@"; else "$@" 2>/dev/null; fi
 }
 
-# stdin: layout lines. args: xrandr --query output. Prints the same lines, with
-# each WxH the output does not list replaced by a mode created for it
-# (WxH_custom). Falls back to `auto` if the mode cannot be created.
+# stdin: layout lines. args: xrandr --query output. Replaces each WxH the output lacks with a created WxH_custom, or `auto`.
 resolve_modes() {
     local state=$1 name mode rest modes timing
     while read -r name mode rest; do
@@ -132,7 +123,6 @@ resolve_modes() {
     done
 }
 
-# stdin: layout lines. args: stale outputs. Prints one xrandr command, NUL-free, one arg per line.
 xrandr_args() {
     local name mode rest s
     printf '%s\n' xrandr
@@ -150,9 +140,7 @@ xrandr_args() {
     for s in "$@"; do printf '%s\n' --output "$s" --off; done
 }
 
-# Safety guard: the internal panel is only switched off once another output
-# is verified active. stdin: layout lines. Prints the layout to apply first;
-# any panel-off lines follow a `--` line.
+# stdin: layout lines. The internal panel is only switched off once another output is active; its off lines follow a `--` line.
 split_panel_off() {
     local name mode rest kept=0
     local -a lines=() off=()
@@ -175,7 +163,6 @@ split_panel_off() {
     return 0
 }
 
-# args: the non-off output names from the first pass. True if all hold a mode.
 outputs_active() {
     local state o
     if [[ -n $DRY_RUN ]]; then
@@ -233,7 +220,6 @@ reconcile() {
     local -a active=()
     planned=$(if [[ -n $LAYOUT_FILE ]]; then sed '/^[[:space:]]*$/d' "$LAYOUT_FILE"; else layout_for_key "$key" "${outs[@]}"; fi \
         | split_panel_off | resolve_modes "$state")
-    # the panel-off lines, if any, follow a `--` line
     first="" sep=0
     while IFS= read -r line; do
         if [[ $line == --* ]]; then sep=1
@@ -266,7 +252,6 @@ reconcile() {
     run hc set_monitors "${geoms[@]}"
     if [[ -z $DRY_RUN ]]; then
         hc set_attr "$ATTR" "$key"
-        # lets the watcher rebuild the bars and padding for the new monitors
         hc emit_hook monitors_applied
     fi
     return 0

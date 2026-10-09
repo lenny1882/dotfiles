@@ -23,11 +23,11 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 1. **Reconcile core** - `monitor_reconcile.sh`. Compares the connected set with the stored layout, applies xrandr and `set_monitors`, stores the new key. Flags: `--dry-run`, `--force`, `--key`, `--known`.
 2. **Config format** - `monitor_layouts.conf`, `LAYOUTS["<key>"]` with one line per output (`OUTPUT MODE [xrandr args]`). One active entry (`DP-4 eDP-1`: panel primary, DP-4 to its right at 1920x1080); the rest are commented examples.
 3. **Safety guard** - the panel is only switched off after another output is confirmed active; any failure leaves it on.
-4. **Hook plumbing** - `monitors_changed` triggers reconcile; reconcile emits `monitors_applied` after applying.
+4. **Hook plumbing** - `monitor_changes.sh` is only the event source: it emits `monitors_changed`. `rule_hook.sh`, the one place hooks are handled (the unfiltered `herbstclient --idle` loop in `startup.autostart`), reacts: `monitors_changed` runs reconcile, which emits `monitors_applied` after applying, and `monitors_applied` runs `panel.sh` and `background.sh`.
 5. **udevadm event source** - `monitor_udev_events`.
 6. **xev fallback and debounce** - auto-selected, `--xev` override.
 7. **Startup integration** - `monitors.autostart` calls reconcile (falling back to `hc detect_monitors`); `startup.autostart` spawns the watcher on every autostart (a reload too) if `pgrep` does not find it running.
-8. **Bars and padding** - `monitors_applied` runs `panel.sh`.
+8. **Bars and padding** - `monitors_applied` runs `panel.sh` (from `rule_hook.sh`).
 9. **Background** - `background.sh`, run at startup and on `monitors_applied`.
 10. **Real-hardware testing** - done, following `monitor_test_checklist.md` (`monitor_check.sh` for the read-only checks).
 11. **Monitor and layout TUI** - `monitor_tui.py` (Python curses), opened with Super+Alt+L through `monitor-tui-wrap.sh`. It was redesigned after its first version: the overview screen (a Layout panel and a Monitors panel) is built; the Layout and Monitors screens behind it are placeholders. **The full spec, the decisions, the state of the work and every open question are in `tui_spec.md`.**

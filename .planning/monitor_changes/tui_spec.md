@@ -54,10 +54,10 @@ a screen, `q` quits from any screen.
   last cell of the last row cannot be written): `↑/↓ select   Enter open   ← back   q quit`. Keys bold in
   the default colour, descriptions grey (xterm 248), three spaces between items. Nothing joins the title
   to the hints. This follows the quickstart's menu hint line (`C_PKG` keys, `C_DIM` descriptions).
-- **Too small:** needs 2 x 3 panel rows + 2 footer rows (8) and enough width for the footer (55 for the
-  overview); shows `too small: need 55x8`.
-- **Not built:** the Layout and Monitors screens. Enter opens a placeholder (a panel saying
-  "Not built yet.") so navigation can be tried.
+- **Too small:** each screen has a minimum size and shows `too small: need WxH` below it: the overview 12 rows
+  (2 panels of 5 + the footer's 2) by 52 columns; the Layout screen 29 rows by 72; the Monitors screen 20
+  rows by 87 (the width is that of the screen's longest footer).
+- Enter opens the Layout or Monitors screen (both described below).
 
 ### Launching
 
@@ -118,7 +118,7 @@ that sets what a keybinding session lacks (a UTF-8 locale for the box characters
      layout last applied to it, it is replaced with the new assigned layout;
    - the layout last applied is **remembered per tag in a herbstluftwm attribute** (the user agreed);
    - a tag or set with no entry is left alone.
-   It would run as a third command in `monitor_changes.sh`'s `monitors_applied` handler (next to
+   It would run as a third command in `rule_hook.sh`'s `monitors_applied` case (next to
    `panel.sh` and `background.sh`), and at startup in place of the hand-written `hc load` lines.
    Sketch: source both files, `key=$(monitor_reconcile.sh --key)`, read the block, split each line on its
    last space, `hc load "$tag" "${!name}"`; skip an unknown variable or tag with a message.
@@ -178,59 +178,45 @@ selectable (no turn on/off); rotation; resizing does not move the neighbours (an
 
 ## Built so far (state of the work)
 
-Committed (`5fa14fa` and earlier): the monitor panel/primary fix in `panel.sh`; `monitor_reconcile.sh
---layout` over stdin with no temp files; monitor hotplug checks and docs.
+All committed (`5f8c892` and later): the overview, Layout and Monitors screens in `scripts/monitor_tui.py`,
+`monitor-tui-wrap.sh`, the two conf files (`hlwm_layouts.conf` holds the user's own edits; the seeded
+`hlwm_tag_layouts.conf` assignments are still placeholders, identical per set, and nothing loads from them
+yet), the `Super+Alt+L` keybinding, and the checks (`monitor_tui_check.py`, run by section 4 of
+`monitor_check.sh`; they use a fixed copy of the seeded layouts, never the live file).
 
-**Uncommitted in the working tree** (as of this note):
-- `scripts/monitor_tui.py` - rewritten: the overview described above. The first TUI's monitor-editing code
-  (`Output`, `Model` with `snap`/`nudge`/`toggle`/`set_mode`/`make_primary`/`layout_lines`, `save_conf`,
-  `apply_lines`, `run_reconcile`) is kept for the Monitors screen but nothing calls it yet.
-- `scripts/monitor-tui-wrap.sh`, `scripts/hlwm_layouts.conf`, `scripts/hlwm_tag_layouts.conf` - new.
-  The two conf files are seeded from `layouts.autostart`: **the `# lname:` texts are placeholders I made
-  up** (Max, Horizontal, Split, 3-way right, 3-way left, Grid) and both connected sets
-  (`eDP-1`, `DP-4 eDP-1`) start with identical assignments. `layouts.autostart` is untouched and nothing
-  loads from the new files yet.
-- `shortcuts.autostart` - keybinding now points at the wrapper.
-- `.planning/monitor_changes/monitor_tui_check.py` (200 checks, including the Layout and Monitors screens), run by section 4 of `monitor_check.sh`.
-- `__pycache__/` appeared under `scripts/` from the check importing the module; do not commit it.
+Hook handling is in one place: `monitor_changes.sh` only emits `monitors_changed`; `rule_hook.sh` (the
+unfiltered `herbstclient --idle` loop started by `startup.autostart`) runs `monitor_reconcile.sh` on
+`monitors_changed` and `panel.sh` + `background.sh` on `monitors_applied`. Both loops in `startup.autostart`
+are guarded so a reload does not start a second one.
 
-**Tests:** `monitor_check.sh` -> 44 passed, 0 failed, 2 skipped (shellcheck missing, no live display). A
-pseudo-terminal run of the real program (TERM=rxvt-unicode-256color, stub `herbstclient`, fixture
-`xrandr`) was used to check the escape codes: colours, positions, navigation, exit status. Those scratch
-scripts live outside the repo.
+**Tests:** `monitor_check.sh` -> all passed (shellcheck is missing, no live display), including a stubbed
+dispatch check of `rule_hook.sh`. Pseudo-terminal runs of the real program were used for escape codes, colours
+and key decoding. Scratch scripts live outside the repo.
 
-**Never seen on a real display.** The look has not been confirmed by the user in a live window.
+**Seen live by the user:** the Layout screen (approved), the primary change moving polybar. Not yet confirmed
+live: the Monitors screen's move / resolution / edit paths against real monitors, and Alt+arrow under the window
+manager.
 
 ## Open questions and remaining work
 
 Layouts:
-1. **The Layout screen** is built (see above). Open: what delete does to assignments that name the layout
-   (currently nothing; the confirmation says how many there are).
+1. Deleting a layout leaves the tag assignments that name it (the confirmation says how many).
 2. **Does setting the layout for the current tag also change the group file's assignment** (so it applies
    next time that set comes up), or only the live tag? Asked, not answered.
-3. **What `custom` should look like** (the word alone, or e.g. "custom (was split)"). Asked, not answered.
-   Currently the word alone. A refinement offered and not taken: if a custom tree matches another named
-   layout, show that name instead.
+3. **What `custom` should look like**: the word alone for now, plus a note on how to save it.
 4. **The auto-load script** is not written. Needs a live test of `hc load` on tags with windows,
-   especially which frame gets the windows in a multi-frame layout, and of the per-tag attribute.
+   especially which frame gets the windows in a multi-frame layout, and of the per-tag attribute. It would
+   be a new case in `rule_hook.sh` (or called from it).
 5. **Switching startup** from `layouts.autostart`'s hand-written `hc load` lines to the new files.
 6. **Whether the key needs more than the connected outputs** (see "Known limits of the key").
-7. Replace the placeholder `# lname:` texts and the identical per-set assignments with the user's own.
+7. Replace the placeholder per-set assignments with the user's own.
 
 Monitors:
-8. **The Monitors screen** (resolution, position, primary yes/no): how the user wants to place a monitor
-   and edit. Not decided. The first build had arrows that jump to edge-aligned spots, `HJKL` nudge, `o`
-   on/off, `p` primary, `m` mode, `a` apply, `s` apply and save to `monitor_layouts.conf`, `u` undo,
-   `R` reset, and a 15 second keep-or-revert prompt after an apply. That was my design, not the user's, and
-   only resolution, position and primary were asked for. Open too: whether there should be any safety net
-   after an apply.
+8. Whether a change is also written to `monitor_layouts.conf` (today it holds only until the connected set
+   changes), and whether to add a keep-or-revert prompt after an apply. Not decided.
 
 General:
 9. Frame labels are cut off when a frame is narrow (e.g. `horizon`); cosmetic.
 10. Not handled: rotation (positions assume unrotated outputs).
-11. The `hc get_attr` calls and everything touching a live herbstluftwm are unverified. A throwaway
-    herbstluftwm under `Xvnc` could not be started in the sandbox (it cannot create the X socket under
-    `/tmp/.X11-unix`), and cloning the source needs `github.com` allowed. Both are the user's decision.
-12. Update `monitor_changes_plan.md` step 11 and the checklist's TUI section when the next screens exist
-    (this file replaces the step 11 description in the meantime).
-13. Commit, once the user has confirmed the look.
+11. `hc load` on a tag with windows, and everything touching a live herbstluftwm beyond what the user has
+    run, is unverified: a throwaway herbstluftwm under `Xvnc` could not be started in the sandbox.

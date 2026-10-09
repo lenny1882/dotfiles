@@ -10,7 +10,7 @@ import os
 import sys
 import tempfile
 
-sys.dont_write_bytecode = True   # importing monitor_tui must not leave __pycache__ in the repo
+sys.dont_write_bytecode = True
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS = os.path.normpath(os.path.join(
@@ -71,35 +71,19 @@ mo = model(OFF)
 check("parse: output without geometry is off", mo.outs[1].mode == "off")
 check("parse: off output gets its preferred size", (mo.outs[1].w, mo.outs[1].h) == (1920, 1080))
 
-# moving
 m = model(DOCKED)
 e, d = m.outs
-check("snap left lands left of the other output (skipping overlapping stops)",
-      m.snap(d, -1, 0) and d.x == -1920, d.x)
+check("move_to moves an output where there is room", m.move_to(d, -1920, 0) == "" and d.x == -1920, d.x)
 check("layout positions start at 0x0", m.layout_lines()[0] == "eDP-1 2560x1600 --pos 1920x0 --primary", m.layout_lines())
 check("layout line for DP-4", m.layout_lines()[1] == "DP-4 1920x1080 --pos 0x0", m.layout_lines())
+e.rate = "165.00"
+check("a chosen rate is written for that output only", m.layout_lines()[0] == "eDP-1 2560x1600 --rate 165.00 --pos 1920x0 --primary" and "--rate" not in m.layout_lines()[1], m.layout_lines())
 
 m = model(DOCKED)
 e, d = m.outs
-check("snap down aligns bottom edges first", m.snap(d, 0, 1) and d.y == 520, d.y)
-check("snap down again goes below", m.snap(d, 0, 1) and d.y == 1600, d.y)
-m = model(DOCKED)
-check("snap that way with no free spot is refused", not m.snap(m.outs[1], 1, 0))
-
-m = model(DOCKED)
-m.nudge(m.outs[1], -1, 0)
-check("nudge moves by 10 px", m.outs[1].x == 2550)
-check("nudge into the neighbour is flagged as an overlap", m.has_overlap())
-
-# on / off / primary / mode
-m = model(DOCKED)
-e, d = m.outs
-check("turn off the primary hands primary on", m.toggle(e) == "" and not e.on and d.primary)
-check("turning off the last active output is refused", m.toggle(d) != "" and d.on)
+e.mode = "off"
 check("off outputs appear as 'off'", m.layout_lines()[0] == "eDP-1 off", m.layout_lines())
 check("an output that is off cannot be primary", m.make_primary(e) != "")
-check("turn it on again, placed right of the active ones",
-      m.toggle(e) == "" and e.on and e.x == d.x + d.w, (e.x, d.x, d.w))
 
 m = model(DOCKED)
 m.set_mode(m.outs[1], "1280x720")
@@ -111,31 +95,13 @@ m = model(DOCKED)
 m.make_primary(m.outs[1])
 check("make primary moves the flag", m.outs[1].primary and not m.outs[0].primary)
 
-# saving to the conf
-CONF = 'declare -gA LAYOUTS=()\n\n# example\nLAYOUTS["DP-4 eDP-1"]="\neDP-1 auto --primary --pos 0x0\nDP-4 1920x1080 --right-of eDP-1\n"\n'
 with tempfile.TemporaryDirectory() as tmp:
-    conf = os.path.join(tmp, "layouts.conf")
-    with open(conf, "w") as f:
-        f.write(CONF)
-    tui.save_conf(conf, "DP-4 eDP-1", ["eDP-1 off", "DP-4 1920x1080 --pos 0x0 --primary"])
-    text = open(conf).read()
-    check("save: the old active entry is replaced", text.count('LAYOUTS["DP-4 eDP-1"]="') == 1 and "--right-of" not in text, text)
-    check("save: the new entry is there", "eDP-1 off" in text and tui.SAVED_COMMENT in text)
-    check("save: unrelated lines are kept", "# example" in text and "declare -gA" in text)
-    tui.save_conf(conf, "DP-4 eDP-1", ["eDP-1 auto --pos 0x0 --primary"])
-    text = open(conf).read()
-    check("save again: still one entry and one comment", text.count('LAYOUTS["DP-4 eDP-1"]="') == 1 and text.count(tui.SAVED_COMMENT) == 1, text)
-    tui.save_conf(conf, "HDMI-1 eDP-1", ["eDP-1 auto --pos 0x0"])
-    text = open(conf).read()
-    check("save: a different key is appended alongside", text.count('LAYOUTS["') == 2, text)
-
-    # a dry run through monitor_reconcile.sh --layout over stdin
     fixture = os.path.join(tmp, "docked.q")
     with open(fixture, "w") as f:
         f.write(DOCKED)
     os.environ["XRANDR_FIXTURE"] = fixture
     m = model(DOCKED)
-    m.snap(m.outs[1], -1, 0)
+    m.move_to(m.outs[1], -1920, 0)
     rc, err = tui.run_reconcile(["--dry-run", "--layout", "/dev/stdin"], "\n".join(m.layout_lines()) + "\n")
     check("reconcile --layout over stdin succeeds", rc == 0, err)
     check("reconcile --layout plans the new positions",
@@ -220,7 +186,6 @@ check("diagram: scaled 80 px per column, 160 per row (32x10 and 24x7)",
       len(diagram) == 10 and diagram[0] == "┏" + "━" * 30 + "┓┏" + "━" * 22 + "┓", diagram[:1])
 check("diagram: numbers inside, * on the primary", diagram[1].startswith("┃ 1*") and "┃ 2 " in diagram[1], diagram[1])
 
-# the whole overview through gather(), with a stub standing in for herbstclient
 with tempfile.TemporaryDirectory() as tmp:
     stub = os.path.join(tmp, "hc")
     with open(stub, "w") as f:
@@ -274,11 +239,6 @@ with tempfile.TemporaryDirectory() as tmp:
     least_h = tui.FOOTER_ROWS + 2 * tui.MIN_PANEL_ROWS
     check("fits: the least that works", tui.fits(least_h, least, footer) and not tui.fits(least_h - 1, 200, footer) and not tui.fits(40, least - 1, footer), least)
 
-    ph, pf = tui.render_placeholder("Monitors", W, H)
-    check("placeholder: one selected panel with the screen's name", text(ph)[0].startswith("┌─ Monitors ─") and len(ph) == 38 and "border_sel" in role_of(ph, 0))
-    check("placeholder: footer", pf == ("Monitors", "Esc back   q quit"), pf)
-
-    # painting: a fake window records where everything is drawn
     class FakeWin:
         def __init__(self, h, w):
             self.h, self.w, self.writes = h, w, []
@@ -507,7 +467,6 @@ if True:
     ms.handle("UP")
     check("Up with nothing above stays put", ms.name == "eDP-1")
 
-    # primary
     ms.handle("RIGHT"); ms.handle("p")
     check("p asks first", ms.mode == "confirm" and ms.footer() == ("Make DP-4 the primary?", "y yes   n no") and not applied, ms.footer())
     ms.handle("n")
@@ -518,7 +477,6 @@ if True:
     ms.handle("p")
     check("an output that already is primary says so", ms.mode == "browse" and "already" in ms.message)
 
-    # move
     ms.handle("m")
     check("m enters move mode with the position string in the info panel", ms.mode == "move" and "2560x1600+0+0" not in ms.info()[1][2][1][0] and ms.model.geometry(ms.cur()) == "1920x1080+2560+0")
     ms.handle("RIGHT")
@@ -550,7 +508,6 @@ if True:
     ms.handle("m"); ms.handle("DOWN"); ms.handle("DOWN"); ms.handle("CTRL_S")
     check("Ctrl-S applies the move (positions measured from the top-left)", len(applied) == before + 1 and "DP-4 1920x1080 --pos 2560x20 --primary" in applied[-1], applied[-1])
 
-    # edit the string
     ms.handle("e")
     check("e opens the geometry as herbstluftwm reads it", ms.mode == "edit" and ms.editor.text() == "1920x1080+2560+20", ms.editor.text())
     for _ in range(30): ms.handle("BACKSPACE")
@@ -574,7 +531,6 @@ if True:
     check("Esc from there returns to move mode", ms.mode == "move")
     ms.handle("ESC")
 
-    # resolution overlay
     ms.handle("r")
     names = [r[0] + " " + r[1] for r in ms.res_rows]
     check("r opens a list: Custom first, then each resolution and Hz on its own line, largest first",
@@ -599,13 +555,11 @@ if True:
     before = len(applied)
     ms.handle("ESC")
 
-    # failures put the model back
     tui.apply_lines = lambda lines: (1, "xrandr: cannot do that")
     ms.handle("m"); ms.handle("DOWN"); ms.handle("CTRL_S")
     check("a failed apply puts the old positions back and says why", ms.message == "xrandr: cannot do that" and ms.mode == "browse", ms.message)
     tui.apply_lines = lambda lines: (applied.append(list(lines)), (0, ""))[1]
 
-    # rendering
     for w, h in ((110, 30), (90, 20), (160, 50)):
         rows, foot, cur = tui.MonitorScreen().render(w, h)
         check(f"monitors screen fills {w}x{h} exactly", len(rows) == h - tui.FOOTER_ROWS and all(sum(len(t) for t, _ in r) == w for r in rows))
@@ -630,7 +584,6 @@ if True:
     rows, foot, cur = sc.render(110, 30)
     check("the editor overlay puts the cursor in its field", cur is not None and rows[cur[0]][0] and foot[1] == "Ctrl-S apply   Esc cancel", cur)
 
-    # a move holds the canvas and the numbering until it is saved
     tui.apply_lines = lambda lines: (applied.append(list(lines)), (0, ""))[1]
     mv = tui.MonitorScreen()
     mv.handle("RIGHT")                                    # DP-4, to the right of eDP-1
@@ -661,7 +614,26 @@ if True:
     right = 110 - 2 - max(l.rfind("┓") for l in flat2 if "┓" in l)
     check("centred after saving", abs(left - 1 - right) <= 1, (left, right))
 
-    # a long list scrolls with a bar
+    tui.DRY = False
+    fresh = []
+    tui.load_model = lambda: (fresh.append(1), model(RATED))[1]
+    tui.apply_lines = lambda lines: (1, "monitor_reconcile: xrandr failed")
+    fl = tui.MonitorScreen(); fresh.clear()
+    fl.handle("RIGHT"); fl.handle("m"); fl.handle("CTRL_S")
+    check("after a failed apply the model is read from xrandr again", fresh == [1] and fl.message == "monitor_reconcile: xrandr failed", (fresh, fl.message))
+    tui.DRY = True
+    tui.load_model = lambda: model(RATED)
+    tui.apply_lines = lambda lines: (applied.append(list(lines)), (0, ""))[1]
+
+    ed = tui.MonitorScreen(); ed.handle("RIGHT"); ed.handle("m"); ed.render(110, 30)
+    for _ in range(8): ed.handle("SHIFT_RIGHT")
+    before_edit = ["".join(t for t, _ in r) for r in ed.render(110, 30)[0]][:20]
+    ed.handle("e")
+    under = ["".join(t for t, _ in r) for r in ed.render(110, 30)[0]][:3]
+    check("opening the editor from a move does not re-centre the picture", under == before_edit[:3] and ed.frame is not None, under)
+    check("the Layout footer's minimum width comes from the hints it really shows",
+          tui.layout_min_width() == tui.footer_width(("Layout", tui.layout_hints(False))) and "s save" not in tui.layout_hints(False))
+
     many = tui.Output("X"); many.mode = "1920x1080"; many.w, many.h = 1920, 1080; many.x = many.y = 0
     many.rates = [(f"{1000 + i}x{600 + i}", "60.00", False, False) for i in range(60)]
     sc2 = tui.MonitorScreen(); sc2.model = tui.Model([many]); sc2.name = "X"
@@ -672,7 +644,6 @@ if True:
     check("a long list scrolls to keep the selection in view and shows a scroll bar",
           sc2.res_top > 0 and any("█" in l for l in flat) and any("░" in l for l in flat) and sum("›" in l for l in flat) == 1)
 
-    # keys: urxvt and xterm sequences
     seq = lambda *items: iter(items).__next__
     def feed(*items):
         it = iter(items)

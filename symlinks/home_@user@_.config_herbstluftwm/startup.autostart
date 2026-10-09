@@ -19,8 +19,7 @@ if hc silent new_attr bool my_not_first_autostart ; then
 fi
 
 # --------------------------------
-# monitor watcher - on every autostart (a reload too), but only if it is not already running
-# (the pattern is the shell running the script, so an editor with the file open does not count)
+# monitor watcher
 
 pgrep -u $UID -f '^(/usr/bin/|/bin/)?bash .*monitor_changes\.sh$' >/dev/null \
     || hc spawn $SCRIPTS_DIR/monitor_changes.sh
@@ -34,8 +33,7 @@ hc unlock
 # load the panel
 $SCRIPTS_DIR/panel.sh $col_active $col_purple &
 
-# the hook loop for window rules runs for the whole session and a reload runs this file again,
-# so only start it if no `herbstclient --idle` (the unfiltered one) is already waiting
+# one hook loop per session; a reload runs this file again
 if pgrep -u $UID -f '^herbstclient --idle$' >/dev/null; then
     exit 0
 fi

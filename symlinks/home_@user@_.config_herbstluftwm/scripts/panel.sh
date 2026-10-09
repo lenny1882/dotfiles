@@ -31,8 +31,6 @@ for i in ${!tmp_pb_mon_ind[@]}; do
 	pb_monitors[${tmp_pb_mon_res[i]}]=${tmp_pb_mon_ind[i]}
 done
 
-# hc monitor id holding the xrandr primary output (the panel goes here), else 0
-# xrandr --listmonitors marks it with *, e.g. " 0: +*DP-4 1920/527x1080/296+0+0  DP-4"
 primary_rect=$(xrandr --listmonitors | awk '$2 ~ /\*/ { g = $3; gsub(/\/[0-9]+/, "", g); print g; exit }')
 primary_monitor=0
 for i in "${!hc_monitors[@]}"; do

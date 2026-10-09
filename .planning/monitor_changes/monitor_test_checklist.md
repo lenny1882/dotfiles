@@ -6,7 +6,7 @@ Step 10 of `monitor_changes_plan.md`. Needs a herbstluftwm session and real moni
 
 1. While docked, run `monitor_reconcile.sh --key` and note the output. Use that exact string as a key in `monitor_layouts.conf`.
 2. Run `monitor_reconcile.sh --dry-run` first. It prints the xrandr commands it would run and changes nothing.
-3. Watch the watcher's stderr. It prints which source it chose (`udevadm` or `xev`) and a `...: change` line per event.
+3. Watch the watcher's stderr. It prints which source it chose (`udevadm` or `xev`) and a `...: change` line per event. The hooks it emits are handled by `rule_hook.sh`, so check that the `herbstclient --idle` loop from `startup.autostart` is running (`pgrep -af 'herbstclient --idle'`).
 
 ## Cases
 
@@ -25,7 +25,7 @@ Step 10 of `monitor_changes_plan.md`. Needs a herbstluftwm session and real moni
 
 ## TUI overview (step 11)
 
-Spec and open questions: `tui_spec.md`. Reload first (`hc reload`) so Super+Alt+L loads. Try it with `monitor_tui.py` in a terminal first. Only the overview exists; Enter opens placeholders. Pending: not yet seen in a live window.
+Spec and open questions: `tui_spec.md`. Reload first (`hc reload`) so Super+Alt+L loads. Try it with `monitor_tui.py` in a terminal first. Enter opens the Layout and Monitors screens (cases below).
 
 | # | Case | Expect |
 |---|------|--------|
@@ -36,8 +36,8 @@ Spec and open questions: `tui_spec.md`. Reload first (`hc reload`) so Super+Alt+
 | O5 | Layout panel on a tag with a layout from `hlwm_tag_layouts.conf` (e.g. `3wayR|5`) | The tag name, the layout name, and a frame drawing that matches `hc layout` |
 | O6 | Hand-split a frame on that tag, reopen | The layout name reads `custom`; tags 8 and 9 read `unassigned` |
 | O7 | Monitors panel | Boxes are in proportion to each other and positioned as on the desktop, numbered with `*` on the primary; the numbered details are underneath |
-| O8 | Enter, then Left, then `q` (also `q` from a placeholder) | Enter opens the placeholder, the footer title changes to its name, Left returns, `q` quits from either |
-| O9 | Resize the window | The panels follow; at a very small size it says `too small: need 55x8` |
+| O8 | Enter, then Esc, then `q` (also `q` from a screen) | Enter opens the screen, the footer title changes to its name, Esc returns, `q` quits from either |
+| O9 | Resize the window | The panels follow; at a very small size it says `too small: need 52x12` |
 | O10 | Unplug the external, reopen | The Monitors panel shows one box, the Layout panel uses the `eDP-1` block |
 
 ## TUI Layout screen (step 11)
