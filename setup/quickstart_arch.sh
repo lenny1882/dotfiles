@@ -427,6 +427,7 @@ step_packages() {
 		gthumb \
 		gvfs \
 		inkscape \
+		jq \
 		krita \
 		lsp-plugins-lv2 \
 		micro \

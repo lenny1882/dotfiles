@@ -5,6 +5,7 @@ Operation = Install
 Operation = Upgrade
 Target = rambox
 Target = rambox-bin
+Target = rambox-pro-bin
 
 [Action]
 Description = Giving the logged in user ownership of /opt/rambox
