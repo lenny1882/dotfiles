@@ -5,6 +5,10 @@
 #   monitor_reconcile.sh [--dry-run] [--force]   reconcile
 #   monitor_reconcile.sh --key                   print the layout key and exit
 #   monitor_reconcile.sh --known                 exit 0 if the connected set is known
+#   monitor_reconcile.sh --layout FILE           apply the layout lines in FILE (implies --force)
+#
+# --layout is what monitor_popup.sh uses. The key is stored as usual, so the choice
+# holds until the connected set changes; a restart goes back to the configured layout.
 #
 # Test without a display: XRANDR_FIXTURE=<xrandr --query output>,
 # LISTMONITORS_FIXTURE=<xrandr --listmonitors output>, with --dry-run.
@@ -147,27 +151,28 @@ xrandr_args() {
 }
 
 # Safety guard: the internal panel is only switched off once another output
-# is confirmed active. stdin: layout lines. Prints the layout to apply first;
-# panel-off lines are written to the file named by $1.
+# is verified active. stdin: layout lines. Prints the layout to apply first;
+# any panel-off lines follow a `--` line.
 split_panel_off() {
-    local deferred=$1 name mode rest kept=0
-    local -a lines=()
-    : >"$deferred"
+    local name mode rest kept=0
+    local -a lines=() off=()
     while read -r name mode rest; do
         [[ -z $name ]] && continue
         if [[ $mode == off ]] && is_internal "$name"; then
-            echo "$name $mode $rest" >>"$deferred"
+            off+=("$name $mode $rest")
         else
             lines+=("$name $mode $rest")
             [[ $mode != off ]] && kept=1
         fi
     done
-    if [[ -s $deferred && $kept -eq 0 ]]; then
+    if ((${#off[@]} && !kept)); then
         log "layout leaves no other active output, keeping the panel on"
-        while read -r name _; do lines+=("$name auto"); done <"$deferred"
-        : >"$deferred"
+        for name in "${off[@]}"; do lines+=("${name%% *} auto"); done
+        off=()
     fi
     printf '%s\n' "${lines[@]}"
+    ((${#off[@]})) && printf '%s\n' -- "${off[@]}"
+    return 0
 }
 
 # args: the non-off output names from the first pass. True if all hold a mode.
@@ -216,7 +221,7 @@ reconcile() {
     fi
 
     current=$(stored_layout)
-    if [[ -z $FORCE && $key == "$current" ]]; then
+    if [[ -z $FORCE && -z $LAYOUT_FILE && $key == "$current" ]]; then
         log "unchanged ($key)"
         return 0
     fi
@@ -224,10 +229,18 @@ reconcile() {
 
     # shellcheck source=monitor_layouts.conf
     source "$LAYOUTS_CONF"
-    local deferred first name mode
+    local planned first deferred="" line name mode sep
     local -a active=()
-    deferred=$(mktemp) && trap 'rm -f "$deferred"' RETURN
-    first=$(layout_for_key "$key" "${outs[@]}" | split_panel_off "$deferred" | resolve_modes "$state")
+    planned=$(if [[ -n $LAYOUT_FILE ]]; then sed '/^[[:space:]]*$/d' "$LAYOUT_FILE"; else layout_for_key "$key" "${outs[@]}"; fi \
+        | split_panel_off | resolve_modes "$state")
+    # the panel-off lines, if any, follow a `--` line
+    first="" sep=0
+    while IFS= read -r line; do
+        if [[ $line == --* ]]; then sep=1
+        elif ((sep)); then deferred+="$line"$'\n'
+        else first+="$line"$'\n'
+        fi
+    done <<<"$planned"
     while read -r name mode _; do
         [[ $mode != off ]] && active+=("$name")
     done <<<"$first"
@@ -235,13 +248,13 @@ reconcile() {
     mapfile -t cmd < <(xrandr_args "${stale[@]}" <<<"$first")
     run "${cmd[@]}" || { log "xrandr failed"; return 1; }
 
-    if [[ -s $deferred ]]; then
+    if [[ -n $deferred ]]; then
         if outputs_active "${active[@]}"; then
-            mapfile -t cmd < <(xrandr_args <"$deferred")
+            mapfile -t cmd < <(xrandr_args <<<"$deferred")
             run "${cmd[@]}" || log "turning the panel off failed, leaving it on"
         else
             log "${active[*]} not active after applying, keeping the panel on"
-            while read -r name _; do run xrandr --output "$name" --auto; done <"$deferred"
+            while read -r name _; do run xrandr --output "$name" --auto; done <<<"$deferred"
         fi
     fi
 
@@ -264,6 +277,8 @@ main() {
         case $1 in
             --dry-run) DRY_RUN=1 ;;
             --force)   FORCE=1 ;;
+            --layout)  LAYOUT_FILE=$2; shift
+                       [[ -r $LAYOUT_FILE ]] || { log "cannot read layout file: $LAYOUT_FILE"; return 2; } ;;
             --key)     KEY_ONLY=1 ;;
             --known)   KNOWN_ONLY=1 ;;
             *) log "unknown argument: $1"; return 2 ;;

@@ -1,6 +1,6 @@
 # Monitor hotplug plan
 
-Plan for `symlinks/home_@user@_.config_herbstluftwm/scripts/monitor_changes.sh` and the scripts around it. Written 2026-10-09. Steps 1-9 are built and committed, with custom-mode handling added after hardware testing; step 10 (real-hardware testing) is done and step 11 (monitor popups) is planned. See `monitor_test_checklist.md` and `monitor_check.sh` in this directory.
+Plan for `symlinks/home_@user@_.config_herbstluftwm/scripts/monitor_changes.sh` and the scripts around it. Written 2026-10-09. Steps 1-9 are built and committed, with custom-mode handling added after hardware testing; step 10 (real-hardware testing) is done, and step 11 (monitor popup) is built but not yet tried in a live session. See `monitor_test_checklist.md` and `monitor_check.sh` in this directory.
 
 ## Goal
 
@@ -29,19 +29,22 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 7. **Startup integration** - `monitors.autostart` calls reconcile (falling back to `hc detect_monitors`); `startup.autostart` spawns the watcher in the first-autostart block.
 8. **Bars and padding** - `monitors_applied` runs `panel.sh`.
 9. **Background** - `background.sh`, run at startup and on `monitors_applied`.
+10. **Real-hardware testing** - done, following `monitor_test_checklist.md` (`monitor_check.sh` for the read-only checks).
+11. **Monitor popup** - `monitor_popup.sh`, a rofi menu bound to Super+Alt+L (`shortcuts.autostart`, `$ModPri-l`).
+    - **Show:** each connected output with its mode, position and primary flag (or `off`), and whether the connected set uses a configured or the fallback layout.
+    - **Change:** per output, turn on/off, pick a mode, place it left of / right of / above / below another output, make it primary. Then `Apply`, `Apply and save to monitor_layouts.conf`, `Reset to the configured layout`, or `Cancel`.
+    - **How it applies:** it edits a working copy of the current xrandr state and hands the result to `monitor_reconcile.sh --layout`, so the panel guard and custom-mode creation still apply. The layout is passed as a pipe; no temp files are used by either script.
+    - **Decisions made:**
+      - *Manual choice vs hotplug:* no extra "pinned" attribute. `--layout` stores the normal key, so the choice holds until the connected set changes, and a restart or `Reset` goes back to the configured layout.
+      - *Saving:* `Apply and save` replaces the active `LAYOUTS["key"]` entry in `monitor_layouts.conf`, or appends one under a `# Saved by monitor_popup.sh:` comment. Commented examples are left alone. Saved layouts use absolute `--pos` values.
+      - *rofi vs TUI:* a sequence of rofi menus is acceptable; no TUI.
+      - *Last active output:* the popup refuses to turn it off.
+    - **Tested:** the state functions against an xrandr fixture (parsing, primary, placement, position shift, turn-off guard) and `monitor_check.sh` for the reconcile change.
+    - **Not yet tried:** the live menus, `--layout` through a pipe, saving to the conf, and Reset. See the "Monitor popup" section of `monitor_test_checklist.md`.
 
 ## Open
 
-10. **Real-hardware testing** - done, following `monitor_test_checklist.md` (`monitor_check.sh` for the read-only checks).
-
-11. **Monitor popups.** Popups that show the connected monitors and their settings and let me change the layout without editing `monitor_layouts.conf`. Prefer a rofi menu (rofi is already configured in the dotfiles); if rofi can't do it, a small TUI started in a terminal.
-    - **Show:** each output with its mode, position, primary flag, and on/off, and which layout (known or fallback) is active.
-    - **Change:** pick a saved layout for the connected set; switch an output on or off; change its mode; place it left of / right of / above / below another; set the primary. Reuse `monitor_reconcile.sh` to apply, so the panel guard and mode creation still apply.
-    - **Open questions to settle first:**
-      - A manual choice must not be undone by the next hotplug event. Probably a "pinned" attribute that reconcile honours until the connected set changes.
-      - Whether changes can be saved back as an entry in `monitor_layouts.conf`.
-      - rofi menus are one-level lists, so per-output editing is a sequence of menus. Decide whether that is acceptable or a TUI is needed.
-      - Keybinding (`keybindings.autostart`) and how the popup shows outputs with a rejected EDID.
+12. **Popup testing in a live session** - follow the "Monitor popup" section of `monitor_test_checklist.md`.
 
 ## Known gaps
 
@@ -54,6 +57,10 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 - An unknown set still uses `auto` for every output, so a monitor with a rejected EDID gets 640x480 from the fallback. Custom modes only apply where a layout names a `WxH`.
 - The root cause of the ASUS VS247's bad EDID is unknown (monitor, or the HDMI Expansion Card). Trying another input or card would tell.
 - `--auto` on a laptop-only boot picks the panel's preferred mode, which may differ from the old hardcoded 2560x1600.
+- Popup: changing an output's mode or position does not re-flow the others, so a neighbour placed earlier can be left with a gap or an overlap. Place the neighbours again afterwards.
+- Popup: rotation is not handled; positions assume unrotated outputs.
+- Popup: the mode list holds only modes the output lists, so it cannot create one for a monitor with a rejected EDID. Use a layout entry naming the `WxH`.
+- Popup: there is no revert timer after `Apply`. The panel guard stops the last active output being turned off, but a bad mode on an external can still leave it blank until you apply again.
 
 ## Risks
 
