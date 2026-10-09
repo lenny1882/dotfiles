@@ -34,7 +34,8 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 
 ## Open
 
-12. **TUI: remaining screens and live testing** - see the open questions in `tui_spec.md` and the "Overview" cases in `monitor_test_checklist.md`.
+12. **First: the user tests the persist logic** (Alt-S on the Layout and Monitors screens; cases `L12` and `M13` in `monitor_test_checklist.md`). It writes `hlwm_tag_layouts.conf` and `monitor_layouts.conf`, and has only been run against copies and stubs.
+13. **TUI: remaining screens and live testing** - see the open questions in `tui_spec.md` and the "Overview" cases in `monitor_test_checklist.md`.
 
 ## Known gaps
 
