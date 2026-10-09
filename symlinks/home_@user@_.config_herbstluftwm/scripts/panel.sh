@@ -31,6 +31,17 @@ for i in ${!tmp_pb_mon_ind[@]}; do
 	pb_monitors[${tmp_pb_mon_res[i]}]=${tmp_pb_mon_ind[i]}
 done
 
+# hc monitor id holding the xrandr primary output (the panel goes here), else 0
+# xrandr --listmonitors marks it with *, e.g. " 0: +*DP-4 1920/527x1080/296+0+0  DP-4"
+primary_rect=$(xrandr --listmonitors | awk '$2 ~ /\*/ { g = $3; gsub(/\/[0-9]+/, "", g); print g; exit }')
+primary_monitor=0
+for i in "${!hc_monitors[@]}"; do
+	if [[ ${hc_monitors[$i]} = "$primary_rect" ]]; then
+		primary_monitor=$i
+		break
+	fi
+done
+
 
 # --------------------------------
 # exec
@@ -41,11 +52,10 @@ while pgrep -u $UID -x polybar >/dev/null; do
 done
 
 for monitor in $(hc list_monitors | cut -d: -f1); do
-    # only one lot of padding due to frame padding
-    hc pad $monitor $(( panel_height + panel_padding ))
-    hc pad $monitor $(( panel_height + panel_padding ))
+    if [[ $monitor = $primary_monitor ]]; then
+        # only the primary monitor has a panel, so only it needs padding
+        hc pad $monitor $(( panel_height + panel_padding ))
 
-    if [[ $monitor = 0 ]]; then
         # make sure this runs as my user
         # /usr/bin/sudo -u $(id -nu 1000) bash -c \
         #     "MONITOR=${pb_monitors[${hc_monitors[$monitor]}]} \
@@ -56,6 +66,9 @@ for monitor in $(hc list_monitors | cut -d: -f1); do
             COLOUR_ACTIVE=$col_active \
             COLOUR_URGENT=$col_urgent \
             polybar --reload herbstluft -c ~/.config/herbstluftwm/polybar/polybar.ini 2>$HOME/.config/herbstluftwm/polybar/logs/log &
+    else
+        # clear any padding left over from a previous layout
+        hc pad $monitor 0
     fi
 done
 

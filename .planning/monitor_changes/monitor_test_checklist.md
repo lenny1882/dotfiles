@@ -12,7 +12,7 @@ Step 10 of `monitor_changes_plan.md`. Needs a herbstluftwm session and real moni
 
 | # | Case | Expect |
 |---|------|--------|
-| 1 | Laptop only, fresh login | Panel on, wallpaper (`~/.fehbg`), polybar on monitor 0 |
+| 1 | Laptop only, fresh login | Panel on, wallpaper (`~/.fehbg`), polybar on the primary (the only monitor) |
 | 2 | Plug one external, no layout entry | Fallback layout: external primary, panel to its left, solid colour background |
 | 3 | Same set, with a layout entry | Your layout is used, wallpaper returns, panel on or off as the entry says |
 | 4 | The 3-monitor desk setup, with a layout entry | Left, middle and right as configured, padding correct on each |
@@ -21,6 +21,7 @@ Step 10 of `monitor_changes_plan.md`. Needs a herbstluftwm session and real moni
 | 7 | Unplug during a reconcile | Panel stays on, no blank screen |
 | 8 | Monitor with a rejected EDID (kernel log: `EDID checksum invalid`) and a layout naming `1920x1080` | `xrandr --query` shows `1920x1080_custom` on that output and it is used |
 | 9 | Reload config (`hc reload`) | No second watcher, no change to the layout |
+| 10 | Primary is not the leftmost monitor (fallback layout with the panel on, or a layout with `--primary` on a non-left output) | Polybar and the top padding are on the `--primary` output only; every other monitor has no bar and no padding |
 
 ## Check specifically
 
@@ -35,5 +36,5 @@ Step 10 of `monitor_changes_plan.md`. Needs a herbstluftwm session and real moni
 - The fallback layout is simpler than the plan: the "half screens" and "stacked when under 1080p" heuristics are missing.
 - Only the internal panel is guarded against being turned off. Turning an external off isn't checked.
 - `monitor_layouts.conf` has only commented placeholder layouts.
-- Polybar starts only on monitor 0 (`panel.sh`).
+- Polybar and its padding go on the xrandr primary monitor, matched to the herbstluftwm monitor by rect (`panel.sh`); monitor 0 if none matches. Unverified on real hardware.
 - "Unknown" means no layout entry for the output names, not an EDID check. Identical monitors can't be told apart.
