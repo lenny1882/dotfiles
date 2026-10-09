@@ -420,6 +420,8 @@ step_packages() {
 # plain package name for selectAndInstall; step_apps lists them the same
 # way selectAndInstall lists packages, then runs the chosen routines
 _app_claude() {
+	# jq and socat are needed by Claude Code's sandboxing
+	installer jq socat
 	curl -fsSL https://claude.ai/install.sh | bash
 }
 
