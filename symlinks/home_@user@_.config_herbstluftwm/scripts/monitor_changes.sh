@@ -10,15 +10,33 @@ function monitor_xevents {
                 case "Connected":
                 case "Disconnected":
                     print s[1], s[2]
-                    herbstclient emit_hook test
                     break
             }
         }'
 }
 
-while read output status; do
-    printf "$output was $status\n"
-done < <(monitor_xevents)
+HOOK=monitors_changed
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Turn every randr event into one hook, so anything can react to monitors changing.
+function emit_changes {
+    while read -r output status; do
+        printf '%s was %s\n' "$output" "$status" >&2
+        herbstclient emit_hook "$HOOK"
+    done < <(monitor_xevents)
+}
+
+# Reconcile whenever the hook fires. Safe to run repeatedly: it does nothing
+# when the connected monitors match the stored layout.
+function handle_hooks {
+    herbstclient --idle "$HOOK" | while read -r _; do
+        "$SCRIPT_DIR/monitor_reconcile.sh"
+    done
+}
+
+trap 'trap - INT TERM EXIT; kill 0' INT TERM EXIT
+emit_changes &
+handle_hooks
 
 # TODO:
 
