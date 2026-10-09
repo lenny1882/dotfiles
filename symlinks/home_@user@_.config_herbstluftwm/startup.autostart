@@ -34,6 +34,12 @@ hc unlock
 # load the panel
 $SCRIPTS_DIR/panel.sh $col_active $col_purple &
 
+# the hook loop for window rules runs for the whole session and a reload runs this file again,
+# so only start it if no `herbstclient --idle` (the unfiltered one) is already waiting
+if pgrep -u $UID -f '^herbstclient --idle$' >/dev/null; then
+    exit 0
+fi
+
 herbstclient --idle | while read hook name winid; do
     $SCRIPTS_DIR/rule_hook.sh $hook $name $winid
 done
