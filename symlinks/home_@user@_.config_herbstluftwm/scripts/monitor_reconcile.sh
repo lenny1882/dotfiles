@@ -77,6 +77,57 @@ layout_for_key() {
     fi
 }
 
+# Modes an output lists. args: xrandr --query output, output name.
+output_modes() {
+    awk -v o="$2" '$1 == o { f = 1; next } f && /^[^ \t]/ { f = 0 } f { print $1 }' <<<"$1"
+}
+
+# Timing for a mode the monitor does not list (a missing or rejected EDID
+# leaves only low fallback modes). 1920x1080 uses the standard HDMI timing,
+# anything else the CVT one. args: WxH. Prints the xrandr --newmode arguments.
+mode_timing() {
+    case $1 in
+        1920x1080) echo "148.50 1920 2008 2052 2200 1080 1084 1089 1125 +hsync +vsync" ;;
+        *) cvt "${1%x*}" "${1#*x}" 60 2>/dev/null | awk '/^Modeline/ { sub(/^Modeline +"[^"]*" +/, ""); print }' ;;
+    esac
+}
+
+# Like run, but hides xrandr's complaint when the mode already exists.
+quiet() {
+    if [[ -n $DRY_RUN ]]; then run "$@"; else "$@" 2>/dev/null; fi
+}
+
+# stdin: layout lines. args: xrandr --query output. Prints the same lines, with
+# each WxH the output does not list replaced by a mode created for it
+# (WxH_custom). Falls back to `auto` if the mode cannot be created.
+resolve_modes() {
+    local state=$1 name mode rest modes timing
+    while read -r name mode rest; do
+        [[ -z $name ]] && continue
+        if [[ $mode =~ ^[0-9]+x[0-9]+$ ]]; then
+            modes=$(output_modes "$state" "$name")
+            if grep -qx -- "$mode" <<<"$modes"; then
+                :
+            elif grep -qx -- "${mode}_custom" <<<"$modes"; then
+                mode=${mode}_custom
+            else
+                timing=$(mode_timing "$mode")
+                log "$name does not list $mode, adding it"
+                # shellcheck disable=SC2086  # word splitting of $timing is intended
+                if [[ -n $timing ]] \
+                    && { quiet xrandr --newmode "${mode}_custom" $timing || true; } \
+                    && run xrandr --addmode "$name" "${mode}_custom"; then
+                    mode=${mode}_custom
+                else
+                    log "could not add $mode to $name, using auto"
+                    mode=auto
+                fi
+            fi
+        fi
+        echo "$name $mode $rest"
+    done
+}
+
 # stdin: layout lines. args: stale outputs. Prints one xrandr command, NUL-free, one arg per line.
 xrandr_args() {
     local name mode rest s
@@ -176,7 +227,7 @@ reconcile() {
     local deferred first name mode
     local -a active=()
     deferred=$(mktemp) && trap 'rm -f "$deferred"' RETURN
-    first=$(layout_for_key "$key" "${outs[@]}" | split_panel_off "$deferred")
+    first=$(layout_for_key "$key" "${outs[@]}" | split_panel_off "$deferred" | resolve_modes "$state")
     while read -r name mode _; do
         [[ $mode != off ]] && active+=("$name")
     done <<<"$first"

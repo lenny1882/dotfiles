@@ -19,7 +19,8 @@ Step 10 of `monitor_changes_plan.md`. Needs a herbstluftwm session and real moni
 | 5 | Unplug back to laptop only | Panel on, wallpaper, bars rebuilt, no stale monitor |
 | 6 | An unknown projector | Fallback layout, solid colour background |
 | 7 | Unplug during a reconcile | Panel stays on, no blank screen |
-| 8 | Reload config (`hc reload`) | No second watcher, no change to the layout |
+| 8 | Monitor with a rejected EDID (kernel log: `EDID checksum invalid`) and a layout naming `1920x1080` | `xrandr --query` shows `1920x1080_custom` on that output and it is used |
+| 9 | Reload config (`hc reload`) | No second watcher, no change to the layout |
 
 ## Check specifically
 

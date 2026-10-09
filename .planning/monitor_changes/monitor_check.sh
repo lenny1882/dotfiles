@@ -28,6 +28,7 @@ reject() { if grep -Eq -- "$3" "$2"; then bad "$1 (found: $3)"; sed 's/^/       
 # xrandr --query: only the lines the scripts read.
 cat >"$TMP/laptop.q" <<'EOF'
 eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
+   2560x1600    165.00*+
 DP-4 disconnected (normal left inverted right x axis y axis)
 EOF
 cat >"$TMP/laptop.m" <<'EOF'
@@ -37,13 +38,39 @@ EOF
 
 cat >"$TMP/docked.q" <<'EOF'
 eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
+   2560x1600    165.00*+
 DP-4 connected 1920x1080+2560+0 (normal left inverted right x axis y axis) 530mm x 300mm
+   1920x1080     60.00*+
 EOF
 cat >"$TMP/docked.m" <<'EOF'
 Monitors: 2
  0: +*eDP-1 2560/340x1600/210+0+0  eDP-1
  1: +DP-4 1920/530x1080/300+2560+0  DP-4
 EOF
+
+# DP-4 connected but its EDID was rejected: only fallback modes, no 1920x1080.
+cat >"$TMP/nomode.q" <<'EOF'
+eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
+   2560x1600    165.00*+
+DP-4 connected 640x480+2560+0 (normal left inverted right x axis y axis) 0mm x 0mm
+   640x480       60.00*   59.94
+   640x400       59.88
+EOF
+cat >"$TMP/nomode.m" <<'EOF'
+Monitors: 2
+ 0: +*eDP-1 2560/340x1600/210+0+0  eDP-1
+ 1: +DP-4 640/0x480/0+2560+0  DP-4
+EOF
+
+# the custom mode was already added on an earlier run
+cat >"$TMP/custom.q" <<'EOF'
+eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
+   2560x1600    165.00*+
+DP-4 connected 640x480+2560+0 (normal left inverted right x axis y axis) 0mm x 0mm
+   640x480       60.00*   59.94
+   1920x1080_custom 60.00
+EOF
+cp "$TMP/nomode.m" "$TMP/custom.m"
 
 # DP-4 connected but never got a mode: the failed-apply state.
 cat >"$TMP/failed.q" <<'EOF'
@@ -151,6 +178,17 @@ reject "guard: the panel is not switched off" "$TMP/guard.out" 'output eDP-1 --o
 run alloff laptop "$TMP/alloff.conf" "$RECONCILE" --dry-run --force
 expect "guard: a layout with nothing active keeps the panel on" "$TMP/alloff.out" 'keeping the panel on'
 reject "guard: the panel is not switched off" "$TMP/alloff.out" 'output eDP-1 --off'
+
+# custom modes for a monitor whose EDID was rejected
+run nomode nomode "$TMP/dock.conf" "$RECONCILE" --dry-run --force
+expect "no EDID: the missing 1920x1080 is announced" "$TMP/nomode.out" 'DP-4 does not list 1920x1080'
+expect "no EDID: the mode is created" "$TMP/nomode.out" 'xrandr --newmode 1920x1080_custom 148.50 1920 2008 2052 2200 1080 1084 1089 1125'
+expect "no EDID: the mode is added to DP-4" "$TMP/nomode.out" 'xrandr --addmode DP-4 1920x1080_custom'
+expect "no EDID: the layout uses the custom mode" "$TMP/nomode.out" 'DP-4 --mode 1920x1080_custom'
+reject "listed modes are not re-created" "$TMP/lay-docked.out" 'newmode'
+run custom custom "$TMP/dock.conf" "$RECONCILE" --dry-run --force
+reject "an existing custom mode is not re-created" "$TMP/custom.out" 'newmode'
+expect "an existing custom mode is used" "$TMP/custom.out" 'DP-4 --mode 1920x1080_custom'
 
 run stale stale "$TMP/empty.conf" "$RECONCILE" --dry-run --force
 expect "stale output: unplugged DP-4 is switched off" "$TMP/stale.out" 'output DP-4 --off'
