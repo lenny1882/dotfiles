@@ -59,7 +59,9 @@ function emit_changes {
 # and polybar land on the new monitors, and the background is reset.
 function handle_hooks {
     source ~/.config/herbstluftwm/variables.autostart
-    herbstclient --idle "$HOOK" monitors_applied | while read -r hook; do
+    # one regex: several filters are matched word by word against a hook, so two names
+    # never match a one-word hook like monitors_applied
+    herbstclient --idle "^($HOOK|monitors_applied)\$" | while read -r hook; do
         case $hook in
             "$HOOK")          "$SCRIPT_DIR/monitor_reconcile.sh" ;;
             monitors_applied)
