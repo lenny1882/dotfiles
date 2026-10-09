@@ -4,6 +4,9 @@ Description=SSH key agent
 [Service]
 Type=simple
 Environment=SSH_AUTH_SOCK=%t/ssh-agent.socket
+# ssh-agent refuses to bind if the socket file is left over from an earlier run
+# (crash, killed session, or an agent started by hand); clear it first
+ExecStartPre=-/usr/bin/rm -f %t/ssh-agent.socket
 ExecStart=/usr/bin/ssh-agent -D -a $SSH_AUTH_SOCK
 
 [Install]
