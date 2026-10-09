@@ -10,7 +10,7 @@ if hc silent new_attr bool my_not_first_autostart ; then
     hc spawn $SCRIPTS_DIR/monitor_changes.sh
     hc spawn picom --config ~/.config/compton.conf &
     hc spawn numlockx on &
-    hc spawn ~/.fehbg &
+    hc spawn $SCRIPTS_DIR/background.sh &
     hc spawn easystroke enable &
 
     hc spawn rambox &

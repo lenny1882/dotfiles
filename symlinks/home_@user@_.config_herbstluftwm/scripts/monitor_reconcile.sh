@@ -4,6 +4,7 @@
 #
 #   monitor_reconcile.sh [--dry-run] [--force]   reconcile
 #   monitor_reconcile.sh --key                   print the layout key and exit
+#   monitor_reconcile.sh --known                 exit 0 if the connected set is known
 #
 # Test without a display: XRANDR_FIXTURE=<xrandr --query output>,
 # LISTMONITORS_FIXTURE=<xrandr --listmonitors output>, with --dry-run.
@@ -55,6 +56,14 @@ fallback_layout() {
     done
     [[ -n $internal ]] && echo "$internal auto --left-of ${externals[0]}"
     return 0
+}
+
+# Known: the set has a layout in the config, or is only the internal panel(s).
+# args: key, then the outputs.
+is_known_set() {
+    local key=$1 o; shift
+    [[ -v LAYOUTS[$key] ]] && return 0
+    for o in "$@"; do is_internal "$o" || return 1; done
 }
 
 # args: key, then the outputs. Prints layout lines.
@@ -148,6 +157,12 @@ reconcile() {
     key="${outs[*]}"
 
     if [[ -n $KEY_ONLY ]]; then echo "$key"; return 0; fi
+    if [[ -n $KNOWN_ONLY ]]; then
+        # shellcheck source=monitor_layouts.conf
+        source "$LAYOUTS_CONF"
+        is_known_set "$key" "${outs[@]}"
+        return
+    fi
 
     current=$(stored_layout)
     if [[ -z $FORCE && $key == "$current" ]]; then
@@ -199,6 +214,7 @@ main() {
             --dry-run) DRY_RUN=1 ;;
             --force)   FORCE=1 ;;
             --key)     KEY_ONLY=1 ;;
+            --known)   KNOWN_ONLY=1 ;;
             *) log "unknown argument: $1"; return 2 ;;
         esac
         shift
