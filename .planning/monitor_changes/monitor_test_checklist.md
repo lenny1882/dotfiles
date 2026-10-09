@@ -57,6 +57,7 @@ Open it from the overview (Enter on Layout). Work on a copy of `hlwm_layouts.con
 | L9 | Split a frame by hand, reopen the screen | Current reads `custom` and says "Not saved as a layout. s to save it" (the footer does not mention it); `s`, name it, Ctrl-S: it now has that name |
 | L10 | Esc from the grid | Back on the overview; Esc inside the editor or a prompt cancels only that |
 | L11 | Ctrl-S inside the editor in urxvt | It saves (the terminal must not freeze) |
+| L12 | Alt-S on a tag showing a saved layout, then `y` | The block for the connected set in `hlwm_tag_layouts.conf` has that tag's line pointing at the layout; on a `custom` tag it opens the save editor instead |
 
 ## TUI Monitors screen (step 11)
 
@@ -76,6 +77,7 @@ Use a second monitor you can lose without harm; changes apply immediately throug
 | M10 | `r`, Custom, `1600x900 60`, Ctrl-S | That mode is created if the monitor does not list it, and applied |
 | M11 | Ctrl, Shift and Alt with arrows in urxvt | All three work in move mode (Alt may be eaten by the window manager: say so) |
 | M12 | An apply that xrandr rejects | The old positions are put back and the error's last line is shown |
+| M13 | Alt-S, then `y` | The entry for the connected set in `monitor_layouts.conf` is replaced by the current layout; unplug and replug and it comes back as saved (Alt may be taken by the window manager: say so) |
 
 ## Check specifically
 

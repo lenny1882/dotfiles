@@ -15,6 +15,7 @@ import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 RECONCILE = os.path.join(SCRIPT_DIR, "monitor_reconcile.sh")
+LAYOUTS_CONF = os.environ.get("LAYOUTS_CONF", os.path.join(SCRIPT_DIR, "monitor_layouts.conf"))
 HLWM_LAYOUTS = os.environ.get("HLWM_LAYOUTS", os.path.join(SCRIPT_DIR, "hlwm_layouts.conf"))
 HLWM_TAG_LAYOUTS = os.environ.get("HLWM_TAG_LAYOUTS", os.path.join(SCRIPT_DIR, "hlwm_tag_layouts.conf"))
 HC = os.environ.get("HERBSTCLIENT", "herbstclient")
@@ -685,15 +686,55 @@ def format_tree(n):
     return "(\n" + "\n".join(body) + "\n)"
 
 
-def current_name(tree, defs):
-    """(name, is_custom) of the first saved layout with this tree's structure."""
-    for var, (lname, string) in defs.items():
+def current_var(tree, defs):
+    for var, (_, string) in defs.items():
         try:
             if tree_key(parse_tree(string)) == tree_key(tree):
-                return lname or var, False
+                return var
         except ValueError:
             continue
-    return "custom", True
+    return None
+
+
+def current_name(tree, defs):
+    """(name, is_custom) of the first saved layout with this tree's structure."""
+    var = current_var(tree, defs)
+    return ("custom", True) if var is None else (defs[var][0] or var, False)
+
+
+def put_assignment(text, key, tag, var):
+    """hlwm_tag_layouts.conf with `tag var` in the block for the monitor set `key`."""
+    lines, head = text.split("\n"), f'TAG_LAYOUTS["{key}"]="'
+    start = next((i for i, l in enumerate(lines) if l.startswith(head)), None)
+    if start is None:
+        while lines and lines[-1] == "":
+            lines.pop()
+        return "\n".join(lines + ["", head, f"{tag} {var}", '"', ""])
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].strip() == '"'), None)
+    if lines[start].strip() != head or end is None:
+        raise ValueError(f"cannot read the block for {key} in hlwm_tag_layouts.conf")
+    for i in range(start + 1, end):
+        if lines[i].rstrip().rpartition(" ")[0].strip() == tag:
+            lines[i] = lines[i].rstrip().rpartition(" ")[0] + " " + var
+            break
+    else:
+        lines.insert(end, f"{tag} {var}")
+    return "\n".join(lines)
+
+
+def put_monitor_layout(text, key, body):
+    """monitor_layouts.conf with the active entry for `key` replaced by the lines `body`."""
+    lines, head = text.split("\n"), f'LAYOUTS["{key}"]="'
+    start = next((i for i, l in enumerate(lines) if l.startswith(head)), None)
+    if start is None:
+        while lines and lines[-1] == "":
+            lines.pop()
+        return "\n".join(lines + ["", head, *body, '"', ""])
+    end = next((i for i in range(start + 1, len(lines)) if lines[i] == '"'), None)
+    if end is None:
+        raise ValueError(f"cannot read the entry for {key} in monitor_layouts.conf")
+    lines[start + 1:end] = body
+    return "\n".join(lines)
 
 
 def thumbnail(string):
@@ -712,7 +753,7 @@ def grid_geometry(width, height):
 
 def layout_hints(create):
     keys = ["Enter create"] if create else ["Enter set", "e edit", "d delete"]
-    return "   ".join([HINTS_MOVE, *keys, HINTS_END])
+    return "   ".join([HINTS_MOVE, *keys, "Alt-S persist", HINTS_END])
 
 
 def layout_min_width():
@@ -801,6 +842,11 @@ class LayoutScreen:
         except (HlwmError, ValueError) as e:
             self.error = f"herbstluftwm: {e}"
         self.name, self.custom = current_name(self.tree, self.defs) if self.tree else ("", False)
+        self.var_now = current_var(self.tree, self.defs) if self.tree else None
+        try:
+            self.key = load_model().key()
+        except (OSError, subprocess.CalledProcessError):
+            self.key = ""
         self.sel = min(self.sel, len(self.defs))
 
     def var(self):
@@ -849,6 +895,13 @@ class LayoutScreen:
             self.confirm, self.mode = ("delete", self.var()), "confirm"
         elif key == "s" and self.custom and self.tree:
             self.begin_edit(None, format_tree(self.tree))
+        elif key == "ALT_s":
+            if self.tree is None or not self.key:
+                self.message = self.error or "no monitors to save it for"
+            elif self.var_now is None:
+                self.begin_edit(None, format_tree(self.tree))
+            else:
+                self.confirm, self.mode = ("persist", self.var_now), "confirm"
         return None
 
     def begin_edit(self, var, string):
@@ -885,9 +938,12 @@ class LayoutScreen:
             try:
                 if action == "set":
                     hc("load", self.tag, self.defs[var][1])
+                elif action == "persist":
+                    write_file(HLWM_TAG_LAYOUTS, put_assignment(read_file(HLWM_TAG_LAYOUTS), self.key, self.tag, var))
+                    self.message = "saved"
                 else:
                     write_file(HLWM_LAYOUTS, drop_entry(read_file(HLWM_LAYOUTS), var))
-            except (HlwmError, OSError) as e:
+            except (HlwmError, OSError, ValueError) as e:
                 self.message = str(e)
             self.refresh()
         return None
@@ -898,6 +954,8 @@ class LayoutScreen:
             action, var = self.confirm
             if action == "set":
                 prompt = f'Set "{self.title(var)}" on tag {self.tag}?'
+            elif action == "persist":
+                prompt = f'Use "{self.title(var)}" for tag {self.tag} with {self.key}?'
             else:
                 n = self.used_by(var)
                 prompt = f'Delete "{self.title(var)}"?' + (f" Used by {n} tag assignment{'s' * (n != 1)}." if n else "")
@@ -981,7 +1039,7 @@ class LayoutScreen:
 ARROW_DIRS = {"UP": (0, -1), "DOWN": (0, 1), "LEFT": (-1, 0), "RIGHT": (1, 0)}
 MON_INFO_H = 3 + 2 + 2 * PAD_V
 MONITORS_MIN_ROWS = FOOTER_ROWS + MON_INFO_H + 2 + 2 * PAD_V + 7
-BROWSE_HINTS = "←↑↓→ select   p primary   m move   r resolution   e edit   Esc back   q quit"
+BROWSE_HINTS = "←↑↓→ select   p primary   m move   r resolution   e edit   Alt-S persist   Esc back   q quit"
 MOVE_HINTS = "←↑↓→ 10px   Ctrl 1px   Shift 100px   Alt hop   Ctrl-S done   Esc cancel"
 INPUT_HINTS = "Ctrl-S apply   Esc cancel"
 RES_HINTS = "↑↓ select   Enter choose   Esc cancel"
@@ -1133,7 +1191,7 @@ class MonitorScreen:
             if o.primary:
                 self.message = f"{o.name} is already the primary"
             else:
-                self.confirm, self.mode = f"Make {o.name} the primary?", "confirm"
+                self.confirm, self.mode = (f"Make {o.name} the primary?", "primary"), "confirm"
         elif key == "m":
             self.before = self.model.copy()
             self.nums = {a.name: i + 1 for i, a in enumerate(numbered(self.model))}
@@ -1143,10 +1201,19 @@ class MonitorScreen:
             self.begin_edit()
         elif key == "r":
             self.begin_resolution()
+        elif key == "ALT_s":
+            self.confirm, self.mode = (f"Save these positions for {self.model.key()}?", "persist"), "confirm"
         return None
 
     def key_confirm(self, key):
-        if key == "y":
+        if key == "y" and self.confirm[1] == "persist":
+            self.mode = "browse"
+            try:
+                write_file(LAYOUTS_CONF, put_monitor_layout(read_file(LAYOUTS_CONF), self.model.key(), self.model.layout_lines()))
+                self.message = "saved"
+            except (OSError, ValueError) as e:
+                self.message = str(e)
+        elif key == "y":
             self.before = self.model.copy()
             self.model.make_primary(self.cur())
             self.apply()
@@ -1281,7 +1348,7 @@ class MonitorScreen:
 
     def footer(self):
         if self.mode == "confirm":
-            return self.confirm, "y yes   n no"
+            return self.confirm[0], "y yes   n no"
         if self.mode == "move":
             return self.message or f"Move {self.name}", MOVE_HINTS
         if self.mode in ("edit", "custom"):
@@ -1534,7 +1601,8 @@ def decode_escape(nxt):
             return ("SHIFT_" if c == "[" else "CTRL_") + RXVT_ARROWS[d]
         if d in CSI_ARROWS:
             return XTERM_MODS.get(params.split(";")[-1] if ";" in params else "", "") + CSI_ARROWS[d]
-    return "ESC"
+        return "ESC"
+    return "ALT_" + c if c.isalpha() else "ESC"
 
 
 def read_key(win):

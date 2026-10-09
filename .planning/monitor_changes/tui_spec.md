@@ -151,8 +151,13 @@ Decided with the user (2026-10-09):
   tag's assignment); no match = `custom`.
 - Edits rewrite only the one definition in `hlwm_layouts.conf` (comments and other entries are kept).
 
-Still open for this screen: does Enter also change the group assignment file (not done; only the live tag
-changes); `hc load` on a tag with windows is unverified; deleting a layout leaves the assignments that name it
+**Persist (Alt-S, decided 2026-10-09):** Enter and every monitor change only affect what is live. **Alt-S** (Ctrl-Shift-S cannot
+be told from Ctrl-S in a terminal) on the Layout screen asks `y/n`, then writes the layout that is current on the focused
+tag under the current set of connected monitors in `hlwm_tag_layouts.conf`; if the tag's layout is `custom` it opens
+the save editor instead. On the Monitors screen it asks `y/n`, then replaces the set's active entry in `monitor_layouts.conf`
+with the current layout (comments around it are left alone).
+
+Still open for this screen: `hc load` on a tag with windows is unverified; deleting a layout leaves the assignments that name it
 (they then read `unknown layout`).
 
 ## Monitors screen (built, not yet seen live)
@@ -201,8 +206,7 @@ manager.
 
 Layouts:
 1. Deleting a layout leaves the tag assignments that name it (the confirmation says how many).
-2. **Does setting the layout for the current tag also change the group file's assignment** (so it applies
-   next time that set comes up), or only the live tag? Asked, not answered.
+2. Decided: setting a layout is live only; Alt-S persists it (see above).
 3. **What `custom` should look like**: the word alone for now, plus a note on how to save it.
 4. **The auto-load script** is not written. Needs a live test of `hc load` on tags with windows,
    especially which frame gets the windows in a multi-frame layout, and of the per-tag attribute. It would
@@ -212,8 +216,7 @@ Layouts:
 7. Replace the placeholder per-set assignments with the user's own.
 
 Monitors:
-8. Whether a change is also written to `monitor_layouts.conf` (today it holds only until the connected set
-   changes), and whether to add a keep-or-revert prompt after an apply. Not decided.
+8. Whether to add a keep-or-revert prompt after an apply. Not decided. (Saving is Alt-S, see above.)
 
 General:
 9. Frame labels are cut off when a frame is narrow (e.g. `horizon`); cosmetic.

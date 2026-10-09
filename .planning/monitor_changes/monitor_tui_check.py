@@ -644,6 +644,55 @@ if True:
     check("a long list scrolls to keep the selection in view and shows a scroll bar",
           sc2.res_top > 0 and any("█" in l for l in flat) and any("░" in l for l in flat) and sum("›" in l for l in flat) == 1)
 
+    # persist (Alt-S)
+    TAGS = 'declare -gA TAG_LAYOUTS=()\n\nTAG_LAYOUTS["eDP-1"]="\nleft|3   max\nright|2  max\n"\n'
+    t = tui.put_assignment(TAGS, "eDP-1", "left|3", "grid")
+    check("an assignment replaces the layout of an existing tag line and keeps its padding", "left|3   grid" in t and "right|2  max" in t and t.count("left|3") == 1, t)
+    t = tui.put_assignment(TAGS, "eDP-1", "grid", "grid")
+    check("a tag without a line gets one at the end of the block", t.split("\n")[-3:] == ["grid grid", '"', ""] or "\ngrid grid\n\"" in t, t)
+    t = tui.put_assignment(TAGS, "DP-4 eDP-1", "left|3", "max")
+    check("a set without a block gets a new one", t.rstrip().endswith('TAG_LAYOUTS["DP-4 eDP-1"]="\nleft|3 max\n"') and 'TAG_LAYOUTS["eDP-1"]' in t, t)
+    try:
+        tui.put_assignment('TAG_LAYOUTS["eDP-1"]="\nleft|3 max\n', "eDP-1", "left|3", "grid")
+        check("a block that never closes is refused", False)
+    except ValueError:
+        check("a block that never closes is refused", True)
+    MON = '# note\nLAYOUTS["DP-4 eDP-1"]="\neDP-1 auto --primary --pos 0x0\nDP-4 1920x1080 --right-of eDP-1\n"\n# LAYOUTS["DP-4 eDP-1"]="\n# x\n# "\n'
+    t = tui.put_monitor_layout(MON, "DP-4 eDP-1", ["eDP-1 2560x1600 --pos 0x0 --primary", "DP-4 1920x1080 --pos 2560x0"])
+    check("the monitor entry is replaced in place; comments and commented examples stay",
+          t.startswith("# note\nLAYOUTS") and "--right-of" not in t and "DP-4 1920x1080 --pos 2560x0" in t and t.count('LAYOUTS["DP-4 eDP-1"]="') == 2 and t.endswith('# "\n'), t)
+    t = tui.put_monitor_layout(MON, "HDMI-1 eDP-1", ["eDP-1 auto --pos 0x0"])
+    check("a new set is appended", t.rstrip().endswith('LAYOUTS["HDMI-1 eDP-1"]="\neDP-1 auto --pos 0x0\n"') and "--right-of eDP-1" in t)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tags = os.path.join(tmp, "tags.conf"); mons = os.path.join(tmp, "mons.conf")
+        open(tags, "w").write(TAGS); open(mons, "w").write(MON)
+        tui.HLWM_TAG_LAYOUTS, tui.LAYOUTS_CONF, tui.HLWM_LAYOUTS = tags, mons, SEED_CONF
+        tui.load_model = lambda: model(RATED)
+        live["tree"] = "(split horizontal:0.5:1 (clients horizontal:0 0x1) (split vertical:0.5:1 (clients horizontal:0) (clients horizontal:0)))"
+        ls = tui.LayoutScreen()
+        ls.handle("ALT_s", 5)
+        check("Alt-S on a saved layout asks first, naming the tag and the monitor set",
+              ls.mode == "confirm" and ls.footer()[0] == f'Use "{ls.title(ls.var_now)}" for tag 3wayR with DP-4 eDP-1?', ls.footer())
+        ls.handle("n", 5)
+        check("n leaves the file alone", open(tags).read() == TAGS and ls.mode == "browse")
+        ls.handle("ALT_s", 5); ls.handle("y", 5)
+        check("y writes the tag's layout under the connected set", 'TAG_LAYOUTS["DP-4 eDP-1"]="\n3wayR ' in open(tags).read() and ls.message == "saved", open(tags).read())
+        live["tree"] = "(split vertical:0.5:0 (clients max:0) (clients max:0) )"
+        ls.refresh(); ls.handle("ALT_s", 5)
+        check("Alt-S on a custom layout opens the save editor", ls.mode == "edit" and ls.edit_var is None and "split vertical" in ls.editor.text())
+        check("the Layout footer lists Alt-S", "Alt-S persist" in tui.layout_hints(False) and "Alt-S persist" in tui.layout_hints(True))
+
+        ms2 = tui.MonitorScreen()
+        ms2.handle("ALT_s")
+        check("Alt-S on the Monitors screen asks first", ms2.mode == "confirm" and ms2.footer()[0] == "Save these positions for DP-4 eDP-1?", ms2.footer())
+        ms2.handle("n")
+        check("n leaves monitor_layouts.conf alone", open(mons).read() == MON)
+        ms2.handle("ALT_s"); ms2.handle("y")
+        text = open(mons).read()
+        check("y replaces the set's entry with the current layout", "eDP-1 2560x1600 --pos 0x0 --primary" in text and "DP-4 1920x1080 --pos 2560x0" in text and "--right-of" not in text and ms2.message == "saved", text)
+        check("the Monitors footer lists Alt-S", "Alt-S persist" in tui.BROWSE_HINTS)
+
     seq = lambda *items: iter(items).__next__
     def feed(*items):
         it = iter(items)
@@ -656,7 +705,8 @@ if True:
     check("xterm Ctrl+Up is ESC [ 1 ; 5 A", tui.decode_escape(feed("[", "1", ";", "5", "A")) == "CTRL_UP")
     check("xterm Shift+Down is ESC [ 1 ; 2 B", tui.decode_escape(feed("[", "1", ";", "2", "B")) == "SHIFT_DOWN")
     check("xterm Alt+Left is ESC [ 1 ; 3 D", tui.decode_escape(feed("[", "1", ";", "3", "D")) == "ALT_LEFT")
-    check("anything else after Esc is just Esc", tui.decode_escape(feed("x")) == "ESC" and tui.decode_escape(feed("[", "Z")) == "ESC")
+    check("Alt plus a letter is ALT_letter", tui.decode_escape(feed("s")) == "ALT_s" and tui.decode_escape(feed("S")) == "ALT_S")
+    check("anything else after Esc is just Esc", tui.decode_escape(feed("[", "Z")) == "ESC" and tui.decode_escape(feed("5")) == "ESC")
     check("curses' own shifted keys are named", tui.norm_key(tui.curses.KEY_SLEFT) == "SHIFT_LEFT" and tui.norm_key(tui.curses.KEY_SR) == "SHIFT_UP")
     check("layout_lines carries a chosen rate only for that output",
           "--rate" not in "".join(model(DOCKED).layout_lines()))
