@@ -7,7 +7,6 @@ source ~/.config/herbstluftwm/variables.autostart
 # autostart - but only if custom var has not been created
 if hc silent new_attr bool my_not_first_autostart ; then 
     hc spawn xrdb ~/.Xresources
-    hc spawn $SCRIPTS_DIR/monitor_changes.sh
     hc spawn picom --config ~/.config/compton.conf &
     hc spawn numlockx on &
     hc spawn $SCRIPTS_DIR/background.sh &
@@ -18,6 +17,13 @@ if hc silent new_attr bool my_not_first_autostart ; then
     hc spawn obsidian &
     hc spawn spotify &
 fi
+
+# --------------------------------
+# monitor watcher - on every autostart (a reload too), but only if it is not already running
+# (the pattern is the shell running the script, so an editor with the file open does not count)
+
+pgrep -u $UID -f '^(/usr/bin/|/bin/)?bash .*monitor_changes\.sh$' >/dev/null \
+    || hc spawn $SCRIPTS_DIR/monitor_changes.sh
 
 # --------------------------------
 # finalise
