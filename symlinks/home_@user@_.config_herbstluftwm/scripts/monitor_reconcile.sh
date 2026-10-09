@@ -7,7 +7,7 @@
 #   monitor_reconcile.sh --known                 exit 0 if the connected set is known
 #   monitor_reconcile.sh --layout FILE           apply the layout lines in FILE (implies --force)
 #
-# --layout is what monitor_popup.sh uses. The key is stored as usual, so the choice
+# --layout is what monitor_tui.py uses. The key is stored as usual, so the choice
 # holds until the connected set changes; a restart goes back to the configured layout.
 #
 # Test without a display: XRANDR_FIXTURE=<xrandr --query output>,

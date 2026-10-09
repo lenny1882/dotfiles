@@ -1,6 +1,6 @@
 # Monitor hotplug plan
 
-Plan for `symlinks/home_@user@_.config_herbstluftwm/scripts/monitor_changes.sh` and the scripts around it. Written 2026-10-09. Steps 1-9 are built and committed, with custom-mode handling added after hardware testing; step 10 (real-hardware testing) is done, and step 11 (monitor popup) is built but not yet tried in a live session. See `monitor_test_checklist.md` and `monitor_check.sh` in this directory.
+Plan for `symlinks/home_@user@_.config_herbstluftwm/scripts/monitor_changes.sh` and the scripts around it. Written 2026-10-09. Steps 1-9 are built and committed, with custom-mode handling added after hardware testing; step 10 (real-hardware testing) is done, and step 11 (monitor TUI) is built but not yet tried in a live session. See `monitor_test_checklist.md` and `monitor_check.sh` in this directory.
 
 ## Goal
 
@@ -30,21 +30,22 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 8. **Bars and padding** - `monitors_applied` runs `panel.sh`.
 9. **Background** - `background.sh`, run at startup and on `monitors_applied`.
 10. **Real-hardware testing** - done, following `monitor_test_checklist.md` (`monitor_check.sh` for the read-only checks).
-11. **Monitor popup** - `monitor_popup.sh`, a rofi menu bound to Super+Alt+L (`shortcuts.autostart`, `$ModPri-l`).
-    - **Show:** each connected output with its mode, position and primary flag (or `off`), and whether the connected set uses a configured or the fallback layout.
-    - **Change:** per output, turn on/off, pick a mode, place it left of / right of / above / below another output, make it primary. Then `Apply`, `Apply and save to monitor_layouts.conf`, `Reset to the configured layout`, or `Cancel`.
-    - **How it applies:** it edits a working copy of the current xrandr state and hands the result to `monitor_reconcile.sh --layout`, so the panel guard and custom-mode creation still apply. The layout is passed as a pipe; no temp files are used by either script.
+11. **Monitor TUI** - `monitor_tui.py` (Python curses), opened with Super+Alt+L in a floating `urxvt` (`shortcuts.autostart`, `$ModPri-l`). It replaced a rofi menu, which was too restrictive.
+    - **Show:** a scaled picture of the active outputs, with the selected one highlighted, and a list of every connected output with its mode, position and primary flag (or `off`). The header shows the set key and whether the set uses a configured or the fallback layout.
+    - **Change:** arrows/hjkl jump the selected output to the next edge-aligned spot that doesn't overlap another; `HJKL` nudge by 10 px (this can overlap, e.g. to mirror); `o` on/off, `p` primary, `m` mode, `Tab`/`1-9` select, `u` undo edits, `a` apply, `s` apply and save to `monitor_layouts.conf`, `R` reset to the configured layout, `q` quit.
+    - **How it applies:** it edits a working copy of the current xrandr state and sends the result to `monitor_reconcile.sh --layout /dev/stdin`, so the panel guard and custom-mode creation still apply and no temp files are used. After an apply there are 15 seconds to press `y`; otherwise the previous layout is restored.
     - **Decisions made:**
-      - *Manual choice vs hotplug:* no extra "pinned" attribute. `--layout` stores the normal key, so the choice holds until the connected set changes, and a restart or `Reset` goes back to the configured layout.
-      - *Saving:* `Apply and save` replaces the active `LAYOUTS["key"]` entry in `monitor_layouts.conf`, or appends one under a `# Saved by monitor_popup.sh:` comment. Commented examples are left alone. Saved layouts use absolute `--pos` values.
-      - *rofi vs TUI:* a sequence of rofi menus is acceptable; no TUI.
-      - *Last active output:* the popup refuses to turn it off.
-    - **Tested:** the state functions against an xrandr fixture (parsing, primary, placement, position shift, turn-off guard) and `monitor_check.sh` for the reconcile change.
-    - **Not yet tried:** the live menus, `--layout` through a pipe, saving to the conf, and Reset. See the "Monitor popup" section of `monitor_test_checklist.md`.
+      - *Manual choice vs hotplug:* no extra "pinned" attribute. `--layout` stores the normal key, so the choice holds until the connected set changes, and a restart or `R` goes back to the configured layout.
+      - *Saving:* `s` replaces the active `LAYOUTS["key"]` entry in `monitor_layouts.conf`, or appends one under a `# Saved by monitor_tui.py:` comment. Commented examples are left alone. Saved layouts use absolute `--pos` values.
+      - *Language:* Python curses (standard library, no extra install), chosen over Textual, Go or Rust to avoid a new dependency; it does mean Python 3 is needed on any machine that uses it.
+      - *Last active output:* the TUI refuses to turn it off.
+    - **Try it safely:** `MONITOR_TUI_DRY=1 monitor_tui.py` runs the whole interface but applies nothing (reconcile `--dry-run`).
+    - **Tested:** `monitor_tui_check.py` (33 checks: parsing, moving, the turn-off guard, the layout it generates, saving to the conf, and a dry run through `--layout` over stdin) and a pseudo-terminal smoke run with a fixture. `monitor_check.sh` runs the first.
+    - **Not yet tried:** the real screen on a display, a live apply with the revert prompt, saving to the real conf, and `R`. See the "Monitor TUI" section of `monitor_test_checklist.md`.
 
 ## Open
 
-12. **Popup testing in a live session** - follow the "Monitor popup" section of `monitor_test_checklist.md`.
+12. **TUI testing in a live session** - follow the "Monitor TUI" section of `monitor_test_checklist.md`.
 
 ## Known gaps
 
@@ -57,10 +58,10 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 - An unknown set still uses `auto` for every output, so a monitor with a rejected EDID gets 640x480 from the fallback. Custom modes only apply where a layout names a `WxH`.
 - The root cause of the ASUS VS247's bad EDID is unknown (monitor, or the HDMI Expansion Card). Trying another input or card would tell.
 - `--auto` on a laptop-only boot picks the panel's preferred mode, which may differ from the old hardcoded 2560x1600.
-- Popup: changing an output's mode or position does not re-flow the others, so a neighbour placed earlier can be left with a gap or an overlap. Place the neighbours again afterwards.
-- Popup: rotation is not handled; positions assume unrotated outputs.
-- Popup: the mode list holds only modes the output lists, so it cannot create one for a monitor with a rejected EDID. Use a layout entry naming the `WxH`.
-- Popup: there is no revert timer after `Apply`. The panel guard stops the last active output being turned off, but a bad mode on an external can still leave it blank until you apply again.
+- TUI: changing an output's mode or position does not re-flow the others, so a neighbour placed earlier can be left with a gap or an overlap. Move the neighbours again afterwards.
+- TUI: rotation is not handled; positions assume unrotated outputs.
+- TUI: the mode list holds only modes the output lists, so it cannot create one for a monitor with a rejected EDID. Use a layout entry naming the `WxH`.
+- TUI: the revert prompt restores the layout read when the TUI last loaded (or last applied), not any earlier one.
 
 ## Risks
 

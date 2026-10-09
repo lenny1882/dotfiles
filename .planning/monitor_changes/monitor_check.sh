@@ -224,6 +224,19 @@ else
     fi
 fi
 
+# ---------------------------------------------------------------- tui
+head_ "4. monitor_tui.py (no display needed)"
+if command -v python3 >/dev/null; then
+    if [[ -x $DIR/monitor_tui.py ]]; then ok "monitor_tui.py is executable"; else bad "monitor_tui.py is executable"; fi
+    if python3 -I "$(dirname "${BASH_SOURCE[0]}")/monitor_tui_check.py" >"$TMP/tui.out" 2>&1; then
+        ok "monitor_tui_check.py: $(tail -n 1 "$TMP/tui.out")"
+    else
+        bad "monitor_tui_check.py"; sed 's/^/        /' "$TMP/tui.out"
+    fi
+else
+    skp "python3 not installed, monitor_tui.py cannot run"
+fi
+
 # ---------------------------------------------------------------- summary
 printf '\n%d passed, %d failed, %d skipped\n' "$pass" "$fail" "$skip"
 ((fail == 0))

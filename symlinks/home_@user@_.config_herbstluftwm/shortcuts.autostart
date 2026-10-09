@@ -15,7 +15,7 @@ hc keybind $ModSup-Tab spawn rofi -show window -modi drun,run,window,calc -show-
 hc keybind $ModSup-c spawn rofi -show calc -modi drun,run,window,calc -show-icons -sidebar-mode
 
 # monitors
-hc keybind $ModPri-l spawn $SCRIPTS_DIR/monitor_popup.sh
+hc keybind $ModPri-l spawn urxvt -name wrapper -e $SCRIPTS_DIR/monitor_tui.py
 
 # screenshots
 hc keybind $ModSup-s spawn $SCRIPTS_DIR/screenshot.sh select-clip
