@@ -296,14 +296,13 @@ step_config_links() {
 	{ "$SCRIPT_DIR/config_links.sh"; } 2>&1 | pinnedOutput
 }
 
-# the ssh-agent user unit itself comes from the config-link step
-# (~/.config/systemd/user/ssh-agent.service); this enables it and makes ssh
-# add keys to the agent on first use
+# enables the openssh package's socket-activated ssh-agent user unit (listens on
+# $XDG_RUNTIME_DIR/ssh-agent.socket, matching SSH_AUTH_SOCK in .shellrc_env) and
+# makes ssh add keys to the agent on first use
 step_ssh_agent() {
 	{
-		systemctl --user daemon-reload
-		systemctl --user enable --now ssh-agent.service
-		echo "ssh-agent.service: $(systemctl --user is-enabled ssh-agent.service 2>&1), $(systemctl --user is-active ssh-agent.service 2>&1)"
+		systemctl --user enable --now ssh-agent.socket
+		echo "ssh-agent.socket: $(systemctl --user is-enabled ssh-agent.socket 2>&1), $(systemctl --user is-active ssh-agent.socket 2>&1)"
 		mkdir -p ~/.ssh && chmod 700 ~/.ssh
 		if grep -qsiE '^[[:space:]]*AddKeysToAgent[[:space:]]+yes' ~/.ssh/config; then
 			echo "~/.ssh/config: AddKeysToAgent already set"
