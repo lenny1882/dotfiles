@@ -15,15 +15,42 @@ function monitor_xevents {
         }'
 }
 
+# DRM hotplug events from udev. The kernel sends a "change" uevent on the card
+# device when a connector is plugged, unplugged or its EDID changes. Output
+# lines look like: UDEV  [1234.56] change   /devices/pci0000:00/.../drm/card1 (drm)
+function monitor_udev_events {
+    udevadm monitor --udev --subsystem-match=drm | stdbuf --output=L gawk \
+        '$3 == "change" { print $4, $3; fflush() }'
+}
+
 HOOK=monitors_changed
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Turn every randr event into one hook, so anything can react to monitors changing.
+# Seconds of quiet that end a burst of events. One dock can fire several.
+DEBOUNCE=0.5
+
+# udevadm is the default event source; xev is used when udevadm is missing,
+# or when forced with --xev.
+USE_XEV=0
+[[ $1 == --xev ]] && USE_XEV=1
+command -v udevadm >/dev/null || USE_XEV=1
+
+function monitor_events {
+    if ((USE_XEV)); then monitor_xevents; else monitor_udev_events; fi
+}
+
+# Turn each burst of events into one hook, so anything can react to monitors
+# changing. After the first event, keep reading until DEBOUNCE seconds pass
+# with nothing new.
 function emit_changes {
-    while read -r output status; do
-        printf '%s was %s\n' "$output" "$status" >&2
+    local source device action
+    ((USE_XEV)) && source=xev || source=udevadm
+    printf 'monitor events from %s\n' "$source" >&2
+    while read -r device action; do
+        while read -r -t "$DEBOUNCE" _ _; do :; done
+        printf '%s: %s\n' "$device" "$action" >&2
         herbstclient emit_hook "$HOOK"
-    done < <(monitor_xevents)
+    done < <(monitor_events)
 }
 
 # Reconcile whenever the hook fires. Safe to run repeatedly: it does nothing
