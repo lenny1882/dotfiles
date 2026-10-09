@@ -185,7 +185,11 @@ reconcile() {
     fi
     mapfile -t geoms < <(query_listmonitors | geometries)
     run hc set_monitors "${geoms[@]}"
-    [[ -z $DRY_RUN ]] && hc set_attr "$ATTR" "$key"
+    if [[ -z $DRY_RUN ]]; then
+        hc set_attr "$ATTR" "$key"
+        # lets the watcher rebuild the bars and padding for the new monitors
+        hc emit_hook monitors_applied
+    fi
     return 0
 }
 

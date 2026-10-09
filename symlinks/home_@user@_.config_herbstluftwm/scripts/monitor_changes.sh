@@ -54,10 +54,16 @@ function emit_changes {
 }
 
 # Reconcile whenever the hook fires. Safe to run repeatedly: it does nothing
-# when the connected monitors match the stored layout.
+# when the connected monitors match the stored layout. When it does apply a
+# layout it emits monitors_applied, and the panel is rebuilt so its padding
+# and polybar land on the new monitors.
 function handle_hooks {
-    herbstclient --idle "$HOOK" | while read -r _; do
-        "$SCRIPT_DIR/monitor_reconcile.sh"
+    source ~/.config/herbstluftwm/variables.autostart
+    herbstclient --idle "$HOOK" monitors_applied | while read -r hook; do
+        case $hook in
+            "$HOOK")          "$SCRIPT_DIR/monitor_reconcile.sh" ;;
+            monitors_applied) "$SCRIPT_DIR/panel.sh" "$col_active" "$col_purple" ;;
+        esac
     done
 }
 
