@@ -1,6 +1,6 @@
 # Monitor hotplug plan
 
-Plan for `symlinks/home_@user@_.config_herbstluftwm/scripts/monitor_changes.sh` and the scripts around it. Written 2026-10-09. Steps 1-9 are built and committed, with custom-mode handling added after hardware testing; step 10 (real-hardware testing) is in progress and step 11 (monitor popups) is planned. See `monitor_test_checklist.md` and `monitor_check.sh` in this directory.
+Plan for `symlinks/home_@user@_.config_herbstluftwm/scripts/monitor_changes.sh` and the scripts around it. Written 2026-10-09. Steps 1-9 are built and committed, with custom-mode handling added after hardware testing; step 10 (real-hardware testing) is done and step 11 (monitor popups) is planned. See `monitor_test_checklist.md` and `monitor_check.sh` in this directory.
 
 ## Goal
 
@@ -32,7 +32,7 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 
 ## Open
 
-10. **Real-hardware testing** - follow `monitor_test_checklist.md`. `monitor_check.sh` runs the safe, read-only checks first.
+10. **Real-hardware testing** - done, following `monitor_test_checklist.md` (`monitor_check.sh` for the read-only checks).
 
 11. **Monitor popups.** Popups that show the connected monitors and their settings and let me change the layout without editing `monitor_layouts.conf`. Prefer a rofi menu (rofi is already configured in the dotfiles); if rofi can't do it, a small TUI started in a terminal.
     - **Show:** each output with its mode, position, primary flag, and on/off, and which layout (known or fallback) is active.
@@ -48,7 +48,7 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 - The fallback is simpler than first planned: the "half screens" and "stacked when under 1080p" heuristics are missing.
 - Only the internal panel is guarded against being turned off; turning an external off is not checked.
 - `monitor_layouts.conf` has only the one docked entry; add others (for example the 3-monitor desk) using `monitor_reconcile.sh --key` while connected.
-- Polybar and its padding go on the xrandr primary monitor, matched to the herbstluftwm monitor by rect (`panel.sh`); monitor 0 if none matches. Unverified on real hardware.
+- Polybar and its padding go on the xrandr primary monitor, matched to the herbstluftwm monitor by rect (`panel.sh`); monitor 0 if none matches. Checked on real hardware.
 - The xev line format the gawk pattern expects, and the udevadm output fields, are unverified on real hardware.
 - Identical monitors cannot be told apart by name; EDID serial or port position may be needed.
 - An unknown set still uses `auto` for every output, so a monitor with a rejected EDID gets 640x480 from the fallback. Custom modes only apply where a layout names a `WxH`.

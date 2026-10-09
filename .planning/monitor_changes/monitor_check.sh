@@ -215,8 +215,12 @@ else
         printf '        note: the plan switches something off. Read it before you apply it.\n'
     fi
     if command -v herbstclient >/dev/null && herbstclient version >/dev/null 2>&1; then
-        n=$(pgrep -fc 'monitor_changes\.sh')
-        printf '        monitor_changes.sh processes running: %s\n' "$n"
+        # one watcher forks several subshells with the same name, so count only
+        # the processes whose parent is not itself a monitor_changes.sh
+        n=$(ps -eo pid=,ppid=,args= | awk '
+            /monitor_changes\.sh/ && !/awk/ { pid[$1] = 1; ppid[$1] = $2 }
+            END { for (p in pid) if (!(ppid[p] in pid)) n++; print n + 0 }')
+        printf '        monitor_changes.sh watchers running: %s (expect 1)\n' "$n"
     fi
 fi
 

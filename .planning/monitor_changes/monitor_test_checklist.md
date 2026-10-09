@@ -1,6 +1,6 @@
 # Monitor hotplug: real-hardware test checklist
 
-Step 10 of `monitor_changes_plan.md`. Needs a herbstluftwm session and real monitors.
+Step 10 of `monitor_changes_plan.md`. Needs a herbstluftwm session and real monitors. Completed.
 
 ## Before you start
 
@@ -35,6 +35,6 @@ Step 10 of `monitor_changes_plan.md`. Needs a herbstluftwm session and real moni
 
 - The fallback layout is simpler than the plan: the "half screens" and "stacked when under 1080p" heuristics are missing.
 - Only the internal panel is guarded against being turned off. Turning an external off isn't checked.
-- `monitor_layouts.conf` has only commented placeholder layouts.
-- Polybar and its padding go on the xrandr primary monitor, matched to the herbstluftwm monitor by rect (`panel.sh`); monitor 0 if none matches. Unverified on real hardware.
+- `monitor_layouts.conf` has only the one docked entry (`DP-4 eDP-1`); the rest are commented examples.
+- Polybar and its padding go on the xrandr primary monitor, matched to the herbstluftwm monitor by rect (`panel.sh`); monitor 0 if none matches. Checked on real hardware.
 - "Unknown" means no layout entry for the output names, not an EDID check. Identical monitors can't be told apart.
