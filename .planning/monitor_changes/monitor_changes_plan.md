@@ -1,6 +1,6 @@
 # Monitor hotplug plan
 
-Plan for `symlinks/home_@user@_.config_herbstluftwm/scripts/monitor_changes.sh` and the scripts around it. Written 2026-10-09. Steps 1-9 are built and committed, with custom-mode handling added after hardware testing; step 10 (real-hardware testing) is done, and step 11 (monitor and layout TUI) has its overview built but not yet seen in a live session; see `tui_spec.md`. See `monitor_test_checklist.md` and `monitor_check.sh` in this directory.
+Plan for `symlinks/home_@user@_.config_herbstluftwm/scripts/monitor_changes.sh` and the scripts around it. Written 2026-10-09. Steps 1-13 are built and committed. Step 10 (real-hardware testing) is done, and step 11 (the monitor and layout TUI) has been tried live for the Layout screen and for setting the primary; the rest of the Monitors screen and the persist logic are untested live. Details of the TUI are in `tui_spec.md`. See `monitor_test_checklist.md` and `monitor_check.sh` in this directory.
 
 ## Goal
 
@@ -20,7 +20,7 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 
 ## Built
 
-1. **Reconcile core** - `monitor_reconcile.sh`. Compares the connected set with the stored layout, applies xrandr and `set_monitors`, stores the new key. Flags: `--dry-run`, `--force`, `--key`, `--known`.
+1. **Reconcile core** - `monitor_reconcile.sh`. Compares the connected set with the stored layout, applies xrandr and `set_monitors`, stores the new key. Flags: `--dry-run`, `--force`, `--key`, `--known`, `--layout FILE` (what the TUI uses; implies `--force`).
 2. **Config format** - `monitor_layouts.conf`, `LAYOUTS["<key>"]` with one line per output (`OUTPUT MODE [xrandr args]`). One active entry (`DP-4 eDP-1`: panel primary, DP-4 to its right at 1920x1080); the rest are commented examples.
 3. **Safety guard** - the panel is only switched off after another output is confirmed active; any failure leaves it on.
 4. **Hook plumbing** - `monitor_changes.sh` is only the event source: it emits `monitors_changed`. `rule_hook.sh`, the one place hooks are handled (the unfiltered `herbstclient --idle` loop in `startup.autostart`), reacts: `monitors_changed` runs reconcile, which emits `monitors_applied` after applying, and `monitors_applied` runs `panel.sh` and `background.sh`.
@@ -30,12 +30,15 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 8. **Bars and padding** - `monitors_applied` runs `panel.sh` (from `rule_hook.sh`).
 9. **Background** - `background.sh`, run at startup and on `monitors_applied`.
 10. **Real-hardware testing** - done, following `monitor_test_checklist.md` (`monitor_check.sh` for the read-only checks).
-11. **Monitor and layout TUI** - `monitor_tui.py` (Python curses), opened with Super+Alt+L through `monitor-tui-wrap.sh`. It was redesigned after its first version: the overview screen (a Layout panel and a Monitors panel) is built; the Layout and Monitors screens behind it are placeholders. **The full spec, the decisions, the state of the work and every open question are in `tui_spec.md`.**
+11. **Monitor and layout TUI** - `monitor_tui.py` (Python curses), opened with Super+Alt+L through `monitor-tui-wrap.sh`. Overview (Layout and Monitors panels), Layout screen (grid of named layouts, embedded editor with a syntax reference, set, edit, delete, save a custom layout) and Monitors screen (to-scale diagram, primary, move, resolution and refresh-rate list, geometry edit). Changes are live only; Alt-S persists (see below). Checks: `monitor_tui_check.py`, run by `monitor_check.sh`.
+12. **Layout files** - `hlwm_layouts.conf` (named frame layouts, one variable each, display name in a `# lname:` line) and `hlwm_tag_layouts.conf` (which layout each tag gets, per connected set). The TUI reads and writes both. Nothing else loads them yet.
+13. **Persist** - Alt-S on the Layout screen writes the focused tag's current layout into `hlwm_tag_layouts.conf` for the connected set (or opens the save editor if it is custom); on the Monitors screen it replaces the set's entry in `monitor_layouts.conf` with the current layout. Both ask first.
 
 ## Open
 
-12. **First: the user tests the persist logic** (Alt-S on the Layout and Monitors screens; cases `L12` and `M13` in `monitor_test_checklist.md`). It writes `hlwm_tag_layouts.conf` and `monitor_layouts.conf`, and has only been run against copies and stubs.
-13. **TUI: remaining screens and live testing** - see the open questions in `tui_spec.md` and the "Overview" cases in `monitor_test_checklist.md`.
+14. **First: the user tests the persist logic** (Alt-S on the Layout and Monitors screens; cases `L12` and `M13` in `monitor_test_checklist.md`). It writes `hlwm_tag_layouts.conf` and `monitor_layouts.conf`, and has only been run against copies and stubs.
+15. **Auto-load tag layouts** - not written. On a connected-set change and at startup, load each tag's assigned layout: an empty tag is overwritten, a tag with windows keeps a custom layout, and the layout last applied is remembered per tag in an attribute. It would be a new case in `rule_hook.sh`. Needs a live test of `hc load` on tags with windows first. Then `layouts.autostart` stops loading its own strings, and the placeholder assignments in `hlwm_tag_layouts.conf` are replaced with real ones.
+16. **Live testing of the Monitors screen** - move (including Ctrl, Shift and Alt arrows under the window manager), resolution, custom resolution and geometry edit against real monitors: cases `M1`-`M12`. Decide whether an apply needs a keep-or-revert prompt.
 
 ## Known gaps
 
@@ -48,10 +51,12 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 - An unknown set still uses `auto` for every output, so a monitor with a rejected EDID gets 640x480 from the fallback. Custom modes only apply where a layout names a `WxH`.
 - The root cause of the ASUS VS247's bad EDID is unknown (monitor, or the HDMI Expansion Card). Trying another input or card would tell.
 - `--auto` on a laptop-only boot picks the panel's preferred mode, which may differ from the old hardcoded 2560x1600.
-- Monitors screen (not built; from the first TUI): changing an output's mode or position does not re-flow the others, so a neighbour placed earlier can be left with a gap or an overlap. Move the neighbours again afterwards.
-- Monitors screen (not built; from the first TUI): rotation is not handled; positions assume unrotated outputs.
-- Monitors screen (not built; from the first TUI): the mode list holds only modes the output lists, so it cannot create one for a monitor with a rejected EDID. Use a layout entry naming the `WxH`.
-- Monitors screen (not built; from the first TUI): the revert prompt restores the layout read when the TUI last loaded (or last applied), not any earlier one.
+- Monitors screen: changing a mode or position does not move the other outputs; an overlap is refused.
+- Monitors screen: outputs that are off are not shown or selectable, so it cannot turn one on or off. Rotation is not handled.
+- Monitors screen: there is no keep-or-revert prompt, so a mode the monitor cannot show is not undone. A failed apply puts the old state back.
+- A letter typed within 40 ms of Esc is read as Alt plus that letter.
+- Layout screen: setting a layout does not say whether `hc load` kept the windows; unverified on tags with windows. Deleting a layout leaves the tag assignments that name it.
+- The layout set key is the sorted connected output names, so the panel on and off, and virtual monitors, share one key.
 
 ## Risks
 
