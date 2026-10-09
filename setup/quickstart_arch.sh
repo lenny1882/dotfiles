@@ -296,6 +296,28 @@ step_config_links() {
 	{ "$SCRIPT_DIR/config_links.sh"; } 2>&1 | pinnedOutput
 }
 
+# the ssh-agent user unit itself comes from the config-link step
+# (~/.config/systemd/user/ssh-agent.service); this enables it and makes ssh
+# add keys to the agent on first use
+step_ssh_agent() {
+	{
+		systemctl --user daemon-reload
+		systemctl --user enable --now ssh-agent.service
+		echo "ssh-agent.service: $(systemctl --user is-enabled ssh-agent.service 2>&1), $(systemctl --user is-active ssh-agent.service 2>&1)"
+		mkdir -p ~/.ssh && chmod 700 ~/.ssh
+		if grep -qsiE '^[[:space:]]*AddKeysToAgent[[:space:]]+yes' ~/.ssh/config; then
+			echo "~/.ssh/config: AddKeysToAgent already set"
+		else
+			# a leading "Host *" block applies to every host; ssh uses the first
+			# value found, so prepending keeps this from being shadowed
+			{ printf 'Host *\n\tAddKeysToAgent yes\n\n'; cat ~/.ssh/config 2>/dev/null; } > ~/.ssh/config.new
+			mv ~/.ssh/config.new ~/.ssh/config
+			chmod 600 ~/.ssh/config
+			echo "~/.ssh/config: added AddKeysToAgent yes"
+		fi
+	} 2>&1 | pinnedOutput
+}
+
 step_shell_loader() {
 	{
 		case $SHELL in
@@ -427,6 +449,7 @@ step_packages() {
 		gthumb \
 		gvfs \
 		inkscape \
+		jq \
 		krita \
 		lsp-plugins-lv2 \
 		micro \
@@ -515,6 +538,7 @@ STEP_NAMES=(
 	"SSD trim"
 	"Symlink user directories"
 	"Link config files"
+	"SSH agent (autostart)"
 	"Load shell rc files"
 	"Display manager"
 	"Window manager (herbstluftwm)"
@@ -531,6 +555,7 @@ STEP_FUNCS=(
 	step_ssd_trim
 	step_symlinks
 	step_config_links
+	step_ssh_agent
 	step_shell_loader
 	step_display_manager
 	step_window_manager
@@ -544,7 +569,7 @@ STEP_FUNCS=(
 # groups: name + how many of the STEP_NAMES entries (taken in order,
 # starting where the previous group left off) belong to it
 GROUP_NAMES=("System" "User setup" "Desktop" "Software")
-GROUP_SIZES=(4 3 5 2)
+GROUP_SIZES=(4 4 5 2)
 
 # STEP_NAMES/STEP_FUNCS are index-paired, and GROUP_SIZES assumes STEP_NAMES
 # is laid out as contiguous runs matching GROUP_NAMES in order - none of that

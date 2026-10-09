@@ -1,0 +1,17 @@
+# /etc/pacman.d/hooks/rambox.hook
+[Trigger]
+Type = Package
+Operation = Install
+Operation = Upgrade
+Target = rambox
+Target = rambox-bin
+Target = rambox-pro-bin
+
+[Action]
+Description = Giving the logged in user ownership of /opt/rambox
+When = PostTransaction
+# the hook runs as root, so find the user to chown to (same lookup as
+# package-changes.hook):
+#   1. the active session on seat0 (loginctl), 2. any non-root session,
+#   3. the first regular user (uid 1000)
+Exec = /usr/bin/bash -c "[[ -d /opt/rambox ]] || exit 0; s=$(loginctl show-seat seat0 -p ActiveSession --value 2>/dev/null); [[ -n $s ]] && u=$(loginctl show-session $s -p Name --value 2>/dev/null); [[ -n $u ]] || u=$(loginctl list-sessions --no-legend 2>/dev/null | awk '$2 != 0 {print $3; exit}'); [[ -n $u ]] || u=$(id -nu 1000); chown -R $u: /opt/rambox"
