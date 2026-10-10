@@ -150,19 +150,24 @@ check("draw: matches the approved mock",
               "┃                ┃                 ┃",
               "┗━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━┛"], "\n".join(art))
 
-# the checks use this fixed copy of the seeded layouts, never the real file (the TUI edits that one)
+# the checks use fixed copies of the seeded layouts and tag assignments, never the real files (the TUI edits that one)
 SEED_LAYOUTS = "# lname: Max\nmax='(\n    clients max:1\n)'\n\n# lname: Horizontal\nhorizontal='(\n    clients horizontal:0\n)'\n\n# lname: Split\nsplit='(\n    split horizontal:0.5:0\n        (clients vertical:0)\n        (clients vertical:0)\n)'\n\n# lname: 3-way right\nthree_way_r='(\n    split horizontal:0.5:1\n        (clients horizontal:0)\n        (split vertical:0.5:1\n            (clients horizontal:0) (clients horizontal:0)\n        )\n)'\n\n# lname: 3-way left\nthree_way_l='(\n    split horizontal:0.5:1\n        (split vertical:0.5:0\n            (clients horizontal:0) (clients horizontal:0)\n        )\n        (clients horizontal:0)\n)'\n\n# lname: Grid\ngrid='(\n    split horizontal:0.5:1\n        (split vertical:0.5:1\n            (clients horizontal:0) (clients horizontal:0)\n        )\n        (split vertical:0.5:0\n            (clients horizontal:0) (clients horizontal:0)\n        )\n)'\n"
 _seed_dir = tempfile.TemporaryDirectory()
 SEED_CONF = os.path.join(_seed_dir.name, "hlwm_layouts.conf")
 with open(SEED_CONF, "w") as f:
     f.write(SEED_LAYOUTS)
+SEED_TAGS = 'declare -gA TAG_LAYOUTS=()\n\nTAG_LAYOUTS["eDP-1"]="\nleft|3   max\nmiddle|1 horizontal\nright|2  max\nsplit|4  split\n3wayR|5  three_way_r\n3wayL|6  three_way_l\ngrid|7   grid\n"\n\nTAG_LAYOUTS["DP-4 eDP-1"]="\nleft|3   max\nmiddle|1 horizontal\nright|2  max\nsplit|4  split\n3wayR|5  three_way_r\n3wayL|6  three_way_l\ngrid|7   grid\n"\n'
+SEED_TAGS_CONF = os.path.join(_seed_dir.name, "hlwm_tag_layouts.conf")
+with open(SEED_TAGS_CONF, "w") as f:
+    f.write(SEED_TAGS)
+tui.HLWM_TAG_LAYOUTS = SEED_TAGS_CONF
 tui.HLWM_LAYOUTS = SEED_CONF
 defs = tui.parse_definitions(open(tui.HLWM_LAYOUTS).read())
 assigns = tui.parse_assignments(open(tui.HLWM_TAG_LAYOUTS).read())
 check("defs: six layouts with their lname", len(defs) == 6 and defs["three_way_r"][0] == "3-way right", list(defs))
 check("defs: the value is the layout string", defs["max"][1].split() == ["(", "clients", "max:1", ")"], defs["max"])
 check("defs: every value parses", all(tui.parse_tree(s) for _, s in defs.values()))
-check("assign: all three sets are read", set(assigns) == {"eDP-1", "DP-4 eDP-1", "PLACEHOLDER-3-MONITOR-KEY"}, list(assigns))
+check("assign: both connected sets are read", set(assigns) == {"eDP-1", "DP-4 eDP-1"}, list(assigns))
 check("assign: a tag maps to a variable", assigns["DP-4 eDP-1"]["3wayR|5"] == "three_way_r" and len(assigns["DP-4 eDP-1"]) == 7)
 check("assign: tags 8 and 9 have no entry", "8" not in assigns["DP-4 eDP-1"] and "9" not in assigns["DP-4 eDP-1"])
 
@@ -363,7 +368,7 @@ with tempfile.TemporaryDirectory() as tmp:
           and "split horizontal:0.5:0" in live["loaded"][0][1])
     scr.sel = 1
     keys(scr, "d")
-    check("delete says how many tag assignments use it", scr.footer()[0] == 'Delete "Max"? Used by 6 tag assignments.', scr.footer())
+    check("delete says how many tag assignments use it", scr.footer()[0] == 'Delete "Max"? Used by 4 tag assignments.', scr.footer())
     keys(scr, "ESC")
     check("Esc cancels the delete", scr.mode == "browse" and "max='" in open(conf).read())
     keys(scr, "d", "y")
