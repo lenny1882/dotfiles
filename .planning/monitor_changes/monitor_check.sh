@@ -239,6 +239,26 @@ reject "an unrelated hook runs nothing" "$TMP/hooks.log" '.'
 reject "monitor_changes.sh no longer listens for hooks" "$DIR/monitor_changes.sh" 'herbstclient --idle|handle_hooks'
 expect "monitor_changes.sh still emits monitors_changed" "$DIR/monitor_changes.sh" 'emit_hook "\$HOOK"'
 
+# ---------------------------------------------------------------- tag programs
+head_ "3b. tag_programs.sh"
+mkdir -p "$TMP/tp"
+cp "$DIR/tag_programs.sh" "$TMP/tp/"
+printf '#!/usr/bin/env bash\necho "A-1 B-2"\n' >"$TMP/tp/monitor_reconcile.sh"; chmod +x "$TMP/tp/monitor_reconcile.sh"
+cat >"$TMP/tp/hlwm_tag_layouts.conf" <<'CONF'
+declare -gA TAG_LAYOUTS=()
+TAG_LAYOUTS["A-1 B-2"]="
+left|3   max  [spotify:00 rambox:01]
+my tag   grid [vivaldi-stable:02]
+other    max  []
+bare     max
+"
+TAG_LAYOUTS["C-3"]="
+left|3   max  [spotify:05]
+"
+CONF
+got=$(bash -c 'source "$1"; for k in "${!PROG_TAG[@]}"; do echo "$k=${PROG_TAG[$k]}:${PROG_INDEX[$k]}"; done | sort' _ "$TMP/tp/tag_programs.sh")
+if [[ $got == $'rambox=left|3:01\nspotify=left|3:00\nvivaldi-stable=my tag:02' ]]; then ok "tag_programs.sh reads the connected set's programs (tag names with spaces, [] and bare lines)"; else bad "tag_programs.sh reads the connected set's programs"; echo "$got" | sed 's/^/        /'; fi
+
 # ---------------------------------------------------------------- tui
 head_ "4. monitor_tui.py (no display needed)"
 if command -v python3 >/dev/null; then

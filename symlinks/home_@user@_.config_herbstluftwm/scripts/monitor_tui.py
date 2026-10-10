@@ -346,6 +346,9 @@ def parse_definitions(text):
     return defs
 
 
+ASSIGN_LINE = re.compile(r"^(\s*)(.*?)(\s+)(\S+)(\s+\[[^\]]*\])?\s*$")
+
+
 def parse_assignments(text):
     """{set key: {tag: variable}} from hlwm_tag_layouts.conf."""
     out, lines, i = {}, text.split("\n"), 0
@@ -358,9 +361,9 @@ def parse_assignments(text):
                 body = rest.rstrip()[:-1] if closed else rest
                 body = body.strip()
                 if body:
-                    tag, _, var = body.rpartition(" ")
-                    if tag.strip():
-                        block[tag.strip()] = var
+                    m2 = ASSIGN_LINE.match(body)
+                    if m2:
+                        block[m2.group(2)] = m2.group(4)
                 if closed or i + 1 >= len(lines):
                     break
                 i += 1
@@ -714,8 +717,9 @@ def put_assignment(text, key, tag, var):
     if lines[start].strip() != head or end is None:
         raise ValueError(f"cannot read the block for {key} in hlwm_tag_layouts.conf")
     for i in range(start + 1, end):
-        if lines[i].rstrip().rpartition(" ")[0].strip() == tag:
-            lines[i] = lines[i].rstrip().rpartition(" ")[0] + " " + var
+        m = ASSIGN_LINE.match(lines[i])
+        if m and m.group(2) == tag:
+            lines[i] = m.group(1) + tag + m.group(3) + var + (m.group(5) or "")
             break
     else:
         lines.insert(end, f"{tag} {var}")

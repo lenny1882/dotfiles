@@ -662,6 +662,11 @@ if True:
         check("a block that never closes is refused", False)
     except ValueError:
         check("a block that never closes is refused", True)
+    PT = 'declare -gA TAG_LAYOUTS=()\n\nTAG_LAYOUTS["eDP-1"]="\nleft|3   max  [spotify:00 rambox:01]\nmy tag  grid []\nright|2  max\n"\n'
+    pa = tui.parse_assignments(PT)["eDP-1"]
+    check("assign: the program list is not read as the layout", pa == {"left|3": "max", "my tag": "grid", "right|2": "max"}, pa)
+    t = tui.put_assignment(PT, "eDP-1", "left|3", "grid")
+    check("an assignment keeps the program list on the tag line", "left|3   grid  [spotify:00 rambox:01]" in t, t)
     MON = '# note\nLAYOUTS["DP-4 eDP-1"]="\neDP-1 auto --primary --pos 0x0\nDP-4 1920x1080 --right-of eDP-1\n"\n# LAYOUTS["DP-4 eDP-1"]="\n# x\n# "\n'
     t = tui.put_monitor_layout(MON, "DP-4 eDP-1", ["eDP-1 2560x1600 --pos 0x0 --primary", "DP-4 1920x1080 --pos 2560x0"])
     check("the monitor entry is replaced in place; comments and commented examples stay",
