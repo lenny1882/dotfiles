@@ -162,7 +162,7 @@ assigns = tui.parse_assignments(open(tui.HLWM_TAG_LAYOUTS).read())
 check("defs: six layouts with their lname", len(defs) == 6 and defs["three_way_r"][0] == "3-way right", list(defs))
 check("defs: the value is the layout string", defs["max"][1].split() == ["(", "clients", "max:1", ")"], defs["max"])
 check("defs: every value parses", all(tui.parse_tree(s) for _, s in defs.values()))
-check("assign: both connected sets are read", set(assigns) == {"eDP-1", "DP-4 eDP-1"}, list(assigns))
+check("assign: all three sets are read", set(assigns) == {"eDP-1", "DP-4 eDP-1", "PLACEHOLDER-3-MONITOR-KEY"}, list(assigns))
 check("assign: a tag maps to a variable", assigns["DP-4 eDP-1"]["3wayR|5"] == "three_way_r" and len(assigns["DP-4 eDP-1"]) == 7)
 check("assign: tags 8 and 9 have no entry", "8" not in assigns["DP-4 eDP-1"] and "9" not in assigns["DP-4 eDP-1"])
 
@@ -363,7 +363,7 @@ with tempfile.TemporaryDirectory() as tmp:
           and "split horizontal:0.5:0" in live["loaded"][0][1])
     scr.sel = 1
     keys(scr, "d")
-    check("delete says how many tag assignments use it", scr.footer()[0] == 'Delete "Max"? Used by 4 tag assignments.', scr.footer())
+    check("delete says how many tag assignments use it", scr.footer()[0] == 'Delete "Max"? Used by 6 tag assignments.', scr.footer())
     keys(scr, "ESC")
     check("Esc cancels the delete", scr.mode == "browse" and "max='" in open(conf).read())
     keys(scr, "d", "y")
