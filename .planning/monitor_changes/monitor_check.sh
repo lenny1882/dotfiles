@@ -247,8 +247,8 @@ printf '#!/usr/bin/env bash\necho "A-1 B-2"\n' >"$TMP/tp/monitor_reconcile.sh"; 
 cat >"$TMP/tp/hlwm_tag_layouts.conf" <<'CONF'
 declare -gA TAG_LAYOUTS=()
 TAG_LAYOUTS["A-1 B-2"]="
-left|3   max  [spotify:00 rambox:01]
-my tag   grid [vivaldi-stable:02]
+left|3   max  {3} [spotify:00 rambox:01]
+my tag   grid {2} [vivaldi-stable:02]
 other    max  []
 bare     max
 "
@@ -258,6 +258,22 @@ left|3   max  [spotify:05]
 CONF
 got=$(bash -c 'source "$1"; for k in "${!PROG_TAG[@]}"; do echo "$k=${PROG_TAG[$k]}:${PROG_INDEX[$k]}"; done | sort' _ "$TMP/tp/tag_programs.sh")
 if [[ $got == $'rambox=left|3:01\nspotify=left|3:00\nvivaldi-stable=my tag:02' ]]; then ok "tag_programs.sh reads the connected set's programs (tag names with spaces, [] and bare lines)"; else bad "tag_programs.sh reads the connected set's programs"; echo "$got" | sed 's/^/        /'; fi
+
+# ---------------------------------------------------------------- tags
+head_ "3c. tags.sh"
+mkdir -p "$TMP/tg"
+cp "$DIR/tags.sh" "$TMP/tg/"
+printf '#!/usr/bin/env bash\necho "A-1"\n' >"$TMP/tg/monitor_reconcile.sh"; chmod +x "$TMP/tg/monitor_reconcile.sh"
+cat >"$TMP/tg/hlwm_tag_layouts.conf" <<'CONF'
+declare -gA TAG_LAYOUTS=()
+TAG_LAYOUTS["A-1"]="
+left    max  {3} [spotify:00]
+foo      grid
+right    max  {1}
+"
+CONF
+got=$(HLWM_TAG_LAYOUTS="$TMP/tg/hlwm_tag_layouts.conf" "$TMP/tg/tags.sh" --dry-run | tr '\n' ';')
+if [[ $got == '0 left 3;1 foo 2;2 right 1;3 4 4;4 5 5;5 6 6;6 7 7;7 8 8;8 9 9;' ]]; then ok "tags.sh names and keys the tags ({n} on the line, else position) and pads to 9"; else bad "tags.sh names and keys the tags"; echo "$got" | sed 's/^/        /'; fi
 
 # ---------------------------------------------------------------- tui
 head_ "4. monitor_tui.py (no display needed)"

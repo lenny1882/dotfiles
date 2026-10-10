@@ -32,6 +32,7 @@ done < <(grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' "$LAYOUTS_FILE" | tr -d =)
 while read -r line; do
     [[ -z $line ]] && continue
     [[ $line =~ ^(.*[^[:space:]])[[:space:]]*\[[^]]*\][[:space:]]*$ ]] && line=${BASH_REMATCH[1]}
+    [[ $line =~ ^(.*[^[:space:]])[[:space:]]*\{[1-9]\}[[:space:]]*$ ]] && line=${BASH_REMATCH[1]}
     var=${line##* }
     tag=${line% *}
     tag=${tag%"${tag##*[![:space:]]}"}

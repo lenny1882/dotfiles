@@ -346,7 +346,7 @@ def parse_definitions(text):
     return defs
 
 
-ASSIGN_LINE = re.compile(r"^(\s*)(.*?)(\s+)(\S+)(\s+\[[^\]]*\])?\s*$")
+ASSIGN_LINE = re.compile(r"^(\s*)(.*?)(\s+)(\S+)(\s+\{[1-9]\})?(\s+\[[^\]]*\])?\s*$")
 
 
 def parse_assignments(text):
@@ -719,7 +719,7 @@ def put_assignment(text, key, tag, var):
     for i in range(start + 1, end):
         m = ASSIGN_LINE.match(lines[i])
         if m and m.group(2) == tag:
-            lines[i] = m.group(1) + tag + m.group(3) + var + (m.group(5) or "")
+            lines[i] = m.group(1) + tag + m.group(3) + var + (m.group(5) or "") + (m.group(6) or "")
             break
     else:
         lines.insert(end, f"{tag} {var}")
