@@ -38,5 +38,6 @@ case $hook in
         source ~/.config/herbstluftwm/variables.autostart
         "$SCRIPT_DIR/panel.sh" "$col_active" "$col_purple"
         "$SCRIPT_DIR/background.sh"
+        "$SCRIPT_DIR/tag_layouts.sh"
         ;;
 esac
