@@ -34,7 +34,7 @@ hc unlock
 $SCRIPTS_DIR/panel.sh $col_active $col_purple &
 
 # one hook loop per session; a reload runs this file again
-if pgrep -u $UID -f '^herbstclient --idle$' >/dev/null; then
+if ! hc silent new_attr bool my_hook_loop_started; then
     exit 0
 fi
 
