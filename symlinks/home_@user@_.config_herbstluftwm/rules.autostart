@@ -19,7 +19,7 @@ hc rule --windowtype~'_NET_WM_WINDOW_TYPE_(NOTIFICATION|DOCK|DESKTOP)' --manage=
 # autostart rules: tags and indexes come from the connected monitor set (hlwm_tag_layouts.conf)
 source $SCRIPTS_DIR/tag_programs.sh
 hc rule once --instance=vivaldi-stable --tag="${PROG_TAG[vivaldi-stable]}" --index="${PROG_INDEX[vivaldi-stable]}"
-hc rule once --instance=obsidian --tag="${PROG_TAG[obsidian]}" --index="${PROG_INDEX[obsidian]}"
+hc rule once --instance=md.obsidian.obsidian --tag="${PROG_TAG[md.obsidian.obsidian]}" --index="${PROG_INDEX[md.obsidian.obsidian]}"
 hc rule once --instance=spotify --tag="${PROG_TAG[spotify]}" --index="${PROG_INDEX[spotify]}"
 hc rule --instance=rambox --tag="${PROG_TAG[rambox]}" --index="${PROG_INDEX[rambox]}" --label=rambox-startup-onetime
 # rambox doesn't stay where it should, so naming to unrule down the line
