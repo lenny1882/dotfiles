@@ -476,6 +476,7 @@ step_packages() {
 		visual-studio-code-bin \
 		vivaldi \
 		xarchiver \
+		xorg-xev \
 		yaycache \
 		yaycache-hook
 }
