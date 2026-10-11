@@ -275,6 +275,24 @@ CONF
 got=$(HLWM_TAG_LAYOUTS="$TMP/tg/hlwm_tag_layouts.conf" "$TMP/tg/tags.sh" --dry-run | tr '\n' ';')
 if [[ $got == '0 left 3;1 foo 2;2 right 1;3 4 4;4 5 5;5 6 6;6 7 7;7 8 8;8 9 9;' ]]; then ok "tags.sh names and keys the tags ({n} on the line, else position) and pads to 9"; else bad "tags.sh names and keys the tags"; echo "$got" | sed 's/^/        /'; fi
 
+# ---------------------------------------------------------------- tag layouts: none
+head_ "3d. tag_layouts.sh"
+mkdir -p "$TMP/tl"
+cp "$DIR/tag_layouts.sh" "$DIR/hlwm_layouts.conf" "$TMP/tl/"
+printf '#!/usr/bin/env bash\necho "A-1"\n' >"$TMP/tl/monitor_reconcile.sh"
+printf '#!/usr/bin/env bash\ncase $1 in silent) exit 0 ;; dump) echo "(clients vertical:0)" ;; *) exit 0 ;; esac\n' >"$TMP/tl/herbstclient"
+chmod +x "$TMP/tl/monitor_reconcile.sh" "$TMP/tl/herbstclient"
+cat >"$TMP/tl/hlwm_tag_layouts.conf" <<'CONF'
+declare -gA TAG_LAYOUTS=()
+TAG_LAYOUTS["A-1"]="
+one   max
+two   none
+three max  {3}  [x:0]
+"
+CONF
+got=$(PATH="$TMP/tl:$PATH" "$TMP/tl/tag_layouts.sh" --dry-run 2>&1 | tr '\n' ';')
+if [[ $got == 'tag_layouts: one: max;tag_layouts: three: max;' ]]; then ok "tag_layouts.sh leaves a tag whose layout is none alone, and ignores {n} and [...]"; else bad "tag_layouts.sh leaves a tag whose layout is none alone"; echo "$got" | sed 's/^/        /'; fi
+
 # ---------------------------------------------------------------- tui
 head_ "4. monitor_tui.py (no display needed)"
 if command -v python3 >/dev/null; then

@@ -214,27 +214,80 @@ with tempfile.TemporaryDirectory() as tmp:
     check("overview: every row is exactly the window width", all(len(l) == W for l in lines), {len(l) for l in lines})
     check("overview: each panel has its label in the top left of the border",
           lines[0].startswith("┌─ Layout ─") and lines[19].startswith("┌─ Monitors ─"), (lines[0][:14], lines[19][:14]))
-    check("overview: each panel is closed by a bottom border",
-          lines[18] == "└" + "─" * 98 + "┘" and lines[37] == "└" + "─" * 98 + "┘")
-    role_of = lambda rs, i: {r for t, r in rs[i]}
-    check("selection: the first panel's border is selected, the second's is not",
+    box = "└" + "─" * 57 + "┘"; tbox = "└" + "─" * 38 + "┘"
+    check("overview: each left panel is closed by a bottom border", lines[18][:59] == box and lines[37][:59] == box)
+    def roles_in(rs, i, lo, hi):
+        out, x = set(), 0
+        for t, r in rs[i]:
+            if x >= lo and x + len(t) <= hi:
+                out.add(r)
+            x += len(t)
+        return out
+    role_of = lambda rs, i: roles_in(rs, i, 0, 59)
+    tag_role = lambda rs, i: roles_in(rs, i, 60, 100)
+    check("selection: the first panel's border is selected, the second's and the tags' are not",
           all(role_of(rows, i) <= {"border_sel", "text", "art"} for i in range(0, 19)) and "border_sel" in role_of(rows, 0)
-          and all("border_sel" not in role_of(rows, i) for i in range(19, 38)))
+          and all("border_sel" not in role_of(rows, i) for i in range(19, 38))
+          and all("border_sel" not in tag_role(rows, i) for i in range(0, 38)))
     rows1, _ = tui.render_overview(data, 1, W, H)
     check("selection: moving it swaps which border is green",
           "border_sel" in role_of(rows1, 19) and all("border_sel" not in role_of(rows1, i) for i in range(0, 19)))
+    rows2, _ = tui.render_overview(data, 2, W, H)
+    check("selection: the tags panel can be selected, and then neither left panel is",
+          "border_sel" in tag_role(rows2, 0) and all("border_sel" not in role_of(rows2, i) for i in range(0, 38)))
     check("selection: the label on the top line is plain, only the lines around it are coloured",
           [(t, r) for t, r in rows[0]][:2] == [("┌─", "border_sel"), (" Layout ", "text")] and rows[0][2][1] == "border_sel"
           and [(t, r) for t, r in rows1[19]][:2] == [("┌─", "border_sel"), (" Monitors ", "text")])
     check("selection: only the border changes, the content stays plain",
-          {r for row in rows for t, r in row if t.strip(" ") and t[0] not in "┌│└─┐┘"} <= {"text", "art"})
+          {r for row in rows for t, r in row if t.strip(" ") and t[0] not in "┌│└─┐┘"} <= {"text", "art", "green", "name", "italic"})
     check("overview: tag and layout lines", any("Tag      3wayR|5" in l for l in lines) and any("Layout   3-way right" in l for l in lines))
     check("overview: the frame drawing is inside the first panel",
           [l[1 + tui.PAD: 1 + tui.PAD + 36] for l in lines[4 + tui.PAD_V: 13 + tui.PAD_V]] == tui.draw_tree(tui.parse_tree(D_3WAYR), 36, 9))
     check("overview: the monitors and their details are inside the second panel",
-          any(l.startswith("│" + " " * tui.PAD + "┏" + "━" * 30 + "┓┏") for l in lines[19:]) and any("1*  eDP-1   2560x1600  +0+0" in l for l in lines[19:]))
+          any(l.startswith("│" + " " * tui.PAD + "┏") and "┓┏" in l[:59] for l in lines[19:]) and any("1*  eDP-1   2560x1600  +0+0" in l[:59] for l in lines[19:]))
     check("overview: footer is a page title and the key hints",
-          footer == ("Overview", "↑/↓ select   Enter open   ← back   q quit"), footer)
+          footer == ("Overview", "↑/↓ select   ←/→ column   Enter open   q quit"), footer)
+
+    check("columns: one blank column separates the left panels from the tags panel",
+          all(l[59] == " " for l in lines) and lines[0][60] == "┌" and lines[0][58] == "┐")
+    check("columns: the tags panel is 40% of the width, a one-column gap, the left column the rest",
+          [text(tui.render_overview(data, 0, w_, 40)[0])[0].index("┐") + 1 for w_ in (100, 101, 140)] == [59, 60, 83])
+    check("tags: the panel is called Tags and runs the full height above the footer",
+          lines[0][60:].startswith("┌─ Tags ─") and lines[37][60:] == tbox)
+    tl = [l[61:99].split() for l in lines]
+    check("tags: one row per tag with its key, name and layout name",
+          tl[2][:3] == ["1", "left|3", "Max"] and tl[3] == [] and tl[4][:3] == ["2", "middle|1", "Horizontal"], tl[2:5])
+    check("tags: tags 8 and 9 are padded as unassigned", ["8", "8", "unassigned"] in tl and ["9", "9", "unassigned"] in tl)
+    TB = tui.parse_tag_blocks('TAG_LAYOUTS["S"]="\nleft|3   max  {3}  [spotify:00 rambox:01]\nmy tag grid\n"\n')
+    check("tags: blocks parse in file order with the key and programs",
+          TB == {"S": [("left|3", "max", "3", [("spotify", "00"), ("rambox", "01")]), ("my tag", "grid", "", [])]}, TB)
+    TR = tui.tag_rows("S", TB, {"max": ("Max", ""), "grid": ("", "")})
+    check("tags: rows take the key from {n} else the position, the lname else the variable, and pad to nine",
+          len(TR) == 9 and TR[0] == ("3", "left|3", "Max", [("spotify", "00"), ("rambox", "01")]) and TR[1] == ("2", "my tag", "grid", [])
+          and TR[2] == ("3", "3", "unassigned", []) and TR[8][1] == "9", TR)
+    check("tags: a set with no block is nine unassigned tags named 1-9",
+          [r[1:3] for r in tui.tag_rows("X", TB, {})] == [(str(n), "unassigned") for n in range(1, 10)])
+    check("tags: an unknown layout variable is reported", tui.tag_rows("S", TB, {})[0][2] == "unknown layout 'max'")
+    d2 = tui.Overview()
+    d2.tags = [("1", "primary|1", "Split - Max", [("md.obsidian.obsidian", "11")]), ("2", "a", "A very long layout name indeed", [])]
+    joined = lambda cs: ["".join(t for t, _ in l) for l in cs]
+    c = joined(tui.tags_content(d2, 24, 20))
+    check("tags: programs sit indented under their tag with the index after them",
+          joined(tui.tags_content(d2, 40, 20))[1] == "     md.obsidian.obsidian  11", joined(tui.tags_content(d2, 40, 20)))
+    check("tags: every line is cut to the width with an ellipsis, never longer",
+          all(len(l) <= 24 for l in c) and c[1].endswith("…") and c[3].endswith("…"), c)
+    check("tags: too many lines are cut with a final ellipsis",
+          joined(tui.tags_content(d2, 40, 2)) == ["1  primary|1  Split - Max", "…"], joined(tui.tags_content(d2, 40, 2)))
+    row = tui.tags_content(d2, 60, 20)
+    check("tags: the program lines use the footer's description colour",
+          tui.tags_content(d2, 40, 20)[1][0][1] == "dim")
+    check("tags: the key is green, the tag name bold, the layout name plain",
+          row[0][0] == ("1", "green") and row[0][2] == ("primary|1", "name") and row[0][-1] == ("Split - Max", "text"), row[0])
+    d2.tags[1] = ("2", "a", "unassigned", [])
+    check("tags: custom and unassigned layout names are italic",
+          tui.tags_content(d2, 60, 20)[3][-1] == ("unassigned", "italic") and tui.tags_content(d2, 60, 20)[0][-1][1] == "text")
+    check("overview: every row fills the window at odd and even widths",
+          all(all(len(l) == ww for l in text(tui.render_overview(data, 0, ww, 30)[0])) for ww in (66, 67, 80, 101, 140)))
 
     for hh, ww in ((20, 100), (14, 70), (8, 56), (60, 160)):
         r, _ = tui.render_overview(data, 0, ww, hh)
@@ -253,7 +306,8 @@ with tempfile.TemporaryDirectory() as tmp:
         def addstr(self, y, x, s, attr=0): self.writes.append((y, x, s, attr))
     cp = lambda n: n << 8
     tui.curses.color_pair = cp
-    tui.ATTR.update(label=cp(1) | tui.curses.A_BOLD, key=tui.curses.A_BOLD, dim=cp(2), border_sel=cp(1), border=0, text=0)
+    tui.ATTR.update(label=cp(1) | tui.curses.A_BOLD, key=tui.curses.A_BOLD, dim=cp(2), border_sel=cp(1), border=0, text=0,
+                   green=cp(1), hilite=cp(4), name=tui.curses.A_BOLD, italic=tui.curses.A_ITALIC)
     win = FakeWin(40, 140)
     rows, footer = tui.render_overview(data, 0, 140, 40)
     tui.paint(win, rows, footer)
@@ -265,8 +319,14 @@ with tempfile.TemporaryDirectory() as tmp:
     check("paint: the label text is drawn plain, not green", label_attr == 0, label_attr)
     check("paint: the panel content is drawn plain",
           all(a == 0 for y, x, t, a in w_ if y < 38 and "Tag " in t))
-    check("paint: only the two border colours are used above the rule",
-          {a for y, x, t, a in w_ if y < 38} == {0, cp(1)}, {a for y, x, t, a in w_ if y < 38})
+    check("paint: above the rule only green, bold and italic are used besides plain",
+          {a for y, x, t, a in w_ if y < 38} == {0, cp(1), tui.curses.A_BOLD, tui.curses.A_ITALIC}, {a for y, x, t, a in w_ if y < 38})
+    tag_first = next((t, a) for y, x, t, a in w_ if y == 2 and x >= 84 and t == "1")
+    tag_name = next((t, a) for y, x, t, a in w_ if y == 2 and x >= 84 and t == "left|3")
+    check("paint: a tag's key is drawn green and its name bold",
+          tag_first == ("1", cp(1)) and tag_name[1] == tui.curses.A_BOLD, (tag_first, tag_name))
+    check("paint: an unassigned layout name is drawn italic",
+          any(t == "unassigned" and a == tui.curses.A_ITALIC for y, x, t, a in w_))
     check("paint: a rule across the whole window sits directly above the footer, in bold green",
           [(y, x, len(t), a) for y, x, t, a in w_ if t == "─" * 140] == [(38, 0, 140, cp(1) | tui.curses.A_BOLD)])
     foot = [(y, x, t, a) for y, x, t, a in w_ if y == 39]
@@ -278,8 +338,16 @@ with tempfile.TemporaryDirectory() as tmp:
           min(x for _, x, _, a in foot[1:]) == 140 - 1 - len(hints) and max(x + len(t) for _, x, t, _ in foot) == 139,
           (min(x for _, x, _, a in foot[1:]), max(x + len(t) for _, x, t, _ in foot)))
     check("paint: footer keys are bold, descriptions grey",
-          [t for _, _, t, a in foot if a == tui.curses.A_BOLD] == ["↑/↓", "Enter", "←", "q"]
-          and [t for _, _, t, a in foot if a == cp(2)] == [" select", " open", " back", " quit"])
+          [t for _, _, t, a in foot if a == tui.curses.A_BOLD] == ["↑/↓", "←/→", "Enter", "q"]
+          and [t for _, _, t, a in foot if a == cp(2)] == [" select", " column", " open", " quit"])
+    import copy
+    dp = copy.copy(data)
+    dp.tags = [("1", "t", "Max", [("spotify", "0")])] + data.tags[1:]
+    wp = FakeWin(40, 140)
+    rp, fp = tui.render_overview(dp, 0, 140, 40)
+    tui.paint(wp, rp, fp)
+    check("paint: the autostart program lines are drawn in the footer description grey",
+          [a for y, x, t, a in wp.writes if "spotify" in t] == [cp(2)], [(t, a) for y, x, t, a in wp.writes if "spotify" in t])
     small = FakeWin(5, 140)
     tui.paint_too_small(small, 5, 140, footer)
     check("paint: a window too small says what it needs, in a message that fits",
@@ -720,6 +788,202 @@ if True:
     check("curses' own shifted keys are named", tui.norm_key(tui.curses.KEY_SLEFT) == "SHIFT_LEFT" and tui.norm_key(tui.curses.KEY_SR) == "SHIFT_UP")
     check("layout_lines carries a chosen rate only for that output",
           "--rate" not in "".join(model(DOCKED).layout_lines()))
+
+print("\nTags screen")
+
+TAGS3 = ('declare -gA TAG_LAYOUTS=()\n\nTAG_LAYOUTS["DP-4 eDP-1"]="\nleft|3   max         {3}  [spotify:0 rambox:0]\n'
+         'middle|1 horizontal  {1}\nright|2  max         {2}  [vivaldi-stable:1]\nsplit    split\n"\n\nTAG_LAYOUTS["eDP-1"]="\nonly max\n"\n')
+RULES3 = ('hc rule --focus=on\n\n# autostart rules\nhc rule once --instance=vivaldi-stable --tag="x"\nhc rule once --instance=spotify --tag="x"\n'
+          'hc rule --instance=rambox --tag="x" --label=r\n# note\n\n# floating\nhc rule --instance=pavucontrol --floating=on\n')
+check("rules: the instances come from the autostart block only, in file order",
+      tui.parse_rule_instances(RULES3) == ["vivaldi-stable", "spotify", "rambox"], tui.parse_rule_instances(RULES3))
+rws = tui.build_rows(tui.parse_tag_blocks(TAGS3)["DP-4 eDP-1"])
+check("rows: always nine; the lines first, keyed by {n} or position, then none-tags named by position",
+      len(rws) == 9 and [r["var"] for r in rws] == ["max", "horizontal", "max", "split"] + ["none"] * 5
+      and [r["key"] for r in rws] == [3, 1, 2, 4, 5, 6, 7, 8, 9] and [r["tag"] for r in rws][4:] == ["5", "6", "7", "8", "9"], rws)
+check("block: {n} is written only where the key differs from the position, programs in brackets",
+      tui.block_lines(rws) == ["left|3    max         {3}  [spotify:0 rambox:0]", "middle|1  horizontal  {1}",
+                              "right|2   max         {2}  [vivaldi-stable:1]", "split     split",
+                              "5         none", "6         none", "7         none", "8         none", "9         none"], tui.block_lines(rws))
+rt = tui.put_tag_block(TAGS3, "DP-4 eDP-1", rws)
+check("block: rewriting an unchanged set parses back to the same rows, the other set is untouched",
+      tui.build_rows(tui.parse_tag_blocks(rt)["DP-4 eDP-1"]) == rws and 'TAG_LAYOUTS["eDP-1"]="\nonly max\n"' in rt, rt)
+check("block: a set with no block gets a new one",
+      tui.put_tag_block(TAGS3, "X", rws[:1]).rstrip().endswith('TAG_LAYOUTS["X"]="\nleft|3  max  {3}  [spotify:0 rambox:0]\n"'))
+
+with tempfile.TemporaryDirectory() as tmp:
+    tfile, rfile = os.path.join(tmp, "tags.conf"), os.path.join(tmp, "rules.autostart")
+    open(tfile, "w").write(TAGS3); open(rfile, "w").write(RULES3)
+    tui.HLWM_TAG_LAYOUTS, tui.RULES_FILE, tui.HLWM_LAYOUTS = tfile, rfile, SEED_CONF
+    tui.load_model = lambda: model(DOCKED)
+    ts = tui.TagsScreen()
+    saved = lambda: tui.build_rows(tui.parse_tag_blocks(open(tfile).read())["DP-4 eDP-1"])
+    send = lambda *ks: [ts.handle(k) for k in ks]
+    typed = lambda text: setattr(ts, "editor", tui.Editor(text))
+
+    check("tags: Esc goes back and q quits", (ts.handle("ESC"), ts.handle("q")) == ("back", "quit"))
+    send("DOWN", "DOWN", "UP")
+    check("tags: up and down move the selection and stop at the ends",
+          ts.sel == 1 and (send(*["UP"] * 5), ts.sel)[1] == 0 and (send(*["DOWN"] * 20), ts.sel)[1] == 8)
+    send(*["UP"] * 20)
+
+    send("k")
+    check("key: k opens an input for the tag's key", ts.mode == "key" and ts.footer()[0] == "Key of left|3", ts.footer())
+    typed("0"); send("CTRL_S")
+    check("key: 0 is refused and the input stays open", ts.mode == "key" and "1 to 9" in ts.message, ts.message)
+    typed("8"); send("CTRL_S")
+    check("key: a key held by an unassigned tag swaps with it like any other",
+          ts.mode == "confirm" and ts.footer()[0].startswith("Key of left|3: 3 to 8, 8 gets 3."), ts.footer())
+    send("n", "k"); typed("1"); send("CTRL_S")
+    check("key: Ctrl-S asks before persisting and names the swap",
+          ts.mode == "confirm" and ts.footer() == ("Key of left|3: 3 to 1, middle|1 gets 3. Persist to hlwm_tag_layouts.conf?", "y yes   n no"), ts.footer())
+    send("n")
+    check("key: n leaves the file alone", open(tfile).read() == TAGS3 and ts.mode == "browse")
+    send("k"); typed("1"); send("CTRL_S", "y")
+    got = saved()
+    check("key: y writes it, and the other tag takes the old key",
+          [r["key"] for r in got[:4]] == [1, 3, 2, 4] and ts.message == "saved", [r["key"] for r in got])
+    check("key: the file now carries {3} on the swapped tag only", "middle|1" in open(tfile).read() and open(tfile).read().count("{") == 2, open(tfile).read())
+    check("key: keys stay one each", sorted(r["key"] for r in ts.rows) == list(range(1, 10)))
+
+    send("DOWN", "n")
+    check("name: n opens the name input prefilled", ts.mode == "name" and ts.editor.text() == "middle|1")
+    typed("a$b"); send("CTRL_S")
+    check("name: a name with $ is refused", ts.mode == "name" and "cannot" in ts.message, ts.message)
+    typed("middle"); send("CTRL_S", "y")
+    check("name: y writes the new name (the key is unchanged, names need not be unique)",
+          saved()[1]["tag"] == "middle" and saved()[1]["key"] == 3, saved()[1])
+    send("n"); typed("middle"); send("CTRL_S")
+    check("name: an unchanged name says so and closes", ts.mode == "browse" and ts.message == "no change", ts.message)
+
+    send("l")
+    check("layout: l opens the list on the current layout (None is the first entry)", ts.mode == "layout" and ts.lay_sel == list(ts.defs).index("horizontal") + 1, ts.lay_sel)
+    send("DOWN", "ENTER")
+    check("layout: Enter chooses it and asks before persisting",
+          ts.mode == "confirm" and ts.footer()[0] == 'Layout of middle: "Split". Persist to hlwm_tag_layouts.conf?', ts.footer())
+    send("y")
+    check("layout: y writes it", saved()[1]["var"] == "split")
+
+    ts.sel = 5
+    send("l")
+    check("layout: the list starts with None, and a tag with no layout sits on it",
+          ts.mode == "layout" and ts.lay_sel == 0, ts.lay_sel)
+    send("DOWN", "DOWN", "ENTER")
+    check("none-tags: a tag with no line yet can be given a layout like any other (its place is its position)",
+          ts.footer()[0] == 'Layout of 6: "Horizontal". Persist to hlwm_tag_layouts.conf?', ts.footer())
+    send("y")
+    check("none-tags: the file now has all nine lines, and the layout is on the sixth",
+          len(tui.parse_tag_blocks(open(tfile).read())["DP-4 eDP-1"]) == 9 and saved()[5]["var"] == "horizontal" and saved()[4]["var"] == "none")
+    ts.sel = 4
+    send("n")
+    check("none-tags: the name of an unassigned tag can be edited directly", ts.mode == "name" and ts.editor.text() == "5", ts.mode)
+    typed("five"); send("CTRL_S", "y")
+    check("none-tags: and it stays unassigned", saved()[4]["tag"] == "five" and saved()[4]["var"] == "none")
+    ts.sel = 3
+    send("l")
+    send("HOME", "ENTER")
+    check("layout: choosing None asks, and means unassigned",
+          ts.footer()[0] == "Layout of split: unassigned. Persist to hlwm_tag_layouts.conf?", ts.footer())
+    send("y")
+    check("layout: None writes the none variable", saved()[3]["var"] == "none" and "none" in open(tfile).read())
+    ts.sel = 3
+    send("l", "HOME", "ENTER")
+    check("layout: choosing what is already set says so", ts.mode == "browse" and ts.message == "no change", ts.message)
+
+    ts.sel = 0
+    send("r")
+    ov = {e["inst"]: e for e in ts.ov}
+    check("rules: r opens the list of every instance, ticked where they sit on this tag",
+          ts.mode == "rules" and [e["inst"] for e in ts.ov] == ["vivaldi-stable", "spotify", "rambox"]
+          and [e["on"] for e in ts.ov] == [False, True, True] and ov["vivaldi-stable"]["other"] == "right|2", ts.ov)
+    send(" ")
+    check("rules: ticking one that sits on another tag asks to move it",
+          ts.mode == "move" and ts.footer() == ("Move vivaldi-stable from right|2 to left|3?", "y yes   n no"), ts.footer())
+    send("n")
+    check("rules: n leaves it unticked", ts.mode == "rules" and not ts.ov[0]["on"])
+    send(" ", "y")
+    check("rules: y ticks it, keeping its index", ts.mode == "rules" and ts.ov[0]["on"] and ts.ov[0]["idx"] == "1", ts.ov[0])
+    send("1", "0", "BACKSPACE", "2", "DOWN", " ")
+    check("rules: 0 and 1 edit the index, any other digit is ignored, Backspace deletes, Space unticks",
+          ts.ov[0]["idx"] == "11" and not ts.ov[1]["on"], (ts.ov[0]["idx"], ts.ov[1]["on"]))
+    send("CTRL_S")
+    check("rules: Ctrl-S asks, naming the add, the move and the one left without a tag",
+          ts.mode == "confirm" and "+vivaldi-stable from right|2" in ts.footer()[0] and "-spotify (no tag left)" in ts.footer()[0]
+          and ts.footer()[0].endswith("Persist to hlwm_tag_layouts.conf?"), ts.footer())
+    send("y")
+    got = saved()
+    check("rules: y writes them, taking the moved one off its old tag",
+          got[0]["progs"] == [["vivaldi-stable", "11"], ["rambox", "0"]] and got[2]["progs"] == [], [r["progs"] for r in got[:3]])
+    send("r", "CTRL_S")
+    check("rules: nothing changed says so", ts.mode == "browse" and ts.message == "no change", ts.message)
+    send("r", "ESC")
+    check("rules: Esc discards", ts.mode == "browse" and ts.work is None)
+
+    for mode_keys in ((), ("k",), ("n",), ("l",), ("r",), ("r", " ")):
+        ts.mode, ts.work = "browse", None
+        ts.sel = 0
+        send(*mode_keys)
+        for w_, h_ in ((100, 24), (72, 12), (140, 40)):
+            rws_, foot_, cur_ = ts.render(w_, h_)
+            check(f"render: {mode_keys or 'table'} at {w_}x{h_} fills the rows above the footer and nothing is wider than the window",
+                  len(rws_) == h_ - 2 and all(sum(len(t) for t, _ in r) <= w_ for r in rws_) and isinstance(foot_, tuple), (len(rws_), h_))
+    ts.mode, ts.work = "browse", None
+    import re as _re
+    words = lambda l: l.split()
+    tp = tui.TOP_PAD
+    trows = ts.render(100, 24)[0]
+    check("table: blank rows above the header match the left margin's distance (two columns to a row)",
+          tp >= 1 and all(not r for r in trows[:tp]) and trows[tp], trows[:tp + 1])
+    trows = trows[tp:]
+    tbl = ["".join(t for t, _ in r) for r in trows]
+    check("table: a header row of four columns, then a dashed green line under it, as long as the table needs",
+          words(tbl[0]) == ["Key", "Name", "Layout", "Rules"] and 40 < len(tbl[1].strip()) < 100
+          and {role for _, role in trows[1]} <= {"text", "green"}, tbl[:2])
+    check("table: the dashed line is one column on and one off",
+          _re.fullmatch(r"(─ )*─? *", tbl[1].strip()) is not None and tui.HDASH == "─ ", tbl[1])
+    check("table: there are no vertical dividers", not any("╵" in l or "│" in l for l in tbl[:12]), tbl[:4])
+    check("table: a tag per line, its further rules on their own lines in the Rules column",
+          words(tbl[2]) == ["1", "left|3", "Max", "vivaldi-stable", "11"] and words(tbl[3]) == ["rambox", "0"], tbl[2:4])
+    check("table: the key is plain text, not green",
+          [role for t, role in trows[4] if t.strip() == "3"] == ["text"], trows[4])
+    check("table: the unattached rules are listed under the table",
+          tbl[-2].strip() == "Unattached rules" or "Unattached rules" in "".join(tbl[-3:]), tbl[-4:])
+    ts.rows[0]["progs"] = []
+    tbl2 = ["".join(t for t, _ in r) for r in ts.render(100, 24)[0][tp:]]
+    check("table: a rule with no tag in the set appears there",
+          any(l.strip() == "Unattached rules" for l in tbl2) and any(l.strip() == "rambox" for l in tbl2[-4:]), tbl2[-4:])
+    trall = ts.render(110, 40)[0][tp:]
+    tall = ["".join(t for t, _ in r) for r in trall]
+    check("table: with room, half a line of highlight shows above and below the selected tag, in the padding lines",
+          tall[2] == "▄" * 110 and "left|3" in tall[3] and tall[4] == "▀" * 110 and {r for _, r in trall[2]} == {"green"}, tall[2:5])
+    check("table: the padding between tags is one line, shared, with the next tag straight after it",
+          "middle" in tall[5] and words(tall[6]) == [] and "right|2" in tall[7], tall[4:8])
+    check("table: without room the padding goes and the tags are on consecutive lines",
+          "left|3" in tbl2[2] and "middle" in tbl2[3] and not any(l.startswith(("▄", "▀")) for l in tbl2), tbl2[:5])
+    wide = ["".join(t for t, _ in r) for r in ts.render(160, 40)[0][tp:]]
+    check("table: it is sized by its columns, not stretched to the window", len(wide[1].rstrip()) < 110 and len(wide[1].rstrip()) == len(tall[1].rstrip()), len(wide[1].rstrip()))
+    ts.rows[0]["progs"] = [["a", "0"], ["b", "1"]]
+    r0 = ts.render(110, 40)[0][tp:]
+    hl = [r for r in r0 if r and all(role == "hilite" for _, role in r)]
+    caps = [r for r in r0 if r and r[0][0][:1] in "▄▀"]
+    check("table: the selected tag's own lines are highlighted across the whole width, with a half-line band each side",
+          len(hl) == 2 and all(sum(len(t) for t, _ in r) == 110 for r in hl) and len(caps) == 2, (len(hl), len(caps)))
+    ts.sel = 1
+    r1 = ts.render(110, 40)[0][tp:]
+    check("table: the padding shared with the tag above gives this tag its top band",
+          len([r for r in r1 if r and all(role == "hilite" for _, role in r)]) == 1 and len([r for r in r1 if r and r[0][0][:1] in "▄▀"]) == 2)
+    ts.sel = 8
+    shown = ts.render(110, 14)[0]
+    short = ["".join(t for t, _ in r) for r in shown]
+    ts.sel = 8
+    short = ["".join(t for t, _ in r) for r in ts.render(110, 14)[0]]
+    shown = ts.render(110, 14)[0]
+    check("table: the selected tag stays in view when it has to scroll",
+          any(r and all(role == "hilite" for _, role in r) for r in shown), short)
+    ts.sel = 0
+    tui.load_model = lambda: tui.Model([])
+    ts2 = tui.TagsScreen(); ts2.handle("k")
+    check("tags: with no monitors an edit says there is nothing to save it for", ts2.mode == "browse" and ts2.message == "no monitors to save it for", ts2.message)
 
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

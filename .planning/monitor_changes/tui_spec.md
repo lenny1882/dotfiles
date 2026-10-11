@@ -24,10 +24,20 @@ Two things, nothing else:
 - Copy the *styling* of the quickstart (`setup/quickstart_arch.sh`), not its layout limits (e.g. its 92
   column box width is not a rule for the TUI).
 
-## Overview screen (built)
+## Overview screen (built; two columns, 2026-10-11)
 
-Two bordered panels stacked, btm-style. Up/Down select a panel, Enter opens its screen, Left goes back
-a screen, `q` quits from any screen.
+Two columns. The left column is the Layout panel over the Monitors panel, each half the height above the footer, as
+before; the right column is one **Tags** panel the full height. The Tags panel is 40% of the width (`width * 40 // 100`), then a one-column gap (`GAP_X`), and the left column gets the rest.
+Up/Down switch between Layout and Monitors, Right moves to Tags, Left moves back to the panel last selected, Enter opens
+the Layout, Monitors or Tags screen, `q` quits. Esc is "back" on the other screens and does
+nothing here. The Tags panel is selectable (green border) but has no row selection yet.
+
+- **Tags panel:** read from the connected set's block in `hlwm_tag_layouts.conf`, not from live state. One row per tag, nine
+  in all, padded as `tags.sh` does (`1..9`, `unassigned`): `<key>  <tag name>  <layout name>`, the key being the line's `{n}`
+  or its position, the layout name the `# lname:` of the assigned layout. Programs from the line's `[instance:index]` sit
+  underneath, indented, as `<instance>  <index>` (a blank line separates the tags when there is room), the index shown raw, the whole line in the footer's description grey (xterm 248). The key is green, the tag name bold, and the layout name italic when it is `custom` or `unassigned` (`custom` cannot appear here while the panel reads the conf). Every line is cut to the panel's width with a
+  trailing `…`, and too many lines end in a lone `…` row, so nothing wraps or spills.
+- Not yet: flagging a tag whose live layout has drifted.
 
 - **Borders:** the panel's own lines are white (the terminal default). The selected panel's *border lines
   only* are green; the label text on the top line and everything inside stay plain.
@@ -51,7 +61,7 @@ a screen, `q` quits from any screen.
   quickstart's `hr`; no width cap).
 - **Footer (last row):** the page title on the left (`Overview`, or `Layout` / `Monitors` on their
   screens), bold, the same green; the key hints on the right, ending one column short of the edge (the
-  last cell of the last row cannot be written): `↑/↓ select   Enter open   ← back   q quit`. Keys bold in
+  last cell of the last row cannot be written): `↑/↓ select   ←/→ column   Enter open   q quit`. Keys bold in
   the default colour, descriptions grey (xterm 248), three spaces between items. Nothing joins the title
   to the hints. This follows the quickstart's menu hint line (`C_PKG` keys, `C_DIM` descriptions).
 - **Too small:** each screen has a minimum size and shows `too small: need WxH` below it: the overview 12 rows
@@ -67,6 +77,44 @@ a screen, `q` quits from any screen.
 that sets what a keybinding session lacks (a UTF-8 locale for the box characters) and runs the TUI.
 `hc reload` is needed for a changed keybinding to load. `MONITOR_TUI_DRY=1` makes applies dry runs.
 `monitor_tui.py --print [WIDTH [HEIGHT]]` prints the overview as plain text (testing aid).
+
+## Tags screen (built, not yet seen live; 2026-10-11)
+
+Enter on the overview's Tags panel. A borderless table of the connected set's nine tags: `Key (k)`, `Name (n)`, `Layout (l)`,
+`Rules (r)`; a tag's rules each get their own line in the Rules column. Up/Down select, the letter edits that cell, Esc goes
+back, `q` quits.
+
+- **Look:** each column is its widest content (at least 5, 14, 20 and 24 wide) plus 3 columns of padding either side (less when the
+  window is narrow), so the table is as wide as its columns need and is not stretched to the window. The key is plain text, the name
+  bold, `unassigned` italic, the rules the footer's description grey.
+- **Dashes:** only a green dashed line under the header, `─ ` (one column on, one off). There are no vertical dividers between the
+  columns. (`┄`/`┆`, `│` on 2 rows and off 1, and 1 and 1 were tried; then the hairline `╵`; all removed with the dividers, as a
+  hairline cannot share a cell with the half-block bands below.)
+- **Top padding:** screen padding, not part of the table: `render()` puts `TOP_PAD` (1) blank rows above it and gives the table the rest, so
+  the table's own rows, scrolling and bands never include it. 1 row to the margin's 2 columns is the panels' convention. Dropped when
+  the window is too short to spare it.
+- **Row padding and selection:** a terminal can only space rows by whole lines, so the one blank line between two tags is shared
+  padding. The selected tag is highlighted, white on the selection green, across the full window width, on its own lines; in the
+  shared padding line above it a lower-half block (`▄`) and below it an upper-half block (`▀`) in the same green extend the
+  highlight by half a line each side. There is no marker. With too little room the padding lines, and so the bands, go.
+
+- **Persist:** every edit ends with Ctrl-S (the list in `l`: Enter) and then a `y/n` naming the change and
+  "Persist to hlwm_tag_layouts.conf?". Only that file is written; names and keys reach herbstluftwm at the next login or dock
+  (`tags.sh`), rules at the next login. The block of the set is rewritten in a fixed format (`tag  layout  {n}  [instance:index]`,
+  columns aligned, `{n}` only where the key differs from the position), so hand-set spacing inside the block is not kept.
+- **Key (`k`):** a digit 1-9. The tag that has it takes this tag's old key, so each key stays used once. A key held by an unassigned tag
+  swaps with it like any other.
+- **Name (`n`):** any text without `"`, `$`, `` ` `` or `\` (the block is a bash double-quoted string). Names need not be unique.
+- **Layout (`l`):** an overlay list of the saved layouts, with `None` first. `None` writes the layout variable `none` and shows as
+  `unassigned`; `tag_layouts.sh` leaves such a tag alone (no auto-load) and `none` is never used as a layout's variable name.
+- **Always nine tags, all editable:** a tag's place is its line, so the screen always writes nine lines. A tag with no line in the
+  file is a `none` tag named by its position; it is edited like any other, and saving writes its line.
+- **Rules (`r`):** an overlay, the same list for every tag: ticked `[x]`, instance (read-only, from the `hc rule ...
+  --instance=` lines in the `# autostart rules` block of `rules.autostart`, which is `RULES_AUTOSTART` or `../rules.autostart`),
+  and index. A row ticked elsewhere reads `on <tag>`. Under the table, a list of **Unattached rules**: instances in
+  `rules.autostart` that no tag in this set has. Space ticks, `0` and `1` type the index (a frame path: `0` first subtree, `1` second, per the man page's FRAME INDEX; `2`-`9` mean nothing there), Backspace deletes. Ticking one that
+  is on another tag asks `Move X from A to B?`. Ctrl-S's confirmation lists what was added, moved and left without a tag.
+- An edit works on a copy of the rows and is only kept (and written) on `y`.
 
 ## Layout feature
 

@@ -17,6 +17,8 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 RECONCILE = os.path.join(SCRIPT_DIR, "monitor_reconcile.sh")
 LAYOUTS_CONF = os.environ.get("LAYOUTS_CONF", os.path.join(SCRIPT_DIR, "monitor_layouts.conf"))
 HLWM_LAYOUTS = os.environ.get("HLWM_LAYOUTS", os.path.join(SCRIPT_DIR, "hlwm_layouts.conf"))
+NONE = "none"     # the layout variable that means a tag has no layout assigned
+RULES_FILE = os.environ.get("RULES_AUTOSTART", os.path.join(SCRIPT_DIR, "..", "rules.autostart"))
 HLWM_TAG_LAYOUTS = os.environ.get("HLWM_TAG_LAYOUTS", os.path.join(SCRIPT_DIR, "hlwm_tag_layouts.conf"))
 HC = os.environ.get("HERBSTCLIENT", "herbstclient")
 DRY = bool(os.environ.get("MONITOR_TUI_DRY"))
@@ -349,13 +351,13 @@ def parse_definitions(text):
 ASSIGN_LINE = re.compile(r"^(\s*)(.*?)(\s+)(\S+)(\s+\{[1-9]\})?(\s+\[[^\]]*\])?\s*$")
 
 
-def parse_assignments(text):
-    """{set key: {tag: variable}} from hlwm_tag_layouts.conf."""
+def parse_tag_blocks(text):
+    """{set key: [(tag, variable, key or "", [(instance, index)])]} from hlwm_tag_layouts.conf, in file order."""
     out, lines, i = {}, text.split("\n"), 0
     while i < len(lines):
         m = re.match(r'^TAG_LAYOUTS\["(.*)"\]="(.*)$', lines[i])
         if m:
-            block, rest = {}, m.group(2)
+            block, rest = [], m.group(2)
             while True:
                 closed = rest.rstrip().endswith('"')
                 body = rest.rstrip()[:-1] if closed else rest
@@ -363,7 +365,9 @@ def parse_assignments(text):
                 if body:
                     m2 = ASSIGN_LINE.match(body)
                     if m2:
-                        block[m2.group(2)] = m2.group(4)
+                        progs = (m2.group(6) or "").strip()[1:-1].split()
+                        block.append((m2.group(2), m2.group(4), (m2.group(5) or "").strip()[1:-1],
+                                      [tuple(p.rpartition(":")[::2]) for p in progs]))
                 if closed or i + 1 >= len(lines):
                     break
                 i += 1
@@ -371,6 +375,11 @@ def parse_assignments(text):
             out[m.group(1)] = block
         i += 1
     return out
+
+
+def parse_assignments(text):
+    """{set key: {tag: variable}} from hlwm_tag_layouts.conf."""
+    return {k: {t: v for t, v, _, _ in rows} for k, rows in parse_tag_blocks(text).items()}
 
 
 def read_file(path):
@@ -383,7 +392,7 @@ def read_file(path):
 
 def layout_label(tag, dump, key, defs, assigns):
     var = assigns.get(key, {}).get(tag)
-    if not var:
+    if not var or var == NONE:
         return "unassigned"
     if var not in defs:
         return f"unknown layout '{var}'"
@@ -404,6 +413,7 @@ class Overview:
         self.tree = None
         self.model = Model([])
         self.key = ""
+        self.tags = []
 
 
 def gather():
@@ -422,7 +432,26 @@ def gather():
                                   parse_assignments(read_file(HLWM_TAG_LAYOUTS)))
     except (HlwmError, ValueError) as e:
         data.error = f"herbstluftwm: {e}"
+    data.tags = tag_rows(data.key, parse_tag_blocks(read_file(HLWM_TAG_LAYOUTS)),
+                         parse_definitions(read_file(HLWM_LAYOUTS)))
     return data
+
+
+def tag_rows(key, blocks, defs):
+    """[(key, tag, layout name, [(instance, index)])] for the nine tags of the set, padded as tags.sh does."""
+    rows = []
+    for pos, (tag, var, k, progs) in enumerate(blocks.get(key, [])[:9], 1):
+        if var == NONE:
+            label = "unassigned"
+        elif var in defs:
+            label = defs[var][0] or var
+        else:
+            label = f"unknown layout '{var}'"
+        rows.append((k or str(pos), tag, label, progs))
+    while len(rows) < 9:
+        n = str(len(rows) + 1)
+        rows.append((n, n, "unassigned", []))
+    return rows
 
 
 def numbered(model):
@@ -461,7 +490,8 @@ def monitor_details(model):
 
 PAD = 2
 PAD_V = 1
-FOOTER = "↑/↓ select   Enter open   ← back   q quit"
+GAP_X = 1       # blank columns between the overview's columns
+FOOTER = "↑/↓ select   ←/→ column   Enter open   q quit"
 FOOTER_ROWS = 2
 MIN_PANEL_ROWS = 3 + 2 * PAD_V
 
@@ -526,12 +556,51 @@ def overview_footer():
     return "Overview", FOOTER
 
 
+def clip(segs, width):
+    """Segments cut to width, ending in an ellipsis when something was cut."""
+    if sum(len(t) for t, _ in segs) <= width:
+        return segs
+    out, room = [], max(0, width - 1)
+    for text, role in segs:
+        if room <= 0:
+            break
+        out.append((text[:room], role))
+        room -= len(text)
+    return out + [("…", out[-1][1] if out else "text")]
+
+
+def tags_content(data, cw, ch):
+    """One line per tag, its autostart programs indented underneath; cut to fit, never wrapped."""
+    name_w = max([len(t) for _, t, _, _ in data.tags], default=0)
+    prog_w = max([len(p) for _, _, _, ps in data.tags for p, _ in ps], default=0)
+
+    def build(spaced):
+        lines = []
+        for n, (key, tag, label, ps) in enumerate(data.tags):
+            if spaced and n:
+                lines.append([])
+            lines.append(clip([(key, "green"), ("  ", "text"), (tag, "name"), (" " * (name_w - len(tag) + 2), "text"),
+                               (label, "italic" if label in ("custom", "unassigned") else "text")], cw))
+            lines += [clip([(f"{' ' * 5}{p.ljust(prog_w)}  {idx}", "dim")], cw) for p, idx in ps]
+        return lines
+
+    lines = build(True)
+    if len(lines) > ch:
+        lines = build(False)
+    if len(lines) > ch:
+        lines = lines[: max(0, ch - 1)] + [[("…", "text")]]
+    return lines
+
+
 def render_overview(data, sel, width, height):
     h1, h2 = split_height(height)
-    cw = width - 2 - 2 * PAD
-    rows = panel("Layout", layout_content(data, cw, h1 - 2 - 2 * PAD_V), width, h1, sel == 0)
-    rows += panel("Monitors", monitors_content(data, cw, h2 - 2 - 2 * PAD_V), width, h2, sel == 1)
-    return rows, overview_footer()
+    rw = width * 40 // 100
+    lw = width - rw - GAP_X
+    left = panel("Layout", layout_content(data, lw - 2 - 2 * PAD, h1 - 2 - 2 * PAD_V), lw, h1, sel == 0)
+    left += panel("Monitors", monitors_content(data, lw - 2 - 2 * PAD, h2 - 2 - 2 * PAD_V), lw, h2, sel == 1)
+    th = height - FOOTER_ROWS
+    right = panel("Tags", tags_content(data, rw - 2 - 2 * PAD, th - 2 - 2 * PAD_V), rw, th, sel == 2)
+    return [l + [(" " * GAP_X, "text")] + r for l, r in zip(left, right)], overview_footer()
 
 
 # ------------------------------------------------------------- layout screen
@@ -641,6 +710,7 @@ def drop_entry(text, var):
 
 
 def make_var(lname, taken):
+    taken = set(taken) | {NONE}
     base = re.sub(r"[^a-z0-9]+", "_", lname.lower()).strip("_") or "layout"
     if base[0].isdigit():
         base = "layout_" + base
@@ -1440,6 +1510,449 @@ class MonitorScreen:
         return panel(("Edit " if edit else "Custom resolution ") + self.name, lines, bw, bh, True), top, cursor
 
 
+# ------------------------------------------------------------------ tags screen
+
+TAGS_HINTS = "↑/↓ select   k key   n name   l layout   r rules   Esc back   q quit"
+TAGS_MIN_ROWS = FOOTER_ROWS + 10
+LIST_W, RULES_W = 44, 58
+TABLE_MARGIN, CELL_PAD, TOP_PAD = 2, 3, 1    # TOP_PAD: rows of screen padding above the table; the panels pad 2 across and 1 down
+HDASH = "─ "      # the dashed line under the table's header: a one-column dash with a one-column gap
+COL_MIN = (5, 14, 20, 24)    # least content width of the Key, Name, Layout and Rules columns
+OV_HINTS = "↑/↓ select   Space tick   0/1 index   Ctrl-S save   Esc cancel"
+BAD_NAME = '"$`\\'
+
+
+def parse_rule_instances(text):
+    """The instances named by the rules in rules.autostart's autostart block, in file order."""
+    out, on = [], False
+    for line in text.split("\n"):
+        if "# autostart rules" in line:
+            on = True
+        elif on and not line.strip():
+            break
+        elif on:
+            m = re.match(r"^\s*hc rule\b.*--instance=(\S+)", line)
+            if m and m.group(1) not in out:
+                out.append(m.group(1))
+    return out
+
+
+def build_rows(block):
+    """Nine tag rows from a set's parsed lines; tags past the last line are `none`, named by position."""
+    rows = [{"tag": tag, "var": var, "key": int(k) if k else pos, "progs": [list(p) for p in progs]}
+            for pos, (tag, var, k, progs) in enumerate(block[:9], 1)]
+    while len(rows) < 9:
+        n = len(rows) + 1
+        rows.append({"tag": str(n), "var": NONE, "key": n, "progs": []})
+    return rows
+
+
+def copy_rows(rows):
+    return [dict(r, progs=[list(p) for p in r["progs"]]) for r in rows]
+
+
+def block_lines(rows):
+    if not rows:
+        return []
+    nw, vw = max(len(r["tag"]) for r in rows), max(len(r["var"]) for r in rows)
+    out = []
+    for pos, r in enumerate(rows, 1):
+        parts = [r["tag"].ljust(nw), r["var"].ljust(vw)]
+        if r["key"] != pos:
+            parts.append("{%d}" % r["key"])
+        if r["progs"]:
+            parts.append("[" + " ".join(f"{i}:{x}" for i, x in r["progs"]) + "]")
+        out.append("  ".join(parts).rstrip())
+    return out
+
+
+def put_tag_block(text, key, rows):
+    """hlwm_tag_layouts.conf with the lines of the block for the monitor set `key` replaced by the rows."""
+    body = block_lines(rows)
+    lines, head = text.split("\n"), f'TAG_LAYOUTS["{key}"]="'
+    start = next((i for i, l in enumerate(lines) if l.startswith(head)), None)
+    if start is None:
+        while lines and lines[-1] == "":
+            lines.pop()
+        return "\n".join(lines + ["", head, *body, '"', ""])
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].strip() == '"'), None)
+    if lines[start].strip() != head or end is None:
+        raise ValueError(f"cannot read the block for {key} in hlwm_tag_layouts.conf")
+    lines[start + 1:end] = body
+    return "\n".join(lines)
+
+
+def tags_min_width():
+    return footer_width(("Tags", TAGS_HINTS))
+
+
+class TagsScreen:
+    """The Tags screen: the tags of the connected set as a table. Edits go to hlwm_tag_layouts.conf after a y/n."""
+
+    def __init__(self):
+        self.mode, self.message = "browse", ""
+        self.sel = self.top = 0
+        self.work = self.summary = self.editor = self.ov = None
+        self.lay_sel = self.lay_top = self.ov_sel = self.ov_top = self.move = 0
+        self.reload()
+
+    def reload(self):
+        self.defs = parse_definitions(read_file(HLWM_LAYOUTS))
+        self.instances = parse_rule_instances(read_file(RULES_FILE))
+        try:
+            self.key = load_model().key()
+        except (OSError, subprocess.CalledProcessError):
+            self.key = ""
+        self.rows = build_rows(parse_tag_blocks(read_file(HLWM_TAG_LAYOUTS)).get(self.key, []))
+
+    def label(self, r):
+        if r["var"] == NONE:
+            return "unassigned"
+        if r["var"] not in self.defs:
+            return f"unknown layout '{r['var']}'"
+        return self.defs[r["var"]][0] or r["var"]
+
+    def handle(self, key, ncols=0):
+        self.message = ""
+        return getattr(self, "key_" + self.mode)(key)
+
+    def discard(self):
+        self.mode, self.work = "browse", None
+
+    def key_browse(self, key):
+        if key in ("q", "CTRL_C"):
+            return "quit"
+        if key == "ESC":
+            return "back"
+        if key == "UP":
+            self.sel = max(0, self.sel - 1)
+        elif key == "DOWN":
+            self.sel = min(len(self.rows) - 1, self.sel + 1)
+        elif key in ("k", "n", "l", "r"):
+            self.begin(key)
+        return None
+
+    def begin(self, letter):
+        if not self.key:
+            self.message = "no monitors to save it for"
+            return
+        self.work = copy_rows(self.rows)
+        wr = self.work[self.sel]
+        if letter in ("k", "n"):
+            self.editor = Editor(str(wr["key"]) if letter == "k" else wr["tag"])
+            self.mode = "key" if letter == "k" else "name"
+        elif letter == "l":
+            self.open_layout()
+        else:
+            self.open_rules()
+
+    def open_layout(self):
+        var = self.work[self.sel]["var"]
+        self.lay_sel = list(self.defs).index(var) + 1 if var in self.defs else 0
+        self.mode = "layout"
+
+    def key_layout(self, key):
+        n = len(self.defs) + 1
+        if key in ("ESC", "CTRL_C"):
+            self.discard()
+        elif key == "UP":
+            self.lay_sel = max(0, self.lay_sel - 1)
+        elif key == "DOWN":
+            self.lay_sel = min(n - 1, self.lay_sel + 1)
+        elif key == "HOME":
+            self.lay_sel = 0
+        elif key == "END":
+            self.lay_sel = n - 1
+        elif key == "ENTER":
+            var = NONE if self.lay_sel == 0 else list(self.defs)[self.lay_sel - 1]
+            wr = self.work[self.sel]
+            if var == wr["var"]:
+                self.message = "no change"
+                self.discard()
+                return None
+            wr["var"] = var
+            self.ask(f'Layout of {wr["tag"]}: ' + ("unassigned" if var == NONE else f'"{self.defs[var][0] or var}"'))
+        return None
+
+    def ask(self, summary):
+        self.summary, self.mode = summary, "confirm"
+
+    def key_confirm(self, key):
+        if key in ("n", "ESC", "CTRL_C"):
+            self.discard()
+        elif key == "y":
+            try:
+                write_file(HLWM_TAG_LAYOUTS, put_tag_block(read_file(HLWM_TAG_LAYOUTS), self.key, self.work))
+                self.message = "saved"
+            except (OSError, ValueError) as e:
+                self.message = str(e)
+            self.discard()
+            self.reload()
+        return None
+
+    def key_input(self, key, done):
+        if key in ("ESC", "CTRL_C"):
+            self.discard()
+        elif key == "CTRL_S":
+            done(self.editor.text().strip())
+        elif key not in ("RESIZE", "TAB", "ENTER", "UP", "DOWN"):
+            self.editor.handle(key)
+        return None
+
+    def key_key(self, key):
+        return self.key_input(key, self.done_key)
+
+    def key_name(self, key):
+        return self.key_input(key, self.done_name)
+
+    def done_key(self, text):
+        wr = self.work[self.sel]
+        if text not in tuple("123456789"):
+            self.message = "a key is a digit from 1 to 9"
+            return
+        n = int(text)
+        if n == wr["key"]:
+            self.message = "no change"
+            self.discard()
+            return
+        other = next((r for i, r in enumerate(self.work) if i != self.sel and r["key"] == n), None)
+        old = wr["key"]
+        note = ""
+        if other is not None:
+            other["key"] = old
+            note = f", {other['tag']} gets {old}"
+        wr["key"] = n
+        self.ask(f"Key of {wr['tag']}: {old} to {n}{note}")
+
+    def done_name(self, text):
+        wr = self.work[self.sel]
+        if not text or any(c in text for c in BAD_NAME):
+            self.message = "a name cannot be empty or hold \" $ ` or \\"
+            return
+        if text == wr["tag"]:
+            self.message = "no change"
+            self.discard()
+            return
+        old, wr["tag"] = wr["tag"], text
+        self.ask(f'Rename "{old}" to "{text}"')
+
+    def open_rules(self):
+        if not self.instances:
+            self.message = "no rules in rules.autostart"
+            self.discard()
+            return
+        self.ov = []
+        for inst in self.instances:
+            e = {"inst": inst, "on": False, "idx": "", "other": "", "was": False, "from": ""}
+            for i, r in enumerate(self.work):
+                for p in r["progs"]:
+                    if p[0] == inst:
+                        e["idx"] = p[1]
+                        if i == self.sel:
+                            e["on"] = e["was"] = True
+                        else:
+                            e["other"] = r["tag"]
+            self.ov.append(e)
+        self.ov_sel = self.ov_top = 0
+        self.mode = "rules"
+
+    def key_rules(self, key):
+        e = self.ov[self.ov_sel]
+        if key in ("ESC", "CTRL_C"):
+            self.discard()
+        elif key == "UP":
+            self.ov_sel = max(0, self.ov_sel - 1)
+        elif key == "DOWN":
+            self.ov_sel = min(len(self.ov) - 1, self.ov_sel + 1)
+        elif key == " ":
+            if e["on"]:
+                e["on"] = False
+            elif e["other"]:
+                self.mode = "move"
+            else:
+                e["on"], e["idx"] = True, e["idx"] or "0"
+        elif key in ("0", "1") and e["on"]:
+            e["idx"] += key
+        elif key == "BACKSPACE" and e["on"]:
+            e["idx"] = e["idx"][:-1]
+        elif key == "CTRL_S":
+            self.finish_rules()
+        return None
+
+    def key_move(self, key):
+        e = self.ov[self.ov_sel]
+        if key in ("n", "ESC", "CTRL_C"):
+            self.mode = "rules"
+        elif key == "y":
+            e["on"], e["from"], e["other"] = True, e["other"], ""
+            e["idx"] = e["idx"] or "0"
+            self.mode = "rules"
+        return None
+
+    def finish_rules(self):
+        wr = self.work[self.sel]
+        moved = {e["inst"] for e in self.ov if e["from"] and e["on"]}
+        for r in self.work:
+            if r is not wr:
+                r["progs"] = [p for p in r["progs"] if p[0] not in moved]
+        before = [list(p) for p in wr["progs"]]
+        wr["progs"] = [[e["inst"], e["idx"] or "0"] for e in self.ov if e["on"]]
+        if wr["progs"] == before and not moved:
+            self.message = "no change"
+            self.discard()
+            return
+        parts = [f"+{e['inst']}" + (f" from {e['from']}" if e["from"] else "") for e in self.ov if e["on"] and not e["was"]]
+        parts += [f"-{e['inst']} (no tag left)" for e in self.ov if e["was"] and not e["on"]]
+        parts += [f"{e['inst']} index {e['idx'] or '0'}" for e in self.ov if e["on"] and e["was"] and [e["inst"], e["idx"] or "0"] not in before]
+        self.ask(f"Rules on {wr['tag']}: " + ", ".join(parts))
+
+    def footer(self):
+        wr = self.work[self.sel] if self.work else self.rows[self.sel]
+        if self.mode == "confirm":
+            return f"{self.summary}. Persist to hlwm_tag_layouts.conf?", "y yes   n no"
+        if self.mode == "move":
+            e = self.ov[self.ov_sel]
+            return f"Move {e['inst']} from {e['other']} to {wr['tag']}?", "y yes   n no"
+        if self.mode in ("key", "name"):
+            return self.message or f"{'Key' if self.mode == 'key' else 'Name'} of {wr['tag']}", "Ctrl-S save   Esc cancel"
+        if self.mode == "layout":
+            return f"Layout of {wr['tag']}", "↑/↓ select   Enter choose   Esc cancel"
+        if self.mode == "rules":
+            return f"Rules on {wr['tag']}", OV_HINTS
+        return self.message or "Tags", TAGS_HINTS
+
+    def table(self, width, body):
+        labels = [self.label(r) for r in self.rows]
+        prog_w = max([len(p[0]) for r in self.rows for p in r["progs"]], default=0)
+        rules = [[f"{p[0].ljust(prog_w)}  {p[1]}" for p in r["progs"]] or [""] for r in self.rows]
+        cols = [COL_MIN[0], max(COL_MIN[1], *(len(r["tag"]) for r in self.rows)), max(COL_MIN[2], *(len(l) for l in labels)),
+                max(COL_MIN[3], *(len(t) for rs in rules for t in rs))]
+        for pad in range(CELL_PAD, -1, -1):
+            total = TABLE_MARGIN + sum(cols) + 8 * pad
+            if total <= width:
+                break
+        attached = {p[0] for r in self.rows for p in r["progs"]}
+        loose = [i for i in self.instances if i not in attached]
+        foot = [[("  Unattached rules", "bold")]] + [[("  " + i, "dim")] for i in loose] + ([] if loose else [[("  none", "dim")]])
+        foot_h = min(len(foot), max(2, body // 3))
+        if len(foot) > foot_h:
+            foot = foot[: foot_h - 1] + [[("  …", "dim")]]
+
+        def draw(kind, cells):
+            """One table row. kind: n normal, h highlighted, t/b the half-line band above/below a highlighted tag."""
+            if kind in ("t", "b"):
+                return [(("▄" if kind == "t" else "▀") * width, "green")]
+            segs = [(" " * TABLE_MARGIN, "text")]
+            for c, (text, role) in enumerate(cells):
+                segs += [(" " * pad, "text"), (text.ljust(cols[c]), role), (" " * pad, "text")]
+            segs = clip(segs, width)
+            if kind == "h":
+                segs = [(t, "hilite") for t, _ in segs] + [(" " * (width - sum(len(t) for t, _ in segs)), "hilite")]
+            return segs
+
+        blank = [("", "text")] * 4
+
+        def build(spaced):
+            """The table body as (kind, cells); a padding line is shared by the tags above and below it, and gives the highlighted tag its half-line bands."""
+            lines, spans = [], []
+            for i, r in enumerate(self.rows):
+                first = len(lines)
+                if spaced and i == 0:
+                    lines.append(("t" if self.sel == 0 else "n", blank))
+                for k, rt in enumerate(rules[i]):
+                    cells = [(str(r["key"]), "text"), (r["tag"], "name"), (labels[i], "italic" if labels[i] == "unassigned" else "text"),
+                             (rt, "dim")] if k == 0 else blank[:3] + [(rt, "dim")]
+                    lines.append(("h" if self.sel == i else "n", cells))
+                if spaced:
+                    lines.append(("b" if self.sel == i else "t" if self.sel == i + 1 else "n", blank))
+                spans.append((first if i else 0, len(lines)))
+            return lines, spans
+
+        room = body - 2 - foot_h - 1
+        lines, spans = build(True)
+        if len(lines) > room:
+            lines, spans = build(False)
+        a, z = spans[self.sel]
+        self.top = max(0, min(self.top, a), z - room)
+        self.top = min(self.top, max(0, len(lines) - room))
+        head = draw("n", [("Key", "bold"), ("Name", "bold"), ("Layout", "bold"), ("Rules", "bold")])
+        n = min(total - TABLE_MARGIN, width - TABLE_MARGIN)
+        under = [(" " * TABLE_MARGIN, "text"), ((HDASH * (n // len(HDASH) + 1))[:n], "green")]
+        rows = [head, under] + [draw(kind, cells) for kind, cells in lines[self.top: self.top + room]]
+        rows += [[] for _ in range(body - foot_h - len(rows))]
+        return rows + [clip(l, width) for l in foot]
+
+    def list_box(self, body, title, items, sel, top_attr):
+        n = len(items)
+        bh = max(7, min(n + 2 + 2 * PAD_V, body - 2))
+        vis = bh - 2 - 2 * PAD_V
+        iw = LIST_W - 2 - 2 * PAD
+        setattr(self, top_attr, max(0, min(getattr(self, top_attr), sel), sel - vis + 1))
+        top = getattr(self, top_attr)
+        lines = []
+        for k, text in enumerate(items[top: top + vis]):
+            i = top + k
+            text = ("› " if i == sel else "  ") + text
+            line = [(text[:iw], "label" if i == sel else "text")]
+            if n > vis:
+                line += [(" " * (iw - 1 - len(line[0][0])), "text"), scroll_bar(k, n, vis, top)]
+            lines.append(line)
+        return panel(title, lines, LIST_W, bh, True), (body - bh) // 2, LIST_W
+
+    def rules_box(self, body, width):
+        bw = min(RULES_W, width - 4)
+        n = len(self.ov)
+        bh = max(7, min(n + 3 + 2 * PAD_V, body - 2))
+        vis = bh - 3 - 2 * PAD_V
+        iw = bw - 2 - 2 * PAD
+        self.ov_top = max(0, min(self.ov_top, self.ov_sel), self.ov_sel - vis + 1)
+        inst_w = max(8, *(len(e["inst"]) for e in self.ov))
+        lines = [[("Tag".ljust(6) + "Instance".ljust(inst_w + 2) + "Index", "bold")]]
+        for k, e in enumerate(self.ov[self.ov_top: self.ov_top + vis]):
+            sel = self.ov_top + k == self.ov_sel
+            head = ("› " if sel else "  ") + ("[x]" if e["on"] else "[ ]") + "  " + e["inst"].ljust(inst_w + 2)
+            tail = e["idx"] if e["on"] else (f"on {e['other']}" if e["other"] else "")
+            line = [(head, "label" if sel else "text"), (tail, "text" if e["on"] else "dim")]
+            lines.append(clip(line, iw - (1 if n > vis else 0)))
+        if n > vis:
+            for k in range(1, len(lines)):
+                used = sum(len(t) for t, _ in lines[k])
+                lines[k] += [(" " * (iw - 1 - used), "text"), scroll_bar(k - 1, n, vis, self.ov_top)]
+        return panel(f"Rules on {self.work[self.sel]['tag']}", lines, bw, bh, True), (body - bh) // 2, bw
+
+    def input_box(self, body, width):
+        key = self.mode == "key"
+        bw = min(62, width - 4)
+        bh = 3 + 2 + 2 * PAD_V
+        iw = bw - 2 - 2 * PAD
+        ed = self.editor
+        ed.scroll(1, iw)
+        help_ = "1 to 9; the tag that has it takes this tag's key" if key else 'any text without " $ ` or \\'
+        lines = [[(help_, "dim")], "", ed.lines[0][ed.left: ed.left + iw]]
+        top = (body - bh) // 2
+        cursor = (top + 1 + PAD_V + 2, 1 + PAD + ed.col - ed.left)
+        title = f"Key of {self.work[self.sel]['tag']}" if key else f"Name of {self.work[self.sel]['tag']}"
+        return panel(title, lines, bw, bh, True), top, cursor, bw
+
+    def render(self, width, height):
+        body = height - FOOTER_ROWS
+        top = TOP_PAD if body >= TAGS_MIN_ROWS + 2 * TOP_PAD + 4 else 0
+        rows, cursor = [[] for _ in range(top)] + self.table(width, body - top), None
+        if self.mode == "layout":
+            box, top, bw = self.list_box(body, f"Layout of {self.work[self.sel]['tag']}",
+                                         ["None"] + [d[0] or v for v, d in self.defs.items()], self.lay_sel, "lay_top")
+            rows = overlay(rows, box, top, (width - bw) // 2, width)
+        elif self.mode in ("rules", "move"):
+            box, top, bw = self.rules_box(body, width)
+            rows = overlay(rows, box, top, (width - bw) // 2, width)
+        elif self.mode in ("key", "name"):
+            box, top, cursor, bw = self.input_box(body, width)
+            left = (width - bw) // 2
+            rows = overlay(rows, box, top, left, width)
+            cursor = (cursor[0], left + cursor[1])
+        return rows, self.footer(), cursor
+
+
 # ----------------------------------------------------------------- curses UI
 
 def put(win, y, x, s, attr=0):
@@ -1456,7 +1969,8 @@ def put(win, y, x, s, attr=0):
 ART_GREY = 245
 SELECT_SLOT = 200
 SELECT_RGB = (0x2E, 0x7D, 0x32)
-ATTR = {"art": 0, "bold": curses.A_BOLD, "label": 0, "key": 0, "dim": 0, "border": 0, "border_sel": 0, "text": 0}
+ATTR = {"art": 0, "bold": curses.A_BOLD, "label": 0, "key": 0, "dim": 0, "border": 0, "border_sel": 0, "text": 0,
+        "green": 0, "hilite": 0, "name": curses.A_BOLD, "italic": getattr(curses, "A_ITALIC", curses.A_DIM)}
 
 
 def cube_rgb(n):
@@ -1494,6 +2008,9 @@ def init_colours():
         ATTR["dim"] = curses.color_pair(2) | (0 if curses.COLORS >= 256 else curses.A_DIM)
         curses.init_pair(3, ART_GREY if curses.COLORS >= 256 else curses.COLOR_WHITE, -1)
         ATTR["art"] = curses.color_pair(3)
+        ATTR["green"] = curses.color_pair(1)
+        curses.init_pair(4, 231 if curses.COLORS >= 256 else curses.COLOR_WHITE, green)
+        ATTR["hilite"] = curses.color_pair(4)
     except curses.error:
         pass
     return restore
@@ -1640,7 +2157,7 @@ def run(win):
 
 
 def loop(win, stack, sel, data):
-    screens = {}
+    screens, left_sel = {}, 0
     while True:
         h, w = win.getmaxyx()
         name, footer, need, cursor = stack[-1], None, None, None
@@ -1648,6 +2165,8 @@ def loop(win, stack, sel, data):
             footer = overview_footer()
         elif name == "Layout":
             need = (LAYOUT_MIN_ROWS, layout_min_width())
+        elif name == "Tags":
+            need = (TAGS_MIN_ROWS, tags_min_width())
         else:
             need = (MONITORS_MIN_ROWS, monitors_min_width())
         if (h >= need[0] and w >= need[1]) if need else fits(h, w, footer):
@@ -1674,25 +2193,31 @@ def loop(win, stack, sel, data):
             continue
         if key in ("q", "CTRL_C"):
             return
-        if key == "UP":
+        if key == "UP" and sel < 2:
             sel = 0
-        elif key == "DOWN":
+        elif key == "DOWN" and sel < 2:
             sel = 1
+        elif key == "RIGHT" and sel < 2:
+            left_sel, sel = sel, 2
+        elif key == "LEFT" and sel == 2:
+            sel = left_sel
         elif key == "ENTER":
-            name = "Layout" if sel == 0 else "Monitors"
+            name = ("Layout", "Monitors", "Tags")[sel]
             stack.append(name)
-            screens[name] = LayoutScreen() if sel == 0 else MonitorScreen()
+            screens[name] = (LayoutScreen, MonitorScreen, TagsScreen)[sel]()
 
 
 def main():
     args = sys.argv[1:]
     if args[:1] == ["--print"]:
-        screen = "layout" if args[1:2] == ["layout"] else "overview"
-        args = args[:1] + args[2:] if screen == "layout" else args
+        screen = args[1] if args[1:2] in (["layout"], ["tags"]) else "overview"
+        args = args[:1] + args[2:] if screen != "overview" else args
         width = int(args[1]) if len(args) > 1 else 100
         height = int(args[2]) if len(args) > 2 else 40
         if screen == "layout":
             rows, footer, _ = LayoutScreen().render(width, height)
+        elif screen == "tags":
+            rows, footer, _ = TagsScreen().render(width, height)
         else:
             rows, footer = render_overview(gather(), 0, width, height)
         for row in rows:

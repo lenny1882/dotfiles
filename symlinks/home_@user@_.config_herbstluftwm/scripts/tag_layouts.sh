@@ -2,7 +2,7 @@
 # Load each tag's assigned layout for the connected monitor set.
 #   An empty tag is overwritten; a tag with windows is only overwritten when
 #   its shape matches a named layout (anything else is custom and is kept).
-#   --dry-run prints what would happen.
+#   A tag whose layout is `none` is left alone. --dry-run prints what would happen.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAYOUTS_FILE=${HLWM_LAYOUTS:-$SCRIPT_DIR/hlwm_layouts.conf}
@@ -36,6 +36,7 @@ while read -r line; do
     var=${line##* }
     tag=${line% *}
     tag=${tag%"${tag##*[![:space:]]}"}
+    [[ $var == none ]] && continue
     [[ -v $var ]] || { log "$tag: unknown layout '$var'"; continue; }
     hc silent get_attr "tags.by-name.$tag.index" || { log "$tag: no such tag"; continue; }
 
