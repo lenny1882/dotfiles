@@ -23,7 +23,7 @@ hc keybind $ModSup-Shift-Control-s spawn $SCRIPTS_DIR/screenshot.sh area
 # tuis
 hc keybind $ModSup-e spawn urxvt -name wrapper -e $SCRIPTS_DIR/nnn-wrap.sh
 hc keybind $ModPri-l spawn urxvt -name wrapper -e $SCRIPTS_DIR/monitor-tui-wrap.sh
-hc keybind Control-Alt-Delete spawn urxvt -name wrapper -e btm
+hc keybind Control-Alt-Delete spawn urxvt -name wrapper -e $SCRIPTS_DIR/pty_inset.py btm
 
 # audio
 hc keybind XF86AudioMute spawn $SCRIPTS_DIR/volume.sh "mute"

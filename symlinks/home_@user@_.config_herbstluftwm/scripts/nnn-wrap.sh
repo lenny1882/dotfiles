@@ -39,4 +39,4 @@ stty start undef
 stty stop under
 
 # nnn -deioQRUx -F 0 $*
-nnn -deioQRUx -F 0 -s startup $*
+"$(dirname "$0")/pty_inset.py" nnn -deiHoQRUx -F 0 -s startup $*

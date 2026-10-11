@@ -19,6 +19,10 @@ case $hook in
             splash_opened)
                 hc set_attr clients.focus.decorated false
                 ;;
+
+            wrapper_opened)
+                hc set_attr "clients.$winid.decorated" false
+                ;;
         esac
         ;;
 

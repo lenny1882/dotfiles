@@ -1955,6 +1955,26 @@ class TagsScreen:
 
 # ----------------------------------------------------------------- curses UI
 
+class Inset:
+    """A window with a blank margin on every side, so the terminal's border does not touch the text."""
+
+    def __init__(self, win, cols=1, rows=1):
+        self.win, self.cols, self.rows = win, cols, rows
+
+    def getmaxyx(self):
+        h, w = self.win.getmaxyx()
+        return h - 2 * self.rows, w - 2 * self.cols
+
+    def addstr(self, y, x, *rest):
+        self.win.addstr(y + self.rows, x + self.cols, *rest)
+
+    def move(self, y, x):
+        self.win.move(y + self.rows, x + self.cols)
+
+    def __getattr__(self, name):
+        return getattr(self.win, name)
+
+
 def put(win, y, x, s, attr=0):
     h, w = win.getmaxyx()
     if y < 0 or y >= h or x >= w:
@@ -2151,7 +2171,7 @@ def run(win):
     curses.raw()    # Ctrl-S must reach us, not stop the terminal's output
     restore = init_colours()
     try:
-        loop(win, ["overview"], 0, gather())
+        loop(Inset(win), ["overview"], 0, gather())
     finally:
         restore()
 
