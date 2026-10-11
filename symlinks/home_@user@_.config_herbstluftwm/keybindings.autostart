@@ -67,12 +67,12 @@ hc keybind $ModPri-Shift-Control-Tab cycle
 # --------------------------------
 # mouse - only works on floating
 
-#leftclick button1
-#rightclick button3
-#middleclick button2
-#middlescroll forward button4
-#middlescroll backward button5
-#back button9
-#forward button8
-#sidescroll left button6
-#sidescroll right button7
+hc mousebind $ModPri-Button1 move # left click
+hc mousebind $ModPri-Button3 resize # right click
+# middle click button2
+# middle scroll forward button4
+# middle scroll backward button5
+# back button9
+# forward button8
+# side scroll left button6
+# side scroll right button7
