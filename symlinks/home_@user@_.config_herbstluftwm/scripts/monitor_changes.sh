@@ -46,4 +46,5 @@ function emit_changes {
 }
 
 trap 'trap - INT TERM EXIT; kill 0' INT TERM EXIT
+{ herbstclient --idle >/dev/null 2>&1; kill $$; } &
 emit_changes
