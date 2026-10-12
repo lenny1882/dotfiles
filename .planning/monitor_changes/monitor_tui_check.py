@@ -75,6 +75,26 @@ m = model(DOCKED)
 e, d = m.outs
 check("move_to moves an output where there is room", m.move_to(d, -1920, 0) == "" and d.x == -1920, d.x)
 check("layout positions start at 0x0", m.layout_lines()[0] == "eDP-1 2560x1600 --pos 1920x0 --primary", m.layout_lines())
+WIDE = """eDP-1 connected 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
+   2560x1600    165.00*+
+DP-2 connected primary 5120x1440+2560+0 (normal left inverted right x axis y axis) 1200mm x 340mm
+   5120x1440     60.00*+
+"""
+SPLIT_LIST = """Monitors: 3
+ 0: +*DP-2~1 1280/300x1440/340+2560+0  DP-2
+ 1: +DP-2~2 2560/600x1440/340+3840+0  none
+ 2: +DP-2~3 1280/300x1440/340+6400+0  none
+"""
+ws = model(WIDE)
+tui.attach_splits(ws.outs, SPLIT_LIST)
+check("virtual monitors are read back relative to their output",
+      ws.outs[1].splits == ["1280x1440+0+0", "2560x1440+1280+0", "1280x1440+3840+0"], ws.outs[1].splits)
+check("an output without virtual monitors has no splits", ws.outs[0].splits == [])
+check("layout lines carry --split",
+      ws.layout_lines()[1] == "DP-2 5120x1440 --pos 2560x0 --primary --split 1280x1440+0+0 2560x1440+1280+0 1280x1440+3840+0",
+      ws.layout_lines())
+check("layout lines are unchanged without splits", "--split" not in "".join(model(WIDE).layout_lines()))
+
 check("layout line for DP-4", m.layout_lines()[1] == "DP-4 1920x1080 --pos 0x0", m.layout_lines())
 e.rate = "165.00"
 check("a chosen rate is written for that output only", m.layout_lines()[0] == "eDP-1 2560x1600 --rate 165.00 --pos 1920x0 --primary" and "--rate" not in m.layout_lines()[1], m.layout_lines())

@@ -45,6 +45,7 @@ class Output:
         self.mode = "off"
         self.x = self.y = self.w = self.h = 0
         self.primary = False
+        self.splits = []    # virtual monitors cut from it, "WxH+X+Y" from its top-left corner
 
     @property
     def on(self):
@@ -161,7 +162,8 @@ class Model:
                 lines.append(f"{o.name} off")
                 continue
             s = f"{o.name} {o.mode}" + (f" --rate {o.rate}" if o.rate else "") + f" --pos {o.x - minx}x{o.y - miny}"
-            lines.append(s + (" --primary" if o.primary else ""))
+            s += " --primary" if o.primary else ""
+            lines.append(s + (" --split " + " ".join(o.splits) if o.splits else ""))
         return lines
 
 
@@ -173,8 +175,41 @@ def query_xrandr():
     return subprocess.run(["xrandr", "--query"], capture_output=True, text=True, check=True).stdout
 
 
+VIRTUAL = re.compile(r"^\s*\d+:\s+[+*]*(\S+~\d+)\s+(\d+)/\d+x(\d+)/\d+\+(\d+)\+(\d+)")
+
+
+def query_listmonitors():
+    fix = os.environ.get("LISTMONITORS_FIXTURE")
+    if fix:
+        with open(fix) as f:
+            return f.read()
+    if os.environ.get("XRANDR_FIXTURE"):
+        return ""
+    try:
+        return subprocess.run(["xrandr", "--listmonitors"], capture_output=True, text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return ""
+
+
+def attach_splits(outs, text):
+    """Fill each output's splits from the virtual monitors (PORT~N) in xrandr --listmonitors."""
+    by_name = {o.name: o for o in outs}
+    found = []
+    for line in text.splitlines():
+        m = VIRTUAL.match(line)
+        if m:
+            port, n = m.group(1).rsplit("~", 1)
+            found.append((port, int(n), *(int(v) for v in m.groups()[1:])))
+    for port, _, w, h, x, y in sorted(found):
+        o = by_name.get(port)
+        if o is not None and o.on:
+            o.splits.append(f"{w}x{h}+{x - o.x}+{y - o.y}")
+
+
 def load_model():
-    return Model(parse_xrandr(query_xrandr()))
+    outs = parse_xrandr(query_xrandr())
+    attach_splits(outs, query_listmonitors())
+    return Model(outs)
 
 
 def run_reconcile(args, stdin_text=None):
