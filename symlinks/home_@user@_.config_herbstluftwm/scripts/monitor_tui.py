@@ -182,6 +182,11 @@ def run_reconcile(args, stdin_text=None):
     return p.returncode, p.stderr.strip()
 
 
+def reconcile_key():
+    p = subprocess.run([RECONCILE, "--key"], capture_output=True, text=True)
+    return p.stdout.strip() if p.returncode == 0 else ""
+
+
 def apply_lines(lines):
     args = (["--dry-run"] if DRY else []) + ["--layout", "/dev/stdin"]
     return run_reconcile(args, "\n".join(lines) + "\n")
@@ -420,7 +425,7 @@ def gather():
     data = Overview()
     try:
         data.model = load_model()
-        data.key = data.model.key()
+        data.key = reconcile_key() or data.model.key()
     except (OSError, subprocess.CalledProcessError) as e:
         data.error = f"monitors: {e}"
     try:
@@ -532,9 +537,10 @@ def monitors_content(data, cw, ch):
     if not data.model.outs:
         return [data.error or "no monitors"]
     details = monitor_details(data.model)
-    room = ch - len(details) - 1
+    room = ch - len(details) - 3
     diagram = monitor_diagram(data.model, cw, room) if room >= 3 else []
-    return [[(l, "art")] for l in diagram] + ([""] if diagram else []) + details
+    head = [f"Key      {data.key}", ""] if ch - len(details) - 2 >= 0 else []
+    return head + [[(l, "art")] for l in diagram] + ([""] if diagram else []) + details
 
 
 def split_height(height):
