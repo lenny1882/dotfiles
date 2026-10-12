@@ -30,7 +30,7 @@ query_listmonitors() {
 
 connected_outputs() { awk '$2 == "connected" { print $1 }'; }
 
-stale_outputs() { awk '$2 == "disconnected" && $3 ~ /^[0-9]+x[0-9]+\+/ { print $1 }'; }
+stale_outputs() { awk '$2 == "disconnected" && ($3 ~ /^[0-9]+x[0-9]+\+/ || $4 ~ /^[0-9]+x[0-9]+\+/) { print $1 }'; }
 
 # stdin: xrandr --listmonitors. Prints WxH+X+Y per monitor, left to right.
 geometries() {
@@ -228,7 +228,7 @@ reconcile() {
         fi
     done <<<"$planned"
     while read -r name mode _; do
-        [[ $mode != off ]] && active+=("$name")
+        [[ -n $name && $mode != off ]] && active+=("$name")
     done <<<"$first"
 
     mapfile -t cmd < <(xrandr_args "${stale[@]}" <<<"$first")
