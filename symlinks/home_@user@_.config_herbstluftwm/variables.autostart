@@ -16,5 +16,6 @@ col_blue="#1565C0"
 col_active=$col_green
 
 SCRIPTS_DIR=~/.config/herbstluftwm/scripts
+wallpaper=~/Pictures/Wallpapers/rm.png
 ModPri=Mod4+Mod1    # Super+Alt
 ModSup=Mod4         # Super
