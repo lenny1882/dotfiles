@@ -31,14 +31,21 @@ for i in ${!tmp_pb_mon_ind[@]}; do
 	pb_monitors[${tmp_pb_mon_res[i]}]=${tmp_pb_mon_ind[i]}
 done
 
-primary_rect=$(xrandr --listmonitors | awk '$2 ~ /\*/ { g = $3; gsub(/\/[0-9]+/, "", g); print g; exit }')
-primary_monitor=0
-for i in "${!hc_monitors[@]}"; do
-	if [[ ${hc_monitors[$i]} = "$primary_rect" ]]; then
-		primary_monitor=$i
-		break
-	fi
-done
+# the primary output (not a virtual monitor cut from it): its name and WxH+X+Y rect
+read -r primary_output primary_rect < <(xrandr --query | awk '$2 == "connected" && $3 == "primary" { print $1, $4; exit }')
+if [[ -z $primary_output ]]; then
+	read -r primary_output primary_rect < <(xrandr --listmonitors | awk '$2 ~ /\*/ { g = $3; gsub(/\/[0-9]+/, "", g); print $4, g; exit }')
+fi
+
+# true if the hlwm monitor rect $1 lies inside the primary rect
+in_primary() {
+	local r='^([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)$' w h x y pw ph px py
+	[[ $1 =~ $r ]] || return 1
+	w=${BASH_REMATCH[1]} h=${BASH_REMATCH[2]} x=${BASH_REMATCH[3]} y=${BASH_REMATCH[4]}
+	[[ $primary_rect =~ $r ]] || return 1
+	pw=${BASH_REMATCH[1]} ph=${BASH_REMATCH[2]} px=${BASH_REMATCH[3]} py=${BASH_REMATCH[4]}
+	((x >= px && y >= py && x + w <= px + pw && y + h <= py + ph))
+}
 
 
 # --------------------------------
@@ -49,26 +56,21 @@ while pgrep -u $UID -x polybar >/dev/null; do
 	sleep 1;
 done
 
+# one bar across the whole primary output, even when it is cut into several virtual monitors
 for monitor in $(hc list_monitors | cut -d: -f1); do
-    if [[ $monitor = $primary_monitor ]]; then
-        # only the primary monitor has a panel, so only it needs padding
+    if in_primary "${hc_monitors[$monitor]}"; then
+        # only the primary output has a panel, so only its monitors need padding
         hc pad $monitor $(( panel_height + panel_padding ))
-
-        # make sure this runs as my user
-        # /usr/bin/sudo -u $(id -nu 1000) bash -c \
-        #     "MONITOR=${pb_monitors[${hc_monitors[$monitor]}]} \
-        #     COLOUR_ACTIVE=$col_active \
-        #     COLOUR_URGENT=$col_urgent \
-        #     polybar --reload herbstluft -c ~/.config/herbstluftwm/polybar/polybar.ini 2>$HOME/.config/herbstluftwm/polybar/logs/log &"
-        MONITOR=${pb_monitors[${hc_monitors[$monitor]}]} \
-            COLOUR_ACTIVE=$col_active \
-            COLOUR_URGENT=$col_urgent \
-            polybar --reload herbstluft -c ~/.config/herbstluftwm/polybar/polybar.ini 2>$HOME/.config/herbstluftwm/polybar/logs/log &
     else
         # clear any padding left over from a previous layout
         hc pad $monitor 0
     fi
 done
+
+MONITOR=${pb_monitors[$primary_rect]:-$primary_output} \
+    COLOUR_ACTIVE=$col_active \
+    COLOUR_URGENT=$col_urgent \
+    polybar --reload herbstluft -c ~/.config/herbstluftwm/polybar/polybar.ini 2>$HOME/.config/herbstluftwm/polybar/logs/log &
 
 # trigger any startup ipc scripts
 if hc silent new_attr bool my_not_first_autostart_panel ; then 
