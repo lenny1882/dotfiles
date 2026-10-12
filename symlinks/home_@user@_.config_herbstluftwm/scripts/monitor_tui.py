@@ -38,6 +38,7 @@ def dims(mode):
 class Output:
     def __init__(self, name):
         self.name = name
+        self.label = name   # the name layouts use: from MONITORS, else the EDID id, else the port
         self.modes = []
         self.pref = None
         self.rates = []
@@ -107,7 +108,7 @@ class Model:
         return copy.deepcopy(self)
 
     def key(self):
-        return " ".join(sorted(o.name for o in self.outs))
+        return " ".join(sorted(o.label for o in self.outs))
 
     def active(self):
         return [o for o in self.outs if o.on]
@@ -151,17 +152,18 @@ class Model:
             return self.move_to(o, a.x - o.w if dx < 0 else a.x + a.w, o.y)
         return self.move_to(o, o.x, a.y - o.h if dy < 0 else a.y + a.h)
 
-    def layout_lines(self):
-        """Lines for monitor_reconcile.sh, positions from 0x0."""
+    def layout_lines(self, names=False):
+        """Lines for monitor_reconcile.sh, positions from 0x0; names=True writes monitor names, not ports, for the config."""
         act = self.active()
         minx = min((o.x for o in act), default=0)
         miny = min((o.y for o in act), default=0)
         lines = []
         for o in self.outs:
+            who = o.label if names else o.name
             if not o.on:
-                lines.append(f"{o.name} off")
+                lines.append(f"{who} off")
                 continue
-            s = f"{o.name} {o.mode}" + (f" --rate {o.rate}" if o.rate else "") + f" --pos {o.x - minx}x{o.y - miny}"
+            s = f"{who} {o.mode}" + (f" --rate {o.rate}" if o.rate else "") + f" --pos {o.x - minx}x{o.y - miny}"
             s += " --primary" if o.primary else ""
             lines.append(s + (" --split " + " ".join(o.splits) if o.splits else ""))
         return lines
@@ -209,6 +211,7 @@ def attach_splits(outs, text):
 def load_model():
     outs = parse_xrandr(query_xrandr())
     attach_splits(outs, query_listmonitors())
+    attach_names(outs)
     return Model(outs)
 
 
@@ -217,9 +220,16 @@ def run_reconcile(args, stdin_text=None):
     return p.returncode, p.stderr.strip()
 
 
-def reconcile_key():
-    p = subprocess.run([RECONCILE, "--key"], capture_output=True, text=True)
-    return p.stdout.strip() if p.returncode == 0 else ""
+def attach_names(outs):
+    """Fill each output's label from monitor_reconcile.sh --ids ("port name id" lines)."""
+    p = subprocess.run([RECONCILE, "--ids"], capture_output=True, text=True)
+    if p.returncode:
+        return
+    by_name = {o.name: o for o in outs}
+    for line in p.stdout.splitlines():
+        f = line.split()
+        if len(f) >= 2 and f[0] in by_name:
+            by_name[f[0]].label = f[1]
 
 
 def apply_lines(lines):
@@ -460,7 +470,7 @@ def gather():
     data = Overview()
     try:
         data.model = load_model()
-        data.key = reconcile_key() or data.model.key()
+        data.key = data.model.key()
     except (OSError, subprocess.CalledProcessError) as e:
         data.error = f"monitors: {e}"
     try:
@@ -1324,7 +1334,7 @@ class MonitorScreen:
         if key == "y" and self.confirm[1] == "persist":
             self.mode = "browse"
             try:
-                write_file(LAYOUTS_CONF, put_monitor_layout(read_file(LAYOUTS_CONF), self.model.key(), self.model.layout_lines()))
+                write_file(LAYOUTS_CONF, put_monitor_layout(read_file(LAYOUTS_CONF), self.model.key(), self.model.layout_lines(names=True)))
                 self.message = "saved"
             except (OSError, ValueError) as e:
                 self.message = str(e)

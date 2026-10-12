@@ -95,6 +95,11 @@ check("layout lines carry --split",
       ws.layout_lines())
 check("layout lines are unchanged without splits", "--split" not in "".join(model(WIDE).layout_lines()))
 
+wn = model(DOCKED)
+wn.outs[1].label = "desk"
+check("key is the sorted monitor names", wn.key() == "desk eDP-1", wn.key())
+check("layout_lines writes ports by default", wn.layout_lines()[1].startswith("DP-4 "), wn.layout_lines())
+check("layout_lines(names=True) writes monitor names", wn.layout_lines(names=True)[1] == "desk 1920x1080 --pos 2560x0" and wn.layout_lines(names=True)[0].startswith("eDP-1 "), wn.layout_lines(names=True))
 check("layout line for DP-4", m.layout_lines()[1] == "DP-4 1920x1080 --pos 0x0", m.layout_lines())
 e.rate = "165.00"
 check("a chosen rate is written for that output only", m.layout_lines()[0] == "eDP-1 2560x1600 --rate 165.00 --pos 1920x0 --primary" and "--rate" not in m.layout_lines()[1], m.layout_lines())
