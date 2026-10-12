@@ -4,6 +4,7 @@
 #
 #   monitor_reconcile.sh [--dry-run] [--force]   reconcile
 #   monitor_reconcile.sh --key                   print the layout key and exit
+#   monitor_reconcile.sh --ids                   print "port name id" for each connected output
 #   monitor_reconcile.sh --known                 exit 0 if the connected set is known
 #   monitor_reconcile.sh --layout FILE           apply the layout lines in FILE (implies --force)
 #
@@ -11,6 +12,7 @@
 #
 # Test without a display: XRANDR_FIXTURE=<xrandr --query output>,
 # LISTMONITORS_FIXTURE=<xrandr --listmonitors output>, with --dry-run.
+# XRANDR_PROP_FIXTURE=<xrandr --prop output> supplies the EDIDs; without it every output is named by its port.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAYOUTS_CONF="${LAYOUTS_CONF:-$SCRIPT_DIR/monitor_layouts.conf}"
@@ -28,6 +30,19 @@ query_listmonitors() {
     if [[ -n $LISTMONITORS_FIXTURE ]]; then cat "$LISTMONITORS_FIXTURE"; else xrandr --listmonitors; fi
 }
 
+query_props() {
+    if [[ -n $XRANDR_PROP_FIXTURE ]]; then cat "$XRANDR_PROP_FIXTURE"
+    elif [[ -z $XRANDR_FIXTURE ]]; then xrandr --prop
+    fi
+}
+
+# stdin: xrandr --prop. Prints "port id" per output, the id being the first line of its EDID.
+edid_ids() {
+    awk '/^[^ \t]/ { port = $1; want = 0 }
+         want { gsub(/[ \t]/, ""); print port, $0; want = 0 }
+         /^[ \t]+EDID:/ { want = 1 }'
+}
+
 connected_outputs() { awk '$2 == "connected" { print $1 }'; }
 
 stale_outputs() { awk '$2 == "disconnected" && ($3 ~ /^[0-9]+x[0-9]+\+/ || $4 ~ /^[0-9]+x[0-9]+\+/) { print $1 }'; }
@@ -36,6 +51,35 @@ stale_outputs() { awk '$2 == "disconnected" && ($3 ~ /^[0-9]+x[0-9]+\+/ || $4 ~ 
 geometries() {
     awk '/^ *[0-9]+:/ { g = $3; gsub(/\/[0-9]+/, "", g); split(g, a, "+"); print a[2], a[3], g }' \
         | sort -n -k1,1 -k2,2 | awk '{ print $3 }'
+}
+
+# args: the connected ports. Fills NAME_OF[port] and PORT_OF[name] from MONITORS (id -> name).
+# An unlisted external is named by its id (so the key shows what to add), a panel or an output without an EDID by its port.
+resolve_names() {
+    local port id name
+    local -A id_of=()
+    declare -gA NAME_OF=() PORT_OF=() IDS=()
+    while read -r port id; do id_of[$port]=$id; done < <(query_props | edid_ids)
+    for port in "$@"; do
+        id=${id_of[$port]:-}
+        if [[ -n $id && -v MONITORS[$id] ]]; then name=${MONITORS[$id]}
+        elif [[ -n $id ]] && ! is_internal "$port"; then name=$id
+        else name=$port
+        fi
+        NAME_OF[$port]=$name
+        PORT_OF[$name]=$port
+        IDS[$port]=$id
+    done
+}
+
+# stdin: layout lines naming monitors. Prints them naming ports; words that are not monitor names pass through.
+names_to_ports() {
+    local line word out
+    while read -r line; do
+        out=()
+        for word in $line; do out+=("${PORT_OF[$word]:-$word}"); done
+        echo "${out[*]}"
+    done
 }
 
 is_internal() { [[ $1 == eDP* || $1 == LVDS* || $1 == DSI* ]]; }
@@ -187,7 +231,7 @@ stored_layout() {
 }
 
 reconcile() {
-    local state key current
+    local state key current port
     local -a outs stale cmd geoms
 
     state=$(query_xrandr) || { log "xrandr failed"; return 1; }
@@ -197,15 +241,22 @@ reconcile() {
         log "no connected outputs, leaving things alone"
         return 1
     fi
-    key="${outs[*]}"
+
+    declare -gA MONITORS=()
+    # shellcheck source=monitor_layouts.conf
+    source "$LAYOUTS_CONF"
+    resolve_names "${outs[@]}"
+    local -a names=()
+    for port in "${outs[@]}"; do names+=("${NAME_OF[$port]}"); done
+    mapfile -t names < <(printf '%s\n' "${names[@]}" | LC_ALL=C sort)
+    key="${names[*]}"
 
     if [[ -n $KEY_ONLY ]]; then echo "$key"; return 0; fi
-    if [[ -n $KNOWN_ONLY ]]; then
-        # shellcheck source=monitor_layouts.conf
-        source "$LAYOUTS_CONF"
-        is_known_set "$key" "${outs[@]}"
-        return
+    if [[ -n $IDS_ONLY ]]; then
+        for port in "${outs[@]}"; do printf '%s %s %s\n' "$port" "${NAME_OF[$port]}" "${IDS[$port]:--}"; done
+        return 0
     fi
+    if [[ -n $KNOWN_ONLY ]]; then is_known_set "$key" "${outs[@]}"; return; fi
 
     current=$(stored_layout)
     if [[ -z $FORCE && -z $LAYOUT_FILE && $key == "$current" ]]; then
@@ -214,11 +265,9 @@ reconcile() {
     fi
     log "applying '$key'"
 
-    # shellcheck source=monitor_layouts.conf
-    source "$LAYOUTS_CONF"
     local planned first deferred="" line name mode sep
     local -a active=()
-    planned=$(if [[ -n $LAYOUT_FILE ]]; then sed '/^[[:space:]]*$/d' "$LAYOUT_FILE"; else layout_for_key "$key" "${outs[@]}"; fi \
+    planned=$(if [[ -n $LAYOUT_FILE ]]; then sed '/^[[:space:]]*$/d' "$LAYOUT_FILE"; else layout_for_key "$key" "${outs[@]}" | names_to_ports; fi \
         | split_panel_off | resolve_modes "$state")
     first="" sep=0
     while IFS= read -r line; do
@@ -265,6 +314,7 @@ main() {
             --layout)  LAYOUT_FILE=$2; shift
                        [[ -r $LAYOUT_FILE ]] || { log "cannot read layout file: $LAYOUT_FILE"; return 2; } ;;
             --key)     KEY_ONLY=1 ;;
+            --ids)     IDS_ONLY=1 ;;
             --known)   KNOWN_ONLY=1 ;;
             *) log "unknown argument: $1"; return 2 ;;
         esac

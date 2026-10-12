@@ -139,6 +139,37 @@ run key-laptop laptop "$TMP/empty.conf" "$RECONCILE" --key
 run key-docked docked "$TMP/empty.conf" "$RECONCILE" --key
 [[ $(cat "$TMP/key-docked.out") == "DP-4 eDP-1" ]] && ok "--key, docked: DP-4 eDP-1" || bad "--key, docked: $(cat "$TMP/key-docked.out")"
 
+cat >"$TMP/docked.p" <<'EOF'
+eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
+	EDID: 
+		00ffffffffffff0009e5aaaaaaaaaaaa
+		1c0104a5
+DP-4 connected 1920x1080+2560+0 (normal left inverted right x axis y axis) 530mm x 300mm
+	EDID: 
+		00ffffffffffff0005e3bbbbbbbbbbbb
+		1c0104a5
+EOF
+cat >"$TMP/ids.conf" <<'EOF'
+declare -gA MONITORS=( ["00ffffffffffff0005e3bbbbbbbbbbbb"]="desk" )
+declare -gA LAYOUTS=()
+LAYOUTS["desk eDP-1"]="
+desk  1920x1080 --primary --pos 0x0
+eDP-1 off
+"
+EOF
+run key-id docked "$TMP/ids.conf" XRANDR_PROP_FIXTURE="$TMP/docked.p" "$RECONCILE" --key
+[[ $(cat "$TMP/key-id.out") == "desk eDP-1" ]] && ok "--key, EDID listed: the monitor's name replaces its port" || bad "--key, EDID listed: $(cat "$TMP/key-id.out")"
+run key-unlisted docked "$TMP/empty.conf" XRANDR_PROP_FIXTURE="$TMP/docked.p" "$RECONCILE" --key
+[[ $(cat "$TMP/key-unlisted.out") == "00ffffffffffff0005e3bbbbbbbbbbbb eDP-1" ]] && ok "--key, EDID unlisted: the id is the name, the panel stays eDP-1" || bad "--key, EDID unlisted: $(cat "$TMP/key-unlisted.out")"
+run ids docked "$TMP/ids.conf" XRANDR_PROP_FIXTURE="$TMP/docked.p" "$RECONCILE" --ids
+expect "--ids lists port, name and id" "$TMP/ids.out" '^DP-4 desk 00ffffffffffff0005e3bbbbbbbbbbbb$'
+run apply-id docked "$TMP/ids.conf" XRANDR_PROP_FIXTURE="$TMP/docked.p" "$RECONCILE" --dry-run --force
+expect "a layout naming a monitor by name is applied to its port" "$TMP/apply-id.out" 'xrandr --output DP-4 --mode 1920x1080 --primary --pos 0x0'
+sed 's/bbbb/cccc/' "$TMP/docked.p" >"$TMP/other.p"
+run apply-other docked "$TMP/ids.conf" XRANDR_PROP_FIXTURE="$TMP/other.p" "$RECONCILE" --dry-run --force
+expect "a different monitor on the same port gets the fallback, not the named layout" "$TMP/apply-other.out" "no layout for"
+reject "a different monitor on the same port keeps the panel on" "$TMP/apply-other.out" 'eDP-1 --off'
+
 run known-laptop laptop "$TMP/empty.conf" "$RECONCILE" --known
 [[ $(rc known-laptop) == 0 ]] && ok "--known: laptop alone is known" || bad "--known: laptop alone should be known"
 run known-docked docked "$TMP/empty.conf" "$RECONCILE" --known
