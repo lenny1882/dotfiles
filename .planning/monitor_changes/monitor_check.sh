@@ -165,6 +165,34 @@ run ids docked "$TMP/ids.conf" XRANDR_PROP_FIXTURE="$TMP/docked.p" "$RECONCILE" 
 expect "--ids lists port, name and id" "$TMP/ids.out" '^DP-4 desk 00ffffffffffff0005e3bbbbbbbbbbbb$'
 run apply-id docked "$TMP/ids.conf" XRANDR_PROP_FIXTURE="$TMP/docked.p" "$RECONCILE" --dry-run --force
 expect "a layout naming a monitor by name is applied to its port" "$TMP/apply-id.out" 'xrandr --output DP-4 --mode 1920x1080 --primary --pos 0x0'
+cat >"$TMP/wide.q" <<'EOF'
+eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
+   2560x1600    165.00*+
+DP-4 connected 5120x1440+0+0 (normal left inverted right x axis y axis) 1200mm x 340mm
+   5120x1440     60.00*+
+EOF
+cat >"$TMP/wide.m" <<'EOF'
+Monitors: 2
+ 0: +*DP-4~1 1280/300x1440/340+0+0  DP-4
+ 1: +DP-4~2 2560/600x1440/340+1280+0  none
+EOF
+cat >"$TMP/split.conf" <<'EOF'
+declare -gA LAYOUTS=()
+LAYOUTS["DP-4 eDP-1"]="
+DP-4  5120x1440 --primary --pos 0x0 --split 1280x1440+0+0 2560x1440+1280+0 1280x1440+3840+0
+eDP-1 off
+"
+EOF
+run split wide "$TMP/split.conf" "$RECONCILE" --dry-run --force
+expect "split: earlier virtual monitors are deleted first" "$TMP/split.out" 'xrandr --delmonitor DP-4~1'
+reject "split: --split is not passed to xrandr --output" "$TMP/split.out" '--output DP-4.*--split'
+expect "split: the first piece owns the output" "$TMP/split.out" 'xrandr --setmonitor DP-4~1 1280/300x1440/340\+0\+0 DP-4$'
+expect "split: the middle piece is offset by its position" "$TMP/split.out" 'xrandr --setmonitor DP-4~2 2560/600x1440/340\+1280\+0 none$'
+expect "split: the third piece is created" "$TMP/split.out" 'xrandr --setmonitor DP-4~3 1280/300x1440/340\+3840\+0 none$'
+sed 's/3840+0/4000+0/' "$TMP/split.conf" >"$TMP/split-bad.conf"
+run splitbad wide "$TMP/split-bad.conf" "$RECONCILE" --dry-run --force
+expect "split: a piece outside the monitor is refused" "$TMP/splitbad.out" 'not splitting it'
+reject "split: nothing is created for a refused split" "$TMP/splitbad.out" 'setmonitor'
 sed 's/bbbb/cccc/' "$TMP/docked.p" >"$TMP/other.p"
 run apply-other docked "$TMP/ids.conf" XRANDR_PROP_FIXTURE="$TMP/other.p" "$RECONCILE" --dry-run --force
 expect "a different monitor on the same port gets the fallback, not the named layout" "$TMP/apply-other.out" "no layout for"

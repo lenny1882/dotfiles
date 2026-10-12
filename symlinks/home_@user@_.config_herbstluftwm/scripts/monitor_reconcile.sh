@@ -82,6 +82,61 @@ names_to_ports() {
     done
 }
 
+# stdin: layout lines. Prints "port geometry..." for each line with `--split GEOMETRY...` (WxH+X+Y, relative to the monitor).
+split_specs() {
+    awk '{ for (i = 1; i <= NF; i++) if ($i == "--split") {
+               out = $1
+               for (j = i + 1; j <= NF && $j !~ /^--/; j++) out = out " " $j
+               print out; break } }'
+}
+
+# stdin: layout lines. Prints them without `--split GEOMETRY...`.
+strip_splits() {
+    awk '{ out = ""; skip = 0
+           for (i = 1; i <= NF; i++) {
+               if ($i == "--split") { skip = 1; continue }
+               if (skip && $i !~ /^--/) continue
+               skip = 0; out = out (out == "" ? "" : " ") $i }
+           print out }'
+}
+
+# Names of the virtual monitors made earlier (PORT~N), one per line.
+virtual_monitors() {
+    query_listmonitors | awk '/^ *[0-9]+:/ { n = $2; sub(/^[+*]+/, "", n); if (n ~ /~/) print n }'
+}
+
+# stdin: split_specs lines. args: xrandr --query output (after applying). Defines one virtual monitor per geometry.
+apply_splits() {
+    local state=$1 port line W H X Y MW MH g n gw gh gx gy
+    local -a geoms
+    while read -r port geoms_line; do
+        [[ -z $port ]] && continue
+        read -ra geoms <<<"$geoms_line"
+        line=$(grep -m1 "^$port connected" <<<"$state")
+        if [[ ! $line =~ ([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+) ]]; then
+            log "$port is not active, not splitting it"; continue
+        fi
+        W=${BASH_REMATCH[1]} H=${BASH_REMATCH[2]} X=${BASH_REMATCH[3]} Y=${BASH_REMATCH[4]}
+        MW=0 MH=0
+        [[ $line =~ ([0-9]+)mm\ x\ ([0-9]+)mm ]] && { MW=${BASH_REMATCH[1]}; MH=${BASH_REMATCH[2]}; }
+        local ok=1
+        for g in "${geoms[@]}"; do
+            if [[ ! $g =~ ^([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)$ ]] \
+                || ((BASH_REMATCH[3] + BASH_REMATCH[1] > W || BASH_REMATCH[4] + BASH_REMATCH[2] > H)); then
+                log "split '$g' is not a WxH+X+Y inside $port (${W}x$H), not splitting it"; ok=0; break
+            fi
+        done
+        ((ok)) || continue
+        n=0
+        for g in "${geoms[@]}"; do
+            [[ $g =~ ^([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)$ ]]
+            gw=${BASH_REMATCH[1]} gh=${BASH_REMATCH[2]} gx=${BASH_REMATCH[3]} gy=${BASH_REMATCH[4]}
+            n=$((n + 1))
+            run xrandr --setmonitor "$port~$n" "$gw/$((gw * MW / W))x$gh/$((gh * MH / H))+$((X + gx))+$((Y + gy))" "$([[ $n == 1 ]] && echo "$port" || echo none)"
+        done
+    done
+}
+
 is_internal() { [[ $1 == eDP* || $1 == LVDS* || $1 == DSI* ]]; }
 
 # Panel stays on; first external is primary, panel to its left, the rest to the right.
@@ -265,10 +320,11 @@ reconcile() {
     fi
     log "applying '$key'"
 
-    local planned first deferred="" line name mode sep
+    local raw splits planned first deferred="" line name mode sep
     local -a active=()
-    planned=$(if [[ -n $LAYOUT_FILE ]]; then sed '/^[[:space:]]*$/d' "$LAYOUT_FILE"; else layout_for_key "$key" "${outs[@]}" | names_to_ports; fi \
-        | split_panel_off | resolve_modes "$state")
+    raw=$(if [[ -n $LAYOUT_FILE ]]; then sed '/^[[:space:]]*$/d' "$LAYOUT_FILE"; else layout_for_key "$key" "${outs[@]}" | names_to_ports; fi)
+    splits=$(split_specs <<<"$raw")
+    planned=$(strip_splits <<<"$raw" | split_panel_off | resolve_modes "$state")
     first="" sep=0
     while IFS= read -r line; do
         if [[ $line == --* ]]; then sep=1
@@ -280,6 +336,7 @@ reconcile() {
         [[ -n $name && $mode != off ]] && active+=("$name")
     done <<<"$first"
 
+    while read -r name; do run xrandr --delmonitor "$name"; done < <(virtual_monitors)
     mapfile -t cmd < <(xrandr_args "${stale[@]}" <<<"$first")
     run "${cmd[@]}" || { log "xrandr failed"; return 1; }
 
@@ -292,6 +349,8 @@ reconcile() {
             while read -r name _; do run xrandr --output "$name" --auto; done <<<"$deferred"
         fi
     fi
+
+    [[ -n $splits ]] && apply_splits "$(query_xrandr)" <<<"$splits"
 
     if [[ -n $DRY_RUN && -z $LISTMONITORS_FIXTURE ]]; then
         log "would run: hc set_monitors <geometries from xrandr --listmonitors>"
