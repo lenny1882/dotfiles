@@ -7,23 +7,13 @@
 
 # https://github.com/jarun/nnn/wiki
 # https://forum.porteus.org/viewtopic.php?p=85715#p85715
-# cyan      1f88a2 (31, 136, 162)  --> nearest: 31  - 1F		?Hard link
-# blue      2d77ce (45, 119, 206)  --> nearest: 32  - 20 		Directory
-# green     2e7d32 (46, 125, 50)   --> nearest: 239 - 1C 		Executable
-# sea green					      77
-# grey      999999 (153, 153, 153) --> nearest: 247 - F7		?Missing / File Details
-# purple    7b1fa2 (123, 31, 162)  --> nearest: 91  - 5B	61	Symlink
-# magenta  [a21f7b (162, 31, 123)  -->             ]- C6 		?Socket
-# orange    ff9800 (255, 152, 0)   --> nearest: 208 - D0		?FIFO
-# red       d32f2f (211, 47, 47)   --> nearest: 160 - A0	01	Unknown
-# yellow    					      E2 		?Char device
-# black     252526 (37, 37, 38)    --> nearest: 235 - EB
-# white     ECEFF4 (236, 239, 244) --> nearest: 255 - FF 	07	?Block, Char deivce, regular
-# c1 d0 20 ef 00 5b 1f f7 c6 d6 ab a0
-_block="0b";		_charDevice="0b";	_directory="20";	_executable="1C";
-_regularFile="07";	_hardLink="0b";		_symLink="61";		_missingOrFileDetails="F7";
-_orphanedSymLink="0b";	_fifo="D0";		_socket="C6";		_unknown="A0";
-export NNN_FCOLORS="$_block$_charDevice$_directory$_executable$_regularFile$_hardLink$_symLink$_missingOrFileDetails$_orphanedSymLink$_fifo$_socker$_unknown"
+# palette slots (Xresources *.colorN) except symlink, missing/details, unknown and contexts, which are 256-colour values
+# block 07, char device 0B, directory 04, executable 02, regular 07, hard link 06
+# symlink 61, missing/details F7, orphaned symlink 09, fifo 03, socket 0D, unknown 00
+_block="07";		_charDevice="0b";	_directory="04";	_executable="02";
+_regularFile="07";	_hardLink="06";		_symLink="61";		_missingOrFileDetails="F7";
+_orphanedSymLink="09";	_fifo="03";		_socket="0D";		_unknown="00";
+export NNN_FCOLORS="$_block$_charDevice$_directory$_executable$_regularFile$_hardLink$_symLink$_missingOrFileDetails$_orphanedSymLink$_fifo$_socket$_unknown"
 export NNN_COLORS="#a21f4c07"
 export NNN_TRASH=2
 export NNN_PLUG='f:fzopen;d:dragdrop;x:xdgdefault'
