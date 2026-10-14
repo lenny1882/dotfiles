@@ -10,7 +10,6 @@ if hc silent new_attr bool my_not_first_autostart ; then
     hc spawn picom --config ~/.config/compton.conf &
     hc spawn numlockx on &
     hc spawn $SCRIPTS_DIR/background.sh &
-    hv spawn bash -c "udevadm control --reload-rules && udevadm trigger"
 
     hc spawn easystroke enable &
     hc spawn rambox &

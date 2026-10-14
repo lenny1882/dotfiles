@@ -374,6 +374,17 @@ step_printers() {
 	{ installer cups; systemctl enable --now org.cups.cupsd.service; } 2>&1 | pinnedOutput
 }
 
+# copied rather than symlinked: systemd has to read the unit before
+# /media/Storage is mounted, so a link into the dotfiles would dangle at boot
+step_udev_reload() {
+	{
+		sudo install -Dm644 "$SCRIPT_DIR/udev-reload.service" /etc/systemd/system/udev-reload.service
+		sudo systemctl daemon-reload
+		sudo systemctl enable --now udev-reload.service
+		echo "udev-reload.service: $(systemctl is-enabled udev-reload.service), $(systemctl is-active udev-reload.service)"
+	} 2>&1 | pinnedOutput
+}
+
 step_bluetooth() {
 	{
 		installer bluez bluez-utils bluetui
@@ -549,6 +560,7 @@ STEP_NAMES=(
 	"Firewall (ufw)"
 	"Nvidia drivers"
 	"SSD trim"
+	"Reload udev rules (boot)"
 	"Symlink user directories"
 	"Link config files"
 	"SSH agent (autostart)"
@@ -567,6 +579,7 @@ STEP_FUNCS=(
 	step_firewall
 	step_nvidia
 	step_ssd_trim
+	step_udev_reload
 	step_symlinks
 	step_config_links
 	step_ssh_agent
@@ -584,7 +597,7 @@ STEP_FUNCS=(
 # groups: name + how many of the STEP_NAMES entries (taken in order,
 # starting where the previous group left off) belong to it
 GROUP_NAMES=("System" "User setup" "Desktop" "Software")
-GROUP_SIZES=(4 4 6 2)
+GROUP_SIZES=(5 4 6 2)
 
 # STEP_NAMES/STEP_FUNCS are index-paired, and GROUP_SIZES assumes STEP_NAMES
 # is laid out as contiguous runs matching GROUP_NAMES in order - none of that
