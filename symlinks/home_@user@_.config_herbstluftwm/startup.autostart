@@ -10,10 +10,12 @@ if hc silent new_attr bool my_not_first_autostart ; then
     hc spawn picom --config ~/.config/compton.conf &
     hc spawn numlockx on &
     hc spawn $SCRIPTS_DIR/background.sh &
-    hc spawn easystroke enable &
+    hv spawn bash -c "udevadm control --reload-rules && udevadm trigger"
 
+    hc spawn easystroke enable &
     hc spawn rambox &
-    hc spawn bash -c "vivaldi --password-store=basic" &
+    # hc spawn bash -c "vivaldi --password-store=basic" &
+    hc spawn vivaldi &
     hc spawn obsidian &
     hc spawn spotify &
 fi
