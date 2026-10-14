@@ -71,10 +71,28 @@ beginOutput() {
 # scroll region is set, no per-line action needed:
 #   { installer foo; systemctl enable foo; } 2>&1 | pinnedOutput
 #   { installer foo; systemctl enable foo; } 2>&1 | pinnedOutput "$C_DIM"
+#
+# a plain `read` only returns on a newline, which hides prompts like pacman's
+# ":: Proceed with installation? [Y/n] " (no trailing newline, waiting on
+# stdin) - so use a short timeout and flush whatever partial line has arrived
 pinnedOutput() {
-	local color=$1 line
-	while IFS= read -r line; do
-		printf '%s%s%s\n' "$color" "$line" "${color:+$C_RESET}"
+	local color=$1 line rc seen=0
+	while true; do
+		IFS= read -r -t 0.2 line
+		rc=$?
+		if (( rc == 0 )); then
+			seen=1
+			printf '%s%s%s\n' "$color" "$line" "${color:+$C_RESET}"
+		elif (( rc > 128 )); then
+			# timed out - print any partial line (the prompt) without a newline
+			[[ -n $line ]] && { seen=1; printf '%s%s%s' "$color" "$line" "${color:+$C_RESET}"; }
+		else
+			# EOF - flush a final unterminated line, if any
+			[[ -n $line ]] && { seen=1; printf '%s%s%s\n' "$color" "$line" "${color:+$C_RESET}"; }
+			# silent commands (eg. systemctl enable) look like they did nothing
+			(( seen )) || printf '%s(completed, no output)%s\n' "$C_DIM" "$C_RESET"
+			break
+		fi
 	done
 }
 
@@ -278,6 +296,27 @@ step_config_links() {
 	{ "$SCRIPT_DIR/config_links.sh"; } 2>&1 | pinnedOutput
 }
 
+# enables the openssh package's socket-activated ssh-agent user unit (listens on
+# $XDG_RUNTIME_DIR/ssh-agent.socket, matching SSH_AUTH_SOCK in .shellrc_env) and
+# makes ssh add keys to the agent on first use
+step_ssh_agent() {
+	{
+		systemctl --user enable --now ssh-agent.socket
+		echo "ssh-agent.socket: $(systemctl --user is-enabled ssh-agent.socket 2>&1), $(systemctl --user is-active ssh-agent.socket 2>&1)"
+		mkdir -p ~/.ssh && chmod 700 ~/.ssh
+		if grep -qsiE '^[[:space:]]*AddKeysToAgent[[:space:]]+yes' ~/.ssh/config; then
+			echo "~/.ssh/config: AddKeysToAgent already set"
+		else
+			# a leading "Host *" block applies to every host; ssh uses the first
+			# value found, so prepending keeps this from being shadowed
+			{ printf 'Host *\n\tAddKeysToAgent yes\n\n'; cat ~/.ssh/config 2>/dev/null; } > ~/.ssh/config.new
+			mv ~/.ssh/config.new ~/.ssh/config
+			chmod 600 ~/.ssh/config
+			echo "~/.ssh/config: added AddKeysToAgent yes"
+		fi
+	} 2>&1 | pinnedOutput
+}
+
 step_shell_loader() {
 	{
 		case $SHELL in
@@ -335,8 +374,34 @@ step_printers() {
 	{ installer cups; systemctl enable --now org.cups.cupsd.service; } 2>&1 | pinnedOutput
 }
 
+# copied rather than symlinked: systemd has to read the unit before
+# /media/Storage is mounted, so a link into the dotfiles would dangle at boot
+step_udev_reload() {
+	{
+		sudo install -Dm644 "$SCRIPT_DIR/udev-reload.service" /etc/systemd/system/udev-reload.service
+		sudo systemctl daemon-reload
+		sudo systemctl enable --now udev-reload.service
+		echo "udev-reload.service: $(systemctl is-enabled udev-reload.service), $(systemctl is-active udev-reload.service)"
+	} 2>&1 | pinnedOutput
+}
+
+step_bluetooth() {
+	{
+		installer bluez bluez-utils bluetui
+		sudo systemctl enable bluetooth.service
+		# reload the controller driver so the adapter comes up cleanly
+		sudo modprobe -r btusb
+		sudo modprobe btusb
+		sudo systemctl restart bluetooth.service
+		echo "bluetooth.service: $(systemctl is-enabled bluetooth.service), $(systemctl is-active bluetooth.service)"
+	} 2>&1 | pinnedOutput
+}
+
 step_ssd_trim() {
-	{ systemctl enable fstrim.timer; } 2>&1 | pinnedOutput
+	{
+		sudo systemctl enable fstrim.timer
+		echo "fstrim.timer: $(systemctl is-enabled fstrim.timer)"
+	} 2>&1 | pinnedOutput
 }
 
 step_terminal() {
@@ -354,10 +419,33 @@ step_terminal() {
 
 step_window_manager() {
 	{
-		installer herbstluftwm
+		# the herbstluftwm package ships its own xsession file, so the install
+		# fails while our symlink is in the way: unlink it (remembering where
+		# it pointed), install, and put the same link back if that succeeded
+		local session=/usr/share/xsessions/herbstluftwm.desktop session_target=""
+		if [[ -e $session || -L $session ]]; then
+			pacman -Qi herbstluftwm >/dev/null 2>&1 && echo "note: herbstluftwm is already installed ($session exists)"
+		fi
+		if [[ -L $session ]]; then
+			session_target=$(readlink "$session")
+			sudo rm "$session"
+		fi
+		if installer herbstluftwm; then
+			if [[ -n $session_target ]]; then
+				# the package puts its own file at that path - keep it as a .bak
+				if [[ -e $session || -L $session ]]; then
+					sudo mv -f "$session" "$session.bak" && echo "moved packaged $session -> $session.bak"
+				fi
+				sudo ln -s "$session_target" "$session" && echo "relinked $session -> $session_target"
+			fi
+		else
+			[[ -n $session_target ]] && echo "herbstluftwm install failed - removed symlink was $session -> $session_target"
+		fi
 		installer polybar
 		mkdir -p ~/.config/herbstluftwm
-		cp /etc/xdg/herbstluftwm/autostart ~/.config/herbstluftwm/
+		# -n: ~/.config/herbstluftwm is usually a symlink into this repo (see
+		# config_links), so never overwrite the existing, customised autostart
+		cp -n /etc/xdg/herbstluftwm/autostart ~/.config/herbstluftwm/
 	} 2>&1 | pinnedOutput
 }
 
@@ -411,6 +499,7 @@ step_packages() {
 		visual-studio-code-bin \
 		vivaldi \
 		xarchiver \
+		xorg-xev \
 		yaycache \
 		yaycache-hook
 }
@@ -420,6 +509,8 @@ step_packages() {
 # plain package name for selectAndInstall; step_apps lists them the same
 # way selectAndInstall lists packages, then runs the chosen routines
 _app_claude() {
+	# jq and socat are needed by Claude Code's sandboxing
+	installer jq socat
 	curl -fsSL https://claude.ai/install.sh | bash
 }
 
@@ -469,14 +560,17 @@ STEP_NAMES=(
 	"Firewall (ufw)"
 	"Nvidia drivers"
 	"SSD trim"
+	"Reload udev rules (boot)"
 	"Symlink user directories"
 	"Link config files"
+	"SSH agent (autostart)"
 	"Load shell rc files"
 	"Display manager"
-	"Terminal emulator"
 	"Window manager (herbstluftwm)"
+	"Terminal emulator"
 	"Fonts"
 	"Printers (CUPS)"
+	"Bluetooth"
 	"Packages"
 	"Apps"
 )
@@ -485,14 +579,17 @@ STEP_FUNCS=(
 	step_firewall
 	step_nvidia
 	step_ssd_trim
+	step_udev_reload
 	step_symlinks
 	step_config_links
+	step_ssh_agent
 	step_shell_loader
 	step_display_manager
-	step_terminal
 	step_window_manager
+	step_terminal
 	step_fonts
 	step_printers
+	step_bluetooth
 	step_packages
 	step_apps
 )
@@ -500,7 +597,7 @@ STEP_FUNCS=(
 # groups: name + how many of the STEP_NAMES entries (taken in order,
 # starting where the previous group left off) belong to it
 GROUP_NAMES=("System" "User setup" "Desktop" "Software")
-GROUP_SIZES=(4 3 5 2)
+GROUP_SIZES=(5 4 6 2)
 
 # STEP_NAMES/STEP_FUNCS are index-paired, and GROUP_SIZES assumes STEP_NAMES
 # is laid out as contiguous runs matching GROUP_NAMES in order - none of that

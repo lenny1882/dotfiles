@@ -1,0 +1,11 @@
+[Unit]
+Description=Reload udev rules and re-trigger backlight devices
+RequiresMountsFor=/media/Storage
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/udevadm control --reload-rules
+ExecStart=/usr/bin/udevadm trigger --action=add --subsystem-match=backlight
+
+[Install]
+WantedBy=multi-user.target
