@@ -374,6 +374,18 @@ step_printers() {
 	{ installer cups; systemctl enable --now org.cups.cupsd.service; } 2>&1 | pinnedOutput
 }
 
+step_bluetooth() {
+	{
+		installer bluez bluez-utils bluetui
+		sudo systemctl enable bluetooth.service
+		# reload the controller driver so the adapter comes up cleanly
+		sudo modprobe -r btusb
+		sudo modprobe btusb
+		sudo systemctl restart bluetooth.service
+		echo "bluetooth.service: $(systemctl is-enabled bluetooth.service), $(systemctl is-active bluetooth.service)"
+	} 2>&1 | pinnedOutput
+}
+
 step_ssd_trim() {
 	{
 		sudo systemctl enable fstrim.timer
@@ -546,6 +558,7 @@ STEP_NAMES=(
 	"Terminal emulator"
 	"Fonts"
 	"Printers (CUPS)"
+	"Bluetooth"
 	"Packages"
 	"Apps"
 )
@@ -563,6 +576,7 @@ STEP_FUNCS=(
 	step_terminal
 	step_fonts
 	step_printers
+	step_bluetooth
 	step_packages
 	step_apps
 )
@@ -570,7 +584,7 @@ STEP_FUNCS=(
 # groups: name + how many of the STEP_NAMES entries (taken in order,
 # starting where the previous group left off) belong to it
 GROUP_NAMES=("System" "User setup" "Desktop" "Software")
-GROUP_SIZES=(4 4 5 2)
+GROUP_SIZES=(4 4 6 2)
 
 # STEP_NAMES/STEP_FUNCS are index-paired, and GROUP_SIZES assumes STEP_NAMES
 # is laid out as contiguous runs matching GROUP_NAMES in order - none of that
