@@ -8,10 +8,12 @@ Rotation is not handled.
 """
 import copy
 import curses
+import math
 import os
 import re
 import subprocess
 import sys
+import time
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 RECONCILE = os.path.join(SCRIPT_DIR, "monitor_reconcile.sh")
@@ -22,6 +24,7 @@ RULES_FILE = os.environ.get("RULES_AUTOSTART", os.path.join(SCRIPT_DIR, "..", "r
 HLWM_TAG_LAYOUTS = os.environ.get("HLWM_TAG_LAYOUTS", os.path.join(SCRIPT_DIR, "hlwm_tag_layouts.conf"))
 HC = os.environ.get("HERBSTCLIENT", "herbstclient")
 DRY = bool(os.environ.get("MONITOR_TUI_DRY"))
+KEEP_SECONDS = 15     # how long an applied change waits for a yes before it is undone
 
 GEOM = re.compile(r"^(\d+)x(\d+)\+(-?\d+)\+(-?\d+)$")
 GEOM_SIGNED = re.compile(r"^(\d+)x(\d+)([+-]\d+)([+-]\d+)$")
@@ -1277,7 +1280,8 @@ class MonitorScreen:
 
     def __init__(self):
         self.mode, self.message, self.name = "browse", "", ""
-        self.confirm = self.editor = self.before = None
+        self.confirm = self.editor = self.before = self.undo = None
+        self.deadline = 0
         self.prev = "browse"
         self.frame = self.nums = None
         self.res_rows, self.res_sel, self.res_top = [], 0, 0
@@ -1468,12 +1472,36 @@ class MonitorScreen:
             return
         if not DRY:
             self.reload(keep=self.name)
-        self.message = "applied"
+        self.undo, self.deadline = self.before, time.monotonic() + KEEP_SECONDS
+        self.mode = "keep"
+
+    def key_keep(self, key):
+        if key in ("y", "ENTER"):
+            self.mode, self.message = "browse", "applied"
+        elif key in ("n", "ESC", "CTRL_C"):
+            self.revert()
+        return None
+
+    def tick(self):
+        if self.mode == "keep" and time.monotonic() >= self.deadline:
+            self.revert()
+
+    def revert(self):
+        self.mode = "browse"
+        rc, err = apply_lines(self.undo.layout_lines())
+        if DRY:
+            self.model = self.undo
+        else:
+            self.reload(keep=self.name)
+        self.message = "reverted" if rc == 0 else (err.splitlines()[-1] if err else "reverting failed")
 
 
     def footer(self):
         if self.mode == "confirm":
             return self.confirm[0], "y yes   n no"
+        if self.mode == "keep":
+            left = max(0, math.ceil(self.deadline - time.monotonic()))
+            return f"Keep these settings? Reverting in {left}s", "y keep   n revert"
         if self.mode == "move":
             return self.message or f"Move {self.name}", MOVE_HINTS
         if self.mode in ("edit", "custom"):
@@ -2248,9 +2276,13 @@ def loop(win, stack, sel, data):
             paint(win, rows, footer, cursor)
         else:
             paint_too_small(win, h, w, footer, need)
+        waiting = name == "Monitors" and screens[name].mode == "keep"
+        win.timeout(250 if waiting else -1)
         try:
             key = read_key(win)
         except curses.error:
+            if waiting:
+                screens[name].tick()
             continue
         if key in ("RESIZE", ""):
             continue

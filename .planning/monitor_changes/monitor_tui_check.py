@@ -9,6 +9,7 @@ import importlib.util
 import os
 import sys
 import tempfile
+import time
 
 sys.dont_write_bytecode = True
 
@@ -570,8 +571,9 @@ if True:
     ms.handle("n")
     check("n cancels", ms.mode == "browse" and not applied and o1.primary)
     ms.handle("p"); ms.handle("y")
-    check("y makes it primary and applies", ms.mode == "browse" and applied and "DP-4 1920x1080 --pos 2560x0 --primary" in applied[-1]
+    check("y makes it primary and applies", ms.mode == "keep" and applied and "DP-4 1920x1080 --pos 2560x0 --primary" in applied[-1]
           and "eDP-1 2560x1600 --pos 0x0" in applied[-1], applied[-1:])
+    ms.handle("y")
     ms.handle("p")
     check("an output that already is primary says so", ms.mode == "browse" and "already" in ms.message)
 
@@ -605,13 +607,15 @@ if True:
     before = len(applied)
     ms.handle("m"); ms.handle("DOWN"); ms.handle("DOWN"); ms.handle("CTRL_S")
     check("Ctrl-S applies the move (positions measured from the top-left)", len(applied) == before + 1 and "DP-4 1920x1080 --pos 2560x20 --primary" in applied[-1], applied[-1])
+    ms.handle("y")
 
     ms.handle("e")
     check("e opens the geometry as herbstluftwm reads it", ms.mode == "edit" and ms.editor.text() == "1920x1080+2560+20", ms.editor.text())
     for _ in range(30): ms.handle("BACKSPACE")
     for ch in "1920x1080+2560+0": ms.handle(ch)
     ms.handle("CTRL_S")
-    check("Ctrl-S applies the edited string", ms.mode == "browse" and "DP-4 1920x1080 --pos 2560x0 --primary" in applied[-1], applied[-1])
+    check("Ctrl-S applies the edited string", ms.mode == "keep" and "DP-4 1920x1080 --pos 2560x0 --primary" in applied[-1], applied[-1])
+    ms.handle("y")
     ms.handle("e")
     for _ in range(20): ms.handle("BACKSPACE")
     for ch in "nonsense": ms.handle(ch)
@@ -636,13 +640,15 @@ if True:
     check("the current resolution starts selected", ms.res_rows[ms.res_sel][:2] == ("1920x1080", "60.00"))
     ms.handle("DOWN"); ms.handle("ENTER")
     check("Enter on a line sets that resolution and Hz and applies",
-          ms.mode == "browse" and "DP-4 1920x1080 --rate 59.94 --pos 2560x0 --primary" in applied[-1], applied[-1])
+          ms.mode == "keep" and "DP-4 1920x1080 --rate 59.94 --pos 2560x0 --primary" in applied[-1], applied[-1])
+    ms.handle("y")
     ms.handle("r"); ms.handle("HOME"); ms.handle("ENTER")
     check("Enter on Custom opens the values for editing, filled with the current ones", ms.mode == "custom" and ms.editor.text() == "1920x1080 59.94", ms.editor.text())
     for _ in range(20): ms.handle("BACKSPACE")
     for ch in "1600x900 75": ms.handle(ch)
     ms.handle("CTRL_S")
-    check("Ctrl-S applies the custom resolution and rate", ms.mode == "browse" and "DP-4 1600x900 --rate 75 --pos 2560x0 --primary" in applied[-1], applied[-1])
+    check("Ctrl-S applies the custom resolution and rate", ms.mode == "keep" and "DP-4 1600x900 --rate 75 --pos 2560x0 --primary" in applied[-1], applied[-1])
+    ms.handle("y")
     ms.handle("r"); ms.handle("HOME"); ms.handle("ENTER")
     for _ in range(20): ms.handle("BACKSPACE")
     for ch in "wide": ms.handle(ch)
@@ -652,6 +658,28 @@ if True:
     check("Esc backs out of the custom values and then the list", ms.mode == "browse")
     before = len(applied)
     ms.handle("ESC")
+
+    before_lines = ms.model.layout_lines()
+    ms.handle("m"); ms.handle("DOWN"); ms.handle("CTRL_S")
+    check("an apply waits for a yes, showing the seconds left",
+          ms.mode == "keep" and ms.footer() == ("Keep these settings? Reverting in 15s", "y keep   n revert"), ms.footer())
+    ms.handle("UP"); ms.handle("q")
+    check("other keys do nothing while it waits", ms.mode == "keep")
+    n = len(applied)
+    ms.handle("n")
+    check("n puts the old positions back", ms.mode == "browse" and ms.message == "reverted" and len(applied) == n + 1
+          and applied[-1] == before_lines, (applied[-1], before_lines))
+    ms.handle("m"); ms.handle("DOWN"); ms.handle("CTRL_S")
+    real_clock = time.monotonic
+    time.monotonic = lambda: real_clock() + tui.KEEP_SECONDS + 1
+    n = len(applied)
+    ms.tick()
+    check("with no answer for 15 s it reverts by itself", ms.mode == "browse" and ms.message == "reverted" and len(applied) == n + 1, ms.message)
+    time.monotonic = real_clock
+    ms.handle("m"); ms.handle("DOWN"); ms.handle("CTRL_S"); ms.tick()
+    check("tick before the time is up changes nothing", ms.mode == "keep")
+    ms.handle("ENTER")
+    check("Enter keeps it", ms.mode == "browse" and ms.message == "applied")
 
     tui.apply_lines = lambda lines: (1, "xrandr: cannot do that")
     ms.handle("m"); ms.handle("DOWN"); ms.handle("CTRL_S")
@@ -704,7 +732,7 @@ if True:
     now, _ = where(mv)
     check("the moved monitor goes left of the first one without the group re-centring", now["2"] < now["1"] == start["1"], (start, now))
     check("and is still numbered 2 while the move is unsaved", "┃ 2" in "".join(flat1) and now["2"] != -1)
-    mv.handle("CTRL_S")
+    mv.handle("CTRL_S"); mv.handle("y")
     after, flat2 = where(mv)
     check("saving centres the group again and numbers it by position: the monitor now on the left is 1",
           after["1"] < after["2"] and "1" in after, after)
