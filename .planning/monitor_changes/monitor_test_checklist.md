@@ -13,7 +13,7 @@ Step 10 of `monitor_changes_plan.md`. Needs a herbstluftwm session and real moni
 | # | Case | Expect |
 |---|------|--------|
 | 1 | Laptop only, fresh login | Panel on, wallpaper (`~/.fehbg`), polybar on the primary (the only monitor) |
-| 2 | Plug one external, no layout entry | Fallback layout: external primary, panel to its left, solid colour background |
+| 2 | Plug one external, no layout entry | Fallback layout: the panel stays primary at 0x0, the external is to its right, solid colour background |
 | 3 | Same set, with a layout entry | Your layout is used, wallpaper returns, panel on or off as the entry says |
 | 4 | The 3-monitor desk setup, with a layout entry | Left, middle and right as configured, padding correct on each |
 | 5 | Unplug back to laptop only | Panel on, wallpaper, bars rebuilt, no stale monitor |
@@ -21,7 +21,7 @@ Step 10 of `monitor_changes_plan.md`. Needs a herbstluftwm session and real moni
 | 7 | Unplug during a reconcile | Panel stays on, no blank screen |
 | 8 | Monitor with a rejected EDID (kernel log: `EDID checksum invalid`) and a layout naming `1920x1080` | `xrandr --query` shows `1920x1080_custom` on that output and it is used |
 | 9 | Reload config (`hc reload`) | No second watcher, no change to the layout |
-| 10 | Primary is not the leftmost monitor (fallback layout with the panel on, or a layout with `--primary` on a non-left output) | Polybar and the top padding are on the `--primary` output only; every other monitor has no bar and no padding |
+| 10 | Primary is not the leftmost monitor (a layout with `--primary` on a non-left output) | Polybar and the top padding are on the `--primary` output only; every other monitor has no bar and no padding |
 
 ## TUI overview (step 11)
 
@@ -83,13 +83,12 @@ Use a second monitor you can lose without harm; changes apply immediately throug
 
 - **One event or several:** plugging a dock should log a burst but produce one `monitors_applied`. If bars restart repeatedly, raise `DEBOUNCE` in `monitor_changes.sh`.
 - **udevadm output format:** the awk filter assumes the action is field 3 and the path is field 4. Run `udevadm monitor --udev --subsystem-match=drm` by hand and compare.
-- **xev fallback:** run `monitor_changes.sh --xev` once and check the gawk pattern matches the lines xev prints.
+- **xev fallback:** done. Run live by the user, the gawk pattern matches the lines xev prints.
 - **Solid colour across monitors:** the 1x1 image should cover every monitor evenly. If not, switch `--bg-fill` to `--bg-scale` in `background.sh`.
 - **Mode on laptop-only boot:** `--auto` may pick a different resolution from the old hardcoded 2560x1600. If so, give the panel an explicit mode in a layout entry.
 
 ## Known gaps
 
-- The fallback layout is simpler than the plan: the "half screens" and "stacked when under 1080p" heuristics are missing.
 - Only the internal panel is guarded against being turned off. Turning an external off isn't checked.
 - `monitor_layouts.conf` has only the one docked entry (`DP-4 eDP-1`); the rest are commented examples.
 - Polybar and its padding go on the xrandr primary monitor, matched to the herbstluftwm monitor by rect (`panel.sh`); monitor 0 if none matches. Checked on real hardware.

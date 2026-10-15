@@ -139,22 +139,21 @@ apply_splits() {
 
 is_internal() { [[ $1 == eDP* || $1 == LVDS* || $1 == DSI* ]]; }
 
-# Panel stays on; first external is primary, panel to its left, the rest to the right.
+# Panel stays on and primary at 0x0; the externals go to its right, one after the other.
 fallback_layout() {
     local internal="" prev="" o
     local -a externals=()
     for o in "$@"; do
         if is_internal "$o" && [[ -z $internal ]]; then internal=$o; else externals+=("$o"); fi
     done
-    if ((${#externals[@]} == 0)); then
+    if [[ -n $internal ]]; then
         echo "$internal auto --primary --pos 0x0"
-        return
+        prev=$internal
     fi
     for o in "${externals[@]}"; do
         if [[ -z $prev ]]; then echo "$o auto --primary --pos 0x0"; else echo "$o auto --right-of $prev"; fi
         prev=$o
     done
-    [[ -n $internal ]] && echo "$internal auto --left-of ${externals[0]}"
     return 0
 }
 
@@ -193,11 +192,19 @@ quiet() {
     if [[ -n $DRY_RUN ]]; then run "$@"; else "$@" 2>/dev/null; fi
 }
 
+FALLBACK_MODE=1920x1080     # for an external whose largest mode is 640x480, the stand-ins the kernel adds without an EDID
+
 # stdin: layout lines. args: xrandr --query output. Replaces each WxH the output lacks with a created WxH_custom, or `auto`.
+#   An external on `auto` that lists no usable mode gets FALLBACK_MODE.
 resolve_modes() {
     local state=$1 name mode rest modes timing
     while read -r name mode rest; do
         [[ -z $name ]] && continue
+        if [[ $mode == auto ]] && ! is_internal "$name" \
+            && [[ -z $(output_modes "$state" "$name" | awk -F'[x_]' '!/_custom$/ && ($1 > 640 || $2 > 480)') ]]; then
+            log "$name lists no usable mode (EDID missing or rejected), assuming $FALLBACK_MODE"
+            mode=$FALLBACK_MODE
+        fi
         if [[ $mode =~ ^[0-9]+x[0-9]+$ ]]; then
             modes=$(output_modes "$state" "$name")
             if grep -qx -- "$mode" <<<"$modes"; then

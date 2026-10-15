@@ -184,7 +184,7 @@ Decided with the user (2026-10-09):
   and a **Layouts** panel with a grid of cells. Each cell: the lname in its top border, a small drawing with no
   text. Selected cell: green border. The first cell is **Create new** with a big `+`.
 - Keys: arrows move; **Enter** sets the layout on the focused tag, after a `y/n` confirmation;
-  **e** opens the editor on that layout; **d** deletes after `y/n` (says how many tag assignments use it);
+  **e** opens the editor on that layout; **d** deletes after `y/n` (says how many tag assignments use it; those are set to `none`, so the tags show as unassigned);
   **s** (only when the live layout is `custom`; the Current panel says "Not saved as a layout. s to save it", the footer does not list it) opens the editor with the live shape, to save it;
   **Esc** goes back (and cancels the editor and the prompts); **q** quits. There is no rename key: the
   `# lname:` line is part of the editor text, so renaming is editing.
@@ -205,10 +205,9 @@ tag under the current set of connected monitors in `hlwm_tag_layouts.conf`; if t
 the save editor instead. On the Monitors screen it asks `y/n`, then replaces the set's active entry in `monitor_layouts.conf`
 with the current layout (comments around it are left alone).
 
-Still open for this screen: `hc load` on a tag with windows is unverified; deleting a layout leaves the assignments that name it
-(they then read `unknown layout`).
+Still open for this screen: deleting a layout leaves the assignments that name it (they then read `unknown layout`).
 
-## Monitors screen (built, not yet seen live)
+## Monitors screen (built, tested live)
 
 Decided with the user (2026-10-09):
 - The active monitors drawn to scale, numbered, `*` on the primary (grey drawing; the selected monitor is green),
@@ -221,13 +220,18 @@ Decided with the user (2026-10-09):
   Esc cancels.
 - **r** opens an overlay list, vertical only with a scroll bar: `Custom…` first, then each resolution, one line per
   refresh rate, largest first; Enter chooses; Enter on Custom opens `WxH [Hz]` for editing, Ctrl-S applies.
+- **o** opens a menu (Normal, Left 90°, Right 90°, 180°; the current one is selected); Enter applies. A rotated monitor is drawn
+  with width and height swapped, its geometry string is as rotated, and its layout line carries `--rotate`.
+- A monitor that is off is drawn as a dashed outline (16:9) right of the active ones, can be selected, and **r** turns it
+  on; **p**, **m**, **e** and **o** say to turn it on first.
+- A resolution or rotation change re-flows the monitors beyond the changed edge by the same amount, so those that touched
+  it still do (a shrink pulls them in); an overlap that remains is refused.
+- Every apply asks "Keep these settings?" for 15 s; `y` or Enter keeps it, `n`, Esc or no answer puts the old layout back.
 - Ctrl-S is the save/apply key everywhere something is typed; Esc always cancels / goes back.
 - Changes are applied at once through `monitor_reconcile.sh --layout` (a failure puts the old model back and shows the
   last line of the error). Modified arrows are decoded for urxvt (terminfo extended keys, `ESC ESC [ D` for Alt) and xterm.
 
-Not decided / not done: whether a change is also written to `monitor_layouts.conf` for the connected set (today it holds
-only until the connected set changes); a revert-after-N-seconds safety prompt; outputs that are off are not shown or
-selectable (no turn on/off); rotation; resizing does not move the neighbours (an overlap is refused instead).
+Alt-S writes the connected set's layout to `monitor_layouts.conf`; a change otherwise holds only until the connected set changes.
 
 ## Built so far (state of the work)
 
@@ -256,18 +260,9 @@ Layouts:
 1. Deleting a layout leaves the tag assignments that name it (the confirmation says how many).
 2. Decided: setting a layout is live only; Alt-S persists it (see above).
 3. **What `custom` should look like**: the word alone for now, plus a note on how to save it.
-4. **The auto-load script** is not written. Needs a live test of `hc load` on tags with windows,
-   especially which frame gets the windows in a multi-frame layout, and of the per-tag attribute. It would
-   be a new case in `rule_hook.sh` (or called from it).
-5. **Switching startup** from `layouts.autostart`'s hand-written `hc load` lines to the new files.
-6. **Whether the key needs more than the connected outputs** (see "Known limits of the key").
-7. Replace the placeholder per-set assignments with the user's own.
-
-Monitors:
-8. Whether to add a keep-or-revert prompt after an apply. Not decided. (Saving is Alt-S, see above.)
+4. **Whether the key needs more than the connected outputs** (see "Known limits of the key").
 
 General:
-9. Frame labels are cut off when a frame is narrow (e.g. `horizon`); cosmetic.
-10. Not handled: rotation (positions assume unrotated outputs).
-11. `hc load` on a tag with windows, and everything touching a live herbstluftwm beyond what the user has
-    run, is unverified: a throwaway herbstluftwm under `Xvnc` could not be started in the sandbox.
+5. Frame labels are cut off when a frame is narrow (e.g. `horizon`); cosmetic.
+6. Everything touching a live herbstluftwm beyond what the user has run is unverified: a throwaway
+   herbstluftwm under `Xvnc` could not be started in the sandbox.

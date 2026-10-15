@@ -70,6 +70,16 @@ eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis)
 DP-4 connected (normal left inverted right x axis y axis)
 EOF
 
+# DP-4 listing only the 640x480 fallback, as with a rejected EDID.
+cat >"$TMP/nomode-640.q" <<'EOF'
+eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
+   2560x1600    165.00*+
+DP-4 connected (normal left inverted right x axis y axis)
+   640x480       60.00    59.94
+   640x400       59.88    59.98
+EOF
+cp "$TMP/nomode.m" "$TMP/nomode-640.m"
+
 # Unplugged, but the output still holds a mode.
 cat >"$TMP/stale.q" <<'EOF'
 eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
@@ -215,10 +225,26 @@ run fb-docked docked "$TMP/empty.conf" "$RECONCILE" --dry-run --force
 [[ $(rc fb-docked) == 0 ]] && ok "docked, no layout: dry run succeeds" || bad "docked, no layout: dry run failed"
 expect "docked, no layout: fallback is announced" "$TMP/fb-docked.out" 'using fallback'
 reject "docked, no layout: panel stays on" "$TMP/fb-docked.out" 'eDP-1 --off'
+expect "docked, no layout: the panel stays primary at 0x0" "$TMP/fb-docked.out" 'xrandr --output eDP-1 --auto --primary --pos 0x0'
+expect "docked, no layout: the external goes to its right" "$TMP/fb-docked.out" 'DP-4 --auto --right-of eDP-1'
+reject "docked, no layout: the external is not primary" "$TMP/fb-docked.out" 'DP-4.*--primary'
 
 run lay-docked docked "$TMP/dock.conf" "$RECONCILE" --dry-run --force
 expect "docked, panel-off layout: DP-4 is set first" "$TMP/lay-docked.out" 'DP-4 --mode 1920x1080 --primary --pos 0x0'
 expect "docked, panel-off layout: panel is switched off after" "$TMP/lay-docked.out" 'eDP-1 --off'
+
+run fb-nomodes failed "$TMP/empty.conf" "$RECONCILE" --dry-run --force
+expect "unknown external with no modes: it is announced" "$TMP/fb-nomodes.out" 'DP-4 lists no usable mode'
+expect "unknown external with no modes: 1920x1080 is created" "$TMP/fb-nomodes.out" 'xrandr --newmode 1920x1080_custom'
+expect "unknown external with no modes: the mode is added" "$TMP/fb-nomodes.out" 'xrandr --addmode DP-4 1920x1080_custom'
+expect "unknown external with no modes: it is turned on, right of the panel" "$TMP/fb-nomodes.out" 'DP-4 --mode 1920x1080_custom --right-of eDP-1'
+run fb-640 nomode-640 "$TMP/empty.conf" "$RECONCILE" --dry-run --force
+expect "unknown external listing only 640x480: treated as having no usable mode" "$TMP/fb-640.out" 'DP-4 lists no usable mode'
+run fb-again custom "$TMP/empty.conf" "$RECONCILE" --dry-run --force
+expect "unknown external whose big mode is one we created: still uses it, not auto" "$TMP/fb-again.out" 'DP-4 --mode 1920x1080_custom --right-of eDP-1'
+reject "unknown external whose big mode is one we created: the mode is not re-created" "$TMP/fb-again.out" 'newmode'
+run fb-ok docked "$TMP/empty.conf" "$RECONCILE" --dry-run --force
+reject "unknown external with real modes: left on auto" "$TMP/fb-ok.out" 'no usable mode'
 
 run guard failed "$TMP/dock.conf" XRANDR_AFTER_FIXTURE="$TMP/failed.q" "$RECONCILE" --dry-run --force
 expect "guard: failed external keeps the panel on" "$TMP/guard.out" 'keeping the panel on'
@@ -276,7 +302,7 @@ fi
 head_ "3b. hook dispatch (rule_hook.sh, with stubs for everything it runs)"
 H="$TMP/hooks"; mkdir -p "$H/bin"
 cp "$DIR/rule_hook.sh" "$H/rule_hook.sh"
-for stub in monitor_reconcile.sh panel.sh background.sh; do
+for stub in monitor_reconcile.sh panel.sh background.sh tag_layouts.sh; do
     printf '#!/bin/sh\necho "%s $*" >> "$STUBLOG"\n' "$stub" >"$H/$stub"; chmod +x "$H/$stub"
 done
 printf '#!/bin/sh\necho "herbstclient $*" >> "$STUBLOG"\n' >"$H/bin/herbstclient"; chmod +x "$H/bin/herbstclient"
@@ -293,9 +319,12 @@ reject "monitors_applied does not reconcile again" "$TMP/hooks.log" 'monitor_rec
 hook rule peek_opened
 expect "window rules still work" "$TMP/hooks.log" 'herbstclient set_attr clients.focus.decorated false'
 reject "window hooks leave the monitor scripts alone" "$TMP/hooks.log" 'monitor_reconcile|panel|background'
-hook tag_changed 1 0
+hook tag_changed "my tag" 0
+expect "tag_changed lays out just that tag" "$TMP/hooks.log" '^tag_layouts.sh --only my tag$'
+hook focus_changed 0x1 title
 reject "an unrelated hook runs nothing" "$TMP/hooks.log" '.'
-reject "monitor_changes.sh no longer listens for hooks" "$DIR/monitor_changes.sh" 'herbstclient --idle|handle_hooks'
+reject "monitor_changes.sh no longer listens for hooks" "$DIR/monitor_changes.sh" 'handle_hooks|herbstclient --idle *[|]|while read.*hook'
+expect "monitor_changes.sh exits when herbstluftwm does (--idle output discarded)" "$DIR/monitor_changes.sh" 'herbstclient --idle >/dev/null'
 expect "monitor_changes.sh still emits monitors_changed" "$DIR/monitor_changes.sh" 'emit_hook "\$HOOK"'
 
 # ---------------------------------------------------------------- tag programs
@@ -339,7 +368,16 @@ head_ "3d. tag_layouts.sh"
 mkdir -p "$TMP/tl"
 cp "$DIR/tag_layouts.sh" "$DIR/hlwm_layouts.conf" "$TMP/tl/"
 printf '#!/usr/bin/env bash\necho "A-1"\n' >"$TMP/tl/monitor_reconcile.sh"
-printf '#!/usr/bin/env bash\ncase $1 in silent) exit 0 ;; dump) echo "(clients vertical:0)" ;; *) exit 0 ;; esac\n' >"$TMP/tl/herbstclient"
+cat >"$TMP/tl/herbstclient" <<'STUB'
+#!/usr/bin/env bash
+case $1 in
+    silent) exit 0 ;;
+    dump) echo "(clients vertical:0)" ;;
+    list_monitors) printf '%s\n' "$LISTMON" ;;
+    load) echo "load $2 $3" >>"$LOADLOG" ;;
+esac
+exit 0
+STUB
 chmod +x "$TMP/tl/monitor_reconcile.sh" "$TMP/tl/herbstclient"
 cat >"$TMP/tl/hlwm_tag_layouts.conf" <<'CONF'
 declare -gA TAG_LAYOUTS=()
@@ -351,6 +389,104 @@ three max  {3}  [x:0]
 CONF
 got=$(PATH="$TMP/tl:$PATH" "$TMP/tl/tag_layouts.sh" --dry-run 2>&1 | tr '\n' ';')
 if [[ $got == 'tag_layouts: one: max;tag_layouts: three: max;' ]]; then ok "tag_layouts.sh leaves a tag whose layout is none alone, and ignores {n} and [...]"; else bad "tag_layouts.sh leaves a tag whose layout is none alone"; echo "$got" | sed 's/^/        /'; fi
+
+cat >"$TMP/tl/hlwm_layouts.conf" <<'CONF'
+split_h='(split horizontal:0.5:0 (clients vertical:0) (clients horizontal:0))'
+CONF
+cat >"$TMP/tl/hlwm_tag_layouts.conf" <<'CONF'
+declare -gA TAG_LAYOUTS=()
+TAG_LAYOUTS["A-1"]="
+land   split_h
+port   split_h
+nowhere split_h
+"
+CONF
+LM=$'0: 2560x1600+0+0 with tag "land" [FOCUS]\n1: 1080x1920+2560+0 with tag "port"'
+: >"$TMP/load.log"
+PATH="$TMP/tl:$PATH" LISTMON="$LM" LOADLOG="$TMP/load.log" "$TMP/tl/tag_layouts.sh" >"$TMP/portrait.out" 2>&1
+expect "portrait: a tag on a landscape monitor keeps its layout" "$TMP/load.log" '^load land \(split horizontal:0.5:0 \(clients vertical:0\) \(clients horizontal:0\)\)$'
+expect "portrait: a tag on a portrait monitor gets every direction swapped" "$TMP/load.log" '^load port \(split vertical:0.5:0 \(clients horizontal:0\) \(clients vertical:0\)\)$'
+expect "portrait: a tag not on any monitor is not swapped" "$TMP/load.log" '^load nowhere \(split horizontal'
+expect "portrait: the log says which one was transposed" "$TMP/portrait.out" 'port: split_h \(portrait\)'
+reject "portrait: only the portrait one says so" "$TMP/portrait.out" 'land: split_h \(portrait\)'
+: >"$TMP/load.log"
+PATH="$TMP/tl:$PATH" LISTMON="$LM" LOADLOG="$TMP/load.log" "$TMP/tl/tag_layouts.sh" --only port >/dev/null 2>&1
+[[ $(wc -l <"$TMP/load.log") == 1 ]] && expect "--only lays out just that tag" "$TMP/load.log" '^load port ' || bad "--only lays out just that tag"
+
+# ---------------------------------------------------------------- tag windows
+head_ "3e. tag_windows.sh"
+W="$TMP/tw"; mkdir -p "$W/bin"
+cp "$DIR/tag_windows.sh" "$DIR/tags.sh" "$DIR/tag_programs.sh" "$W/"
+printf '#!/usr/bin/env bash\necho "$NEWSET"\n' >"$W/monitor_reconcile.sh"
+cat >"$W/bin/herbstclient" <<'STUB'
+#!/usr/bin/env bash
+case $1 in
+    get_attr)
+        case $2 in
+            my_tag_set) [[ -n $OLDSET ]] && echo "$OLDSET" || exit 1 ;;
+            clients.w1.instance) echo spotify ;;
+            clients.w2.instance) echo vivaldi-stable ;;
+            clients.w3.instance) echo vivaldi-stable ;;
+        esac ;;
+    list_clients)
+        case $2 in
+            --tag=x) echo w1; echo w2 ;;
+            --tag=y) echo w3 ;;
+        esac ;;
+    *) echo "$*" >>"$STUBLOG" ;;
+esac
+STUB
+chmod +x "$W/monitor_reconcile.sh" "$W/bin/herbstclient"
+cat >"$W/hlwm_tag_layouts.conf" <<'CONF'
+declare -gA TAG_LAYOUTS=()
+TAG_LAYOUTS["A"]="
+left|1  max [spotify:0]
+right|2 max [vivaldi-stable:1]
+"
+TAG_LAYOUTS["B"]="
+x max [vivaldi-stable:11]
+y max [spotify:10]
+"
+CONF
+tw() { : >"$W/log"; HLWM_TAG_LAYOUTS="$W/hlwm_tag_layouts.conf" PATH="$W/bin:$PATH" STUBLOG="$W/log" OLDSET="$1" NEWSET="$2" "$W/tag_windows.sh" "${@:3}" >/dev/null 2>&1; }
+tw A B
+got=$(sort "$W/log" | tr '\n' ';')
+if [[ $got == 'apply_tmp_rule w1 --tag=y --index=10;apply_tmp_rule w3 --tag=x --index=11;set_attr my_tag_set B;silent new_attr string my_tag_set;' ]]; then ok "tag_windows.sh moves windows still on their original tag, leaves one moved by hand, and records the set"; else bad "tag_windows.sh moves windows"; echo "$got" | sed 's/^/        /'; fi
+tw B B
+got=$(tr '\n' ';' <"$W/log")
+[[ $got == 'silent new_attr string my_tag_set;set_attr my_tag_set B;' ]] && ok "tag_windows.sh moves nothing when the set has not changed" || { bad "tag_windows.sh, same set"; echo "$got" | sed 's/^/        /'; }
+tw "" B
+got=$(tr '\n' ';' <"$W/log")
+[[ $got == 'silent new_attr string my_tag_set;set_attr my_tag_set B;' ]] && ok "tag_windows.sh only records when no set was remembered" || { bad "tag_windows.sh, no remembered set"; echo "$got" | sed 's/^/        /'; }
+tw A B --dry-run
+[[ ! -s $W/log ]] && ok "tag_windows.sh --dry-run changes nothing" || { bad "tag_windows.sh --dry-run"; sed 's/^/        /' "$W/log"; }
+
+# ---------------------------------------------------------------- background
+head_ "3f. background.sh"
+B="$TMP/bg"; mkdir -p "$B/bin"
+cp "$DIR/background.sh" "$B/"
+printf '#!/bin/sh\ncat "$IDS_FILE"\n' >"$B/monitor_reconcile.sh"; chmod +x "$B/monitor_reconcile.sh"
+printf '#!/bin/sh\ncat "$LISTMONITORS_FILE"\n' >"$B/bin/xrandr"
+printf '#!/bin/sh\necho "$*" >"$FEHLOG"\nfor a in "$@"; do case $a in *.ppm) cp "$a" "$FEHLOG.ppm" ;; esac; done\n' >"$B/bin/feh"
+chmod +x "$B/bin/xrandr" "$B/bin/feh"
+wall=$(bash -c 'source ~/.config/herbstluftwm/variables.autostart; echo $wallpaper')
+bg() {
+    printf '%s\n' "$1" >"$B/ids"; printf 'Monitors: 2\n%s\n' "$2" >"$B/lm"
+    PATH="$B/bin:$PATH" IDS_FILE="$B/ids" LISTMONITORS_FILE="$B/lm" FEHLOG="$B/feh.log" bash "$B/background.sh" >/dev/null 2>&1
+    cat "$B/feh.log"
+}
+PANEL=' 0: +*eDP-1 2560/340x1600/210+0+0  eDP-1'
+EXT=' 1: +DP-4 1920/530x1080/300+2560+0  DP-4'
+got=$(bg $'eDP-1 eDP-1 00ffffffffffff0009e5c90b00000000\nDP-4 DP-4 -' "$PANEL"$'\n'"$EXT")
+[[ $got == "--no-fehbg --bg-fill $wall "*.ppm ]] && ok "background: the panel keeps the wallpaper, an unrecognised external gets the solid colour" || { bad "background: panel wallpaper, unknown external colour"; echo "        $got"; }
+bg $'eDP-1 eDP-1 -\nDP-4 DP-4 -' "$PANEL"$'\n'"$EXT" >/dev/null
+read -r -d '' ppm <"$B/feh.log.ppm"
+[[ $(head -3 "$B/feh.log.ppm" | tr '\n' ' ') == 'P3 64 64 255 ' && $(tail -n +4 "$B/feh.log.ppm" | tr -s ' \n' '\n\n' | sort | uniq -c | tr -s ' \n' ' ') == ' 4096 101 4096 192 4096 21 ' ]] \
+    && ok "background: the solid colour is a 64x64 image of #1565C0 (a 1x1 image scales to black in feh)" || { bad "background: the solid image"; head -4 "$B/feh.log.ppm" | cut -c1-40 | sed 's/^/        /'; }
+got=$(bg $'eDP-1 eDP-1 00ffffffffffff0009e5c90b00000000\nDP-4 desk 00ffffffffffff0005e3bbbbbbbbbbbb' "$PANEL"$'\n'"$EXT")
+[[ $got == "--no-fehbg --bg-fill $wall" ]] && ok "background: an external listed in MONITORS keeps the wallpaper too" || { bad "background: listed external"; echo "        $got"; }
+got=$(bg $'eDP-1 eDP-1 -\nDP-4 00ffffffffffff0005e3bbbbbbbbbbbb 00ffffffffffff0005e3bbbbbbbbbbbb' "$EXT"$'\n'"$PANEL")
+[[ $got == "--no-fehbg --bg-fill "*".ppm $wall" ]] && ok "background: images follow xrandr's monitor order; an unlisted external with an EDID is unknown" || { bad "background: order, unlisted EDID"; echo "        $got"; }
 
 # ---------------------------------------------------------------- tui
 head_ "4. monitor_tui.py (no display needed)"

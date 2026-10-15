@@ -8,10 +8,12 @@ Rotation is not handled.
 """
 import copy
 import curses
+import math
 import os
 import re
 import subprocess
 import sys
+import time
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 RECONCILE = os.path.join(SCRIPT_DIR, "monitor_reconcile.sh")
@@ -22,6 +24,9 @@ RULES_FILE = os.environ.get("RULES_AUTOSTART", os.path.join(SCRIPT_DIR, "..", "r
 HLWM_TAG_LAYOUTS = os.environ.get("HLWM_TAG_LAYOUTS", os.path.join(SCRIPT_DIR, "hlwm_tag_layouts.conf"))
 HC = os.environ.get("HERBSTCLIENT", "herbstclient")
 DRY = bool(os.environ.get("MONITOR_TUI_DRY"))
+KEEP_SECONDS = 15     # how long an applied change waits for a yes before it is undone
+
+OFF_GAP = 160     # px between monitors that are off, and between them and the active ones, in the diagram
 
 GEOM = re.compile(r"^(\d+)x(\d+)\+(-?\d+)\+(-?\d+)$")
 GEOM_SIGNED = re.compile(r"^(\d+)x(\d+)([+-]\d+)([+-]\d+)$")
@@ -35,10 +40,16 @@ def dims(mode):
     return (int(m.group(1)), int(m.group(2))) if m else None
 
 
+ROTATIONS = ("normal", "left", "right", "inverted")
+ROT_LABELS = ("Normal", "Left 90°", "Right 90°", "180°")
+SIDEWAYS = ("left", "right")
+
+
 class Output:
     def __init__(self, name):
         self.name = name
         self.label = name   # the name layouts use: from MONITORS, else the EDID id, else the port
+        self.edid = ""      # the first line of its EDID, the key of MONITORS; empty if it has none
         self.modes = []
         self.pref = None
         self.rates = []
@@ -46,6 +57,8 @@ class Output:
         self.mode = "off"
         self.x = self.y = self.w = self.h = 0
         self.primary = False
+        self.rot = "normal"     # normal, left, right or inverted; w and h are always as rotated
+        self.unrotate = False   # turned back to normal: the layout line must say so, xrandr keeps the old rotation
         self.splits = []    # virtual monitors cut from it, "WxH+X+Y" from its top-left corner
 
     @property
@@ -63,11 +76,14 @@ def parse_xrandr(text):
                 cur = Output(f[0])
                 outs.append(cur)
                 cur.primary = len(f) > 2 and f[2] == "primary"
-                for tok in f[2:]:
+                toks = f[2:]
+                for n, tok in enumerate(toks):
                     m = GEOM.match(tok)
                     if m:
                         cur.w, cur.h, cur.x, cur.y = (int(v) for v in m.groups())
                         cur.mode = "auto"
+                        if toks[n + 1:n + 2] and toks[n + 1] in ("left", "right", "inverted"):
+                            cur.rot = toks[n + 1]
                         break
         elif cur is not None and line.strip():
             f = line.split()
@@ -117,7 +133,47 @@ class Model:
         o.mode = mode
         d = dims(o.pref or (o.modes[0] if o.modes else None)) if mode == "auto" else dims(mode)
         if d:
-            o.w, o.h = d
+            o.w, o.h = d[::-1] if o.rot in SIDEWAYS else d
+
+    def rotate(self, o, rot):
+        """Turn o to rot, keeping its top-left corner; the monitors beyond it move as for a resize."""
+        ow, oh = o.w, o.h
+        if (rot in SIDEWAYS) != (o.rot in SIDEWAYS):
+            o.w, o.h = o.h, o.w
+        o.unrotate = rot == "normal" and o.rot != "normal"
+        o.rot = rot
+        self.reflow(o, ow, oh)
+
+    def reflow(self, o, ow, oh):
+        """o went from ow x oh to its present size with its top-left corner fixed: move the monitors beyond its
+        changed edges by the same amount, so those that touched it still do (and a shrink pulls them in)."""
+        dw, dh = o.w - ow, o.h - oh
+        others = [a for a in self.active() if a is not o]
+        right = self._beyond(o, others, 0, ow, oh) if dw else []
+        below = self._beyond(o, others, 1, ow, oh) if dh else []
+        for a in right:
+            a.x += dw
+        for a in below:
+            a.y += dh
+
+    @staticmethod
+    def _beyond(o, others, axis, ow, oh):
+        """The monitors past o's old right (axis 0) or bottom (axis 1) edge, chained from the ones in line with it."""
+        def span(a, w, h):
+            return (a.x, a.x + w, a.y, a.y + h) if axis == 0 else (a.y, a.y + h, a.x, a.x + w)
+        refs, moved = [span(o, ow, oh)], []
+        grew = True
+        while grew:
+            grew = False
+            for b in others:
+                if b in moved:
+                    continue
+                start, _, lo, hi = span(b, b.w, b.h)
+                if any(start >= end and lo < rhi and rlo < hi for _, end, rlo, rhi in refs):
+                    moved.append(b)
+                    refs.append(span(b, b.w, b.h))
+                    grew = True
+        return moved
 
     def make_primary(self, o):
         if not o.on:
@@ -125,6 +181,33 @@ class Model:
         for a in self.outs:
             a.primary = a is o
         return ""
+
+    @staticmethod
+    def size(o):
+        """(w, h) as drawn: a monitor that is off is always drawn 16:9."""
+        return (o.w, o.h) if o.on else (o.w, round(o.w * 9 / 16))
+
+    def spots(self):
+        """{output name: (x, y)} as drawn: the active ones where they are, the ones that are off in a row to their right."""
+        act = self.active()
+        pos = {o.name: (o.x, o.y) for o in act}
+        x = max((o.x + o.w for o in act), default=0)
+        y = min((o.y for o in act), default=0)
+        for o in self.outs:
+            if not o.on:
+                x += OFF_GAP if pos else 0
+                pos[o.name] = (x, y)
+                x += self.size(o)[0]
+        return pos
+
+    def extent(self):
+        """(left, top, width, height) of everything drawn, the monitors that are off included."""
+        pos = self.spots()
+        minx = min((pos[o.name][0] for o in self.outs), default=0)
+        miny = min((pos[o.name][1] for o in self.outs), default=0)
+        tw = max((pos[o.name][0] + self.size(o)[0] for o in self.outs), default=0) - minx
+        th = max((pos[o.name][1] + self.size(o)[1] for o in self.outs), default=0) - miny
+        return minx, miny, tw, th
 
     def geometry(self, o):
         """WxH+X+Y, with a minus sign once moved past 0."""
@@ -164,6 +247,7 @@ class Model:
                 lines.append(f"{who} off")
                 continue
             s = f"{who} {o.mode}" + (f" --rate {o.rate}" if o.rate else "") + f" --pos {o.x - minx}x{o.y - miny}"
+            s += f" --rotate {o.rot}" if o.rot != "normal" or o.unrotate else ""
             s += " --primary" if o.primary else ""
             lines.append(s + (" --split " + " ".join(o.splits) if o.splits else ""))
         return lines
@@ -230,6 +314,8 @@ def attach_names(outs):
         f = line.split()
         if len(f) >= 2 and f[0] in by_name:
             by_name[f[0]].label = f[1]
+            if len(f) > 2 and f[2] != "-":
+                by_name[f[0]].edid = f[2]
 
 
 def apply_lines(lines):
@@ -511,13 +597,10 @@ def numbered(model):
 
 
 def monitor_diagram(model, avail, max_rows=None):
-    """The active monitors to scale, shrunk to fit avail columns and max_rows rows."""
-    act = model.active()
-    if not act:
+    """The monitors to scale, those that are off dashed, shrunk to fit avail columns and max_rows rows."""
+    if not model.outs:
         return []
-    minx, miny = min(o.x for o in act), min(o.y for o in act)
-    tw = max(o.x + o.w for o in act) - minx
-    th = max(o.y + o.h for o in act) - miny
+    minx, miny, tw, th = model.extent()
     px = max(80.0, tw / max(avail, 1), th / (2 * max_rows) if max_rows else 0)
     frame = (minx, miny, px)
     nums = {o.name: i + 1 for i, o in enumerate(numbered(model))}
@@ -847,6 +930,22 @@ def put_assignment(text, key, tag, var):
     return "\n".join(lines)
 
 
+def unassign_layout(text, var):
+    """hlwm_tag_layouts.conf with every tag that names `var` set to none."""
+    out, inside = [], False
+    for line in text.split("\n"):
+        if line.startswith("TAG_LAYOUTS["):
+            inside = True
+        elif inside and line.strip() == '"':
+            inside = False
+        elif inside:
+            m = ASSIGN_LINE.match(line)
+            if m and m.group(4) == var:
+                line = m.group(1) + m.group(2) + m.group(3) + NONE + (m.group(5) or "") + (m.group(6) or "")
+        out.append(line)
+    return "\n".join(out)
+
+
 def put_monitor_layout(text, key, body):
     """monitor_layouts.conf with the active entry for `key` replaced by the lines `body`."""
     lines, head = text.split("\n"), f'LAYOUTS["{key}"]="'
@@ -1068,6 +1167,8 @@ class LayoutScreen:
                     self.message = "saved"
                 else:
                     write_file(HLWM_LAYOUTS, drop_entry(read_file(HLWM_LAYOUTS), var))
+                    if self.used_by(var):
+                        write_file(HLWM_TAG_LAYOUTS, unassign_layout(read_file(HLWM_TAG_LAYOUTS), var))
             except (HlwmError, OSError, ValueError) as e:
                 self.message = str(e)
             self.refresh()
@@ -1083,7 +1184,7 @@ class LayoutScreen:
                 prompt = f'Use "{self.title(var)}" for tag {self.tag} with {self.key}?'
             else:
                 n = self.used_by(var)
-                prompt = f'Delete "{self.title(var)}"?' + (f" Used by {n} tag assignment{'s' * (n != 1)}." if n else "")
+                prompt = f'Delete "{self.title(var)}"?' + (f" Used by {n} tag assignment{'s' * (n != 1)}, {'they' if n != 1 else 'it'} will be unassigned." if n else "")
             return prompt, "y yes   n no"
         if self.mode == "edit":
             return self.message or "Edit", "Ctrl-S save   Esc cancel"
@@ -1162,13 +1263,14 @@ class LayoutScreen:
 # ----------------------------------------------------------- monitors screen
 
 ARROW_DIRS = {"UP": (0, -1), "DOWN": (0, 1), "LEFT": (-1, 0), "RIGHT": (1, 0)}
-MON_INFO_H = 3 + 2 + 2 * PAD_V
+MON_INFO_H = 4 + 2 + 2 * PAD_V
 MONITORS_MIN_ROWS = FOOTER_ROWS + MON_INFO_H + 2 + 2 * PAD_V + 7
-BROWSE_HINTS = "←↑↓→ select   p primary   m move   r resolution   e edit   Alt-S persist   Esc back   q quit"
+BROWSE_HINTS = "←↑↓→ select   p primary   m move   r resolution   o rotate   e edit   Alt-S persist   Esc back   q quit"
 MOVE_HINTS = "←↑↓→ 10px   Ctrl 1px   Shift 100px   Alt hop   Ctrl-S done   Esc cancel"
 INPUT_HINTS = "Ctrl-S apply   Esc cancel"
 RES_HINTS = "↑↓ select   Enter choose   Esc cancel"
 RES_W = 44
+ROT_W = 30
 CUSTOM_ROW = ("Custom…", "", False, False)
 
 
@@ -1177,12 +1279,13 @@ def monitors_min_width():
 
 
 def neighbour(model, o, dx, dy):
-    cx, cy = o.x + o.w / 2, o.y + o.h / 2
+    pos = model.spots()
+    cx, cy = pos[o.name][0] + model.size(o)[0] / 2, pos[o.name][1] + model.size(o)[1] / 2
     best, best_score = None, None
-    for a in model.active():
+    for a in model.outs:
         if a is o:
             continue
-        ax, ay = a.x + a.w / 2 - cx, a.y + a.h / 2 - cy
+        ax, ay = pos[a.name][0] + model.size(a)[0] / 2 - cx, pos[a.name][1] + model.size(a)[1] / 2 - cy
         along = ax * dx + ay * dy
         across = abs(ay * dx) + abs(ax * dy)
         if along <= 0 or across > along:        # only what lies within 45 degrees of the direction
@@ -1195,10 +1298,7 @@ def neighbour(model, o, dx, dy):
 
 def frame_for(model, avail, rows):
     """(origin x, origin y, px per column) of a canvas with the monitors centred in it."""
-    act = model.active()
-    minx, miny = min(o.x for o in act), min(o.y for o in act)
-    tw = max(o.x + o.w for o in act) - minx
-    th = max(o.y + o.h for o in act) - miny
+    minx, miny, tw, th = model.extent()
     px = max(80.0, tw / (0.8 * max(avail, 1)), th / (2 * 0.8 * max(rows, 1)))
     return minx + tw / 2 - px * avail / 2, miny + th / 2 - px * rows, px
 
@@ -1206,11 +1306,16 @@ def frame_for(model, avail, rows):
 def monitor_boxes(model, frame):
     """[(output, x0, y0, x1, y1)] on a canvas where a character is px wide and 2 px tall."""
     ox, oy, px = frame
-    boxes = []
-    for o in model.active():
-        x0, y0 = round((o.x - ox) / px), round((o.y - oy) / (2 * px))
-        x1 = max(x0 + 5, round((o.x + o.w - ox) / px) - 1)
-        y1 = max(y0 + 2, round((o.y + o.h - oy) / (2 * px)) - 1)
+    boxes, pos = [], model.spots()
+    for o in model.outs:
+        x, y = pos[o.name]
+        w, h = model.size(o)
+        x0, y0 = round((x - ox) / px), round((y - oy) / (2 * px))
+        x1 = max(x0 + 5, round((x + w - ox) / px) - 1)
+        y1 = max(y0 + 2, round((y + h - oy) / (2 * px)) - 1)
+        if not o.on:    # keep 16:9 in cells (a cell is twice as tall as wide), at least five rows so each side shows a dash
+            rows = max(5, round((x1 - x0 + 1) * 9 / 32))
+            x1, y1 = x0 + round(rows * 32 / 9) - 1, y0 + rows - 1
         boxes.append((o, x0, y0, x1, y1))
     return boxes
 
@@ -1224,8 +1329,9 @@ def draw_canvas(model, avail, rows, frame, nums, selected=None):
         for x in range(x0, x1 + 1):
             for y in range(y0, y1 + 1):
                 edge_x, edge_y = x in (x0, x1), y in (y0, y1)
+                gap = not o.on and ((x - x0) if edge_y else (y - y0)) % 2     # one cell of line, one of gap, as the tags table
                 cells[(x, y)] = ("┏┓┗┛"[(y == y1) * 2 + (x == x1)] if edge_x and edge_y
-                                 else "━" if edge_y else "┃" if edge_x else " ")
+                                 else " " if gap else "━" if edge_y else "┃" if edge_x else " ")
         label = f"{nums.get(o.name, '?')}{'*' if o.primary else ''}"
         for i, ch in enumerate(label):
             cells[(x0 + 2 + i, y0 + 1)] = ch
@@ -1277,7 +1383,8 @@ class MonitorScreen:
 
     def __init__(self):
         self.mode, self.message, self.name = "browse", "", ""
-        self.confirm = self.editor = self.before = None
+        self.confirm = self.editor = self.before = self.undo = None
+        self.deadline = 0
         self.prev = "browse"
         self.frame = self.nums = None
         self.res_rows, self.res_sel, self.res_top = [], 0, 0
@@ -1289,11 +1396,11 @@ class MonitorScreen:
             self.model, self.error = load_model(), ""
         except (OSError, subprocess.CalledProcessError) as e:
             self.model, self.error = Model([]), f"monitors: {e}"
-        names = [o.name for o in self.model.active()]
+        names = [o.name for o in self.model.outs]
         self.name = keep if keep in names else (names[0] if names else "")
 
     def cur(self):
-        return next((o for o in self.model.active() if o.name == self.name), None)
+        return next((o for o in self.model.outs if o.name == self.name), None)
 
 
     def handle(self, key, ncols=0):
@@ -1312,6 +1419,8 @@ class MonitorScreen:
             a = neighbour(self.model, o, *ARROW_DIRS[key])
             if a:
                 self.name = a.name
+        elif key in ("p", "m", "e", "o") and not o.on:
+            self.message = f"{o.name} is off: r to turn it on"
         elif key == "p":
             if o.primary:
                 self.message = f"{o.name} is already the primary"
@@ -1326,6 +1435,8 @@ class MonitorScreen:
             self.begin_edit()
         elif key == "r":
             self.begin_resolution()
+        elif key == "o":
+            self.begin_rotate()
         elif key == "ALT_s":
             self.confirm, self.mode = (f"Save these positions for {self.model.key()}?", "persist"), "confirm"
         return None
@@ -1366,6 +1477,39 @@ class MonitorScreen:
                     self.message = self.model.move_by(o, dx * step, dy * step)
         return None
 
+    def begin_rotate(self):
+        self.rot_sel = ROTATIONS.index(self.cur().rot)
+        self.mode = "rotate"
+
+    def key_rotate(self, key):
+        if key in ("ESC", "CTRL_C"):
+            self.mode = "browse"
+        elif key == "UP":
+            self.rot_sel = max(0, self.rot_sel - 1)
+        elif key == "DOWN":
+            self.rot_sel = min(len(ROTATIONS) - 1, self.rot_sel + 1)
+        elif key == "ENTER":
+            self.rotate_to(ROTATIONS[self.rot_sel])
+        return None
+
+    def rotate_to(self, rot):
+        """Turn the selected monitor to rot and apply, unless it is there already or would overlap."""
+        if rot == self.cur().rot:
+            self.mode = "browse"
+            self.message = f"{self.name} is already {ROT_LABELS[ROTATIONS.index(rot)].lower()}"
+            return
+        trial = self.model.copy()
+        o = next(a for a in trial.outs if a.name == self.name)
+        trial.rotate(o, rot)
+        err = trial.move_to(o, o.x, o.y)
+        if err:
+            self.mode = "browse"
+            self.message = err
+            return
+        self.before = self.model.copy()
+        self.model = trial
+        self.apply()
+
     def begin_edit(self):
         self.prev = self.mode
         if self.mode == "browse":
@@ -1384,7 +1528,8 @@ class MonitorScreen:
                 self.message = "expected WxH+X+Y, like 1920x1080+0+0"
                 return None
             w, h, x, y = (int(v) for v in m.groups())
-            self.set_size_and_position(f"{w}x{h}", None, x, y)
+            sideways = self.cur().rot in SIDEWAYS
+            self.set_size_and_position(f"{h}x{w}" if sideways else f"{w}x{h}", None, x, y)
         elif key not in ("ENTER", "TAB", "RESIZE"):
             self.editor.handle(key)
         return None
@@ -1392,10 +1537,17 @@ class MonitorScreen:
     def set_size_and_position(self, mode, rate, x=None, y=None):
         """Try on a copy and apply, unless it would overlap another output."""
         trial = self.model.copy()
-        o = next(a for a in trial.active() if a.name == self.name)
+        o = next(a for a in trial.outs if a.name == self.name)
+        if not o.on:
+            act = trial.active()                # turned on against the right edge of the others
+            o.x, o.y = max((a.x + a.w for a in act), default=0), min((a.y for a in act), default=0)
         if mode != o.mode:
             o.rate = None
+        ow, oh = o.w, o.h
+        was_on = o.on
         trial.set_mode(o, mode)
+        if was_on:
+            trial.reflow(o, ow, oh)
         if rate:
             o.rate = rate
         err = trial.move_to(o, o.x if x is None else x, o.y if y is None else y)
@@ -1468,22 +1620,51 @@ class MonitorScreen:
             return
         if not DRY:
             self.reload(keep=self.name)
-        self.message = "applied"
+        self.undo, self.deadline = self.before, time.monotonic() + KEEP_SECONDS
+        self.mode = "keep"
+
+    def key_keep(self, key):
+        if key in ("y", "ENTER"):
+            self.mode, self.message = "browse", "applied"
+        elif key in ("n", "ESC", "CTRL_C"):
+            self.revert()
+        return None
+
+    def tick(self):
+        if self.mode == "keep" and time.monotonic() >= self.deadline:
+            self.revert()
+
+    def revert(self):
+        self.mode = "browse"
+        turned = {a.name for a in self.model.outs if a.rot != "normal"}
+        for a in self.undo.outs:
+            a.unrotate = a.rot == "normal" and a.name in turned
+        rc, err = apply_lines(self.undo.layout_lines())
+        if DRY:
+            self.model = self.undo
+        else:
+            self.reload(keep=self.name)
+        self.message = "reverted" if rc == 0 else (err.splitlines()[-1] if err else "reverting failed")
 
 
     def footer(self):
         if self.mode == "confirm":
             return self.confirm[0], "y yes   n no"
+        if self.mode == "keep":
+            left = max(0, math.ceil(self.deadline - time.monotonic()))
+            return f"Keep these settings? Reverting in {left}s", "y keep   n revert"
         if self.mode == "move":
             return self.message or f"Move {self.name}", MOVE_HINTS
         if self.mode in ("edit", "custom"):
             return self.message or ("Edit " if self.mode == "edit" else "Custom resolution ") + self.name, INPUT_HINTS
         if self.mode == "resolution":
             return self.message or f"Resolution {self.name}", RES_HINTS
+        if self.mode == "rotate":
+            return f"Rotate {self.name}", RES_HINTS
         return self.message or "Monitors", BROWSE_HINTS
 
     def diagram(self, avail, rows):
-        if not self.model.active():
+        if not self.model.outs:
             return []
         if self.mode == "move" and self.frame is None:
             self.frame = frame_for(self.model, avail, rows)
@@ -1501,9 +1682,14 @@ class MonitorScreen:
         nums = self.numbers()
         rate = o.rate or next((r for m, r, c, _ in o.rates if c and m == o.mode), "")
         mode = o.mode if dims(o.mode) else f"{o.w}x{o.h}"
+        if not o.on:
+            lines = [kv("Output", o.name.ljust(14)) + kv("Primary", "no"), kv("Mode", "off"),
+                     kv("Position", "off") + [("   r to turn it on", "dim")], kv("EDID", o.edid or "none")]
+            return f"{nums[o.name]}  {o.name}", lines
         lines = [kv("Output", o.name.ljust(14)) + kv("Primary", "yes" if o.primary else "no"),
-                 kv("Mode", mode + (f" @ {rate} Hz" if rate else "")),
-                 kv("Position", self.model.geometry(o)) + ([("   moving", "dim")] if self.mode == "move" else [])]
+                 kv("Mode", mode + (f" @ {rate} Hz" if rate else "")) + ([(f"   rotated {o.rot}", "dim")] if o.rot != "normal" else []),
+                 kv("Position", self.model.geometry(o)) + ([("   moving", "dim")] if self.mode == "move" else []),
+                 kv("EDID", o.edid or "none")]
         return f"{nums[o.name]}{'*' if o.primary else ''}  {o.name}", lines
 
     def render(self, width, height):
@@ -1519,6 +1705,9 @@ class MonitorScreen:
         if self.mode == "resolution":
             box, top = self.res_box(body)
             rows = overlay(rows, box, top, (width - RES_W) // 2, width)
+        elif self.mode == "rotate":
+            box, top = self.rot_box(body)
+            rows = overlay(rows, box, top, (width - ROT_W) // 2, width)
         elif self.mode in ("edit", "custom"):
             box, top, cursor = self.input_box(body, width)
             left = self.box_left(box, width)
@@ -1546,6 +1735,13 @@ class MonitorScreen:
                 line += [(" " * (iw - 1 - len(text)), "text"), scroll_bar(k, n, vis, self.res_top)]
             lines.append(line)
         return panel("Resolution", lines, RES_W, bh, True), (body - bh) // 2
+
+    def rot_box(self, body):
+        now = ROTATIONS.index(self.cur().rot)
+        lines = [[(("› " if i == self.rot_sel else "  ") + f"{label:<{ROT_W - 8 - 2 * PAD}}" + ("*" if i == now else " "),
+                   "label" if i == self.rot_sel else "text")] for i, label in enumerate(ROT_LABELS)]
+        bh = len(lines) + 2 + 2 * PAD_V
+        return panel("Rotate", lines, ROT_W, bh, True), (body - bh) // 2
 
     def input_box(self, body, width):
         edit = self.mode == "edit"
@@ -2171,8 +2367,9 @@ XTERM_MODS = {"2": "SHIFT_", "3": "ALT_", "5": "CTRL_"}
 DIRECTIONS = ("UP", "DOWN", "LEFT", "RIGHT")
 
 
-def decode_escape(nxt):
-    """Key name for what follows an Esc; nxt() gives the next key or None."""
+def decode_escape(nxt, unget=lambda c: None):
+    """Key name for what follows an Esc; nxt() gives the next key or None. Only Alt-S is a key here, so any other
+    character typed right after Esc is Esc followed by that character: unget(c) puts it back."""
     c = nxt()
     if c is None:
         return "ESC"
@@ -2194,7 +2391,11 @@ def decode_escape(nxt):
         if d in CSI_ARROWS:
             return XTERM_MODS.get(params.split(";")[-1] if ";" in params else "", "") + CSI_ARROWS[d]
         return "ESC"
-    return "ALT_" + c if c.isalpha() else "ESC"
+    if c == "s":
+        return "ALT_s"
+    if c.isprintable():
+        unget(c)
+    return "ESC"
 
 
 def read_key(win):
@@ -2211,7 +2412,7 @@ def read_key(win):
         finally:
             win.timeout(-1)
 
-    return decode_escape(nxt)
+    return decode_escape(nxt, curses.unget_wch)
 
 
 def run(win):
@@ -2248,9 +2449,13 @@ def loop(win, stack, sel, data):
             paint(win, rows, footer, cursor)
         else:
             paint_too_small(win, h, w, footer, need)
+        waiting = name == "Monitors" and screens[name].mode == "keep"
+        win.timeout(250 if waiting else -1)
         try:
             key = read_key(win)
         except curses.error:
+            if waiting:
+                screens[name].tick()
             continue
         if key in ("RESIZE", ""):
             continue

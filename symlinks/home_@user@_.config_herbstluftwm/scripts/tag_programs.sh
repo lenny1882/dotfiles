@@ -7,7 +7,7 @@ TAG_LAYOUTS_FILE=${HLWM_TAG_LAYOUTS:-$SCRIPT_DIR/hlwm_tag_layouts.conf}
 declare -gA PROG_TAG=() PROG_INDEX=()
 
 source "$TAG_LAYOUTS_FILE"
-_key=$("$SCRIPT_DIR/monitor_reconcile.sh" --key)
+_key=${TAG_SET_KEY:-$("$SCRIPT_DIR/monitor_reconcile.sh" --key)}
 
 if [[ -v TAG_LAYOUTS[$_key] ]]; then
     while read -r _line; do

@@ -9,6 +9,7 @@ import importlib.util
 import os
 import sys
 import tempfile
+import time
 
 sys.dont_write_bytecode = True
 
@@ -283,6 +284,9 @@ with tempfile.TemporaryDirectory() as tmp:
     check("tags: one row per tag with its key, name and layout name",
           tl[2][:3] == ["1", "left|3", "Max"] and tl[3] == [] and tl[4][:3] == ["2", "middle|1", "Horizontal"], tl[2:5])
     check("tags: tags 8 and 9 are padded as unassigned", ["8", "8", "unassigned"] in tl and ["9", "9", "unassigned"] in tl)
+    UT = 'X=1\nTAG_LAYOUTS["a b"]="\nleft|3   max  {3}  [spotify:00]\nmy tag max {2}\nother grid\n"\n# max\nTAG_LAYOUTS["c"]="\nx max\n"\n'
+    check("unassign_layout keeps names, columns, keys and programs, and only touches tag blocks",
+          tui.unassign_layout(UT, "max") == UT.replace("left|3   max", "left|3   none").replace("my tag max", "my tag none").replace("x max", "x none"), tui.unassign_layout(UT, "max"))
     TB = tui.parse_tag_blocks('TAG_LAYOUTS["S"]="\nleft|3   max  {3}  [spotify:00 rambox:01]\nmy tag grid\n"\n')
     check("tags: blocks parse in file order with the key and programs",
           TB == {"S": [("left|3", "max", "3", [("spotify", "00"), ("rambox", "01")]), ("my tag", "grid", "", [])]}, TB)
@@ -461,11 +465,14 @@ with tempfile.TemporaryDirectory() as tmp:
           and "split horizontal:0.5:0" in live["loaded"][0][1])
     scr.sel = 1
     keys(scr, "d")
-    check("delete says how many tag assignments use it", scr.footer()[0] == 'Delete "Max"? Used by 4 tag assignments.', scr.footer())
+    check("delete says how many tag assignments use it", scr.footer()[0] == 'Delete "Max"? Used by 4 tag assignments, they will be unassigned.', scr.footer())
     keys(scr, "ESC")
     check("Esc cancels the delete", scr.mode == "browse" and "max='" in open(conf).read())
     keys(scr, "d", "y")
     text = open(conf).read()
+    tl = open(tui.HLWM_TAG_LAYOUTS).read()
+    check("y sets the tags that used it to none, in every block, and leaves the others",
+          "left|3   none" in tl and "right|2  none" in tl and tl.count(" max") == 0 and "middle|1 horizontal" in tl and "split|4  split" in tl, tl)
     check("y deletes the definition and its lname, and nothing else",
           "max='" not in text and "# lname: Max" not in text and "# lname: Horizontal" in text and len(scr.defs) == 5)
     scr.sel = 1
@@ -570,8 +577,9 @@ if True:
     ms.handle("n")
     check("n cancels", ms.mode == "browse" and not applied and o1.primary)
     ms.handle("p"); ms.handle("y")
-    check("y makes it primary and applies", ms.mode == "browse" and applied and "DP-4 1920x1080 --pos 2560x0 --primary" in applied[-1]
+    check("y makes it primary and applies", ms.mode == "keep" and applied and "DP-4 1920x1080 --pos 2560x0 --primary" in applied[-1]
           and "eDP-1 2560x1600 --pos 0x0" in applied[-1], applied[-1:])
+    ms.handle("y")
     ms.handle("p")
     check("an output that already is primary says so", ms.mode == "browse" and "already" in ms.message)
 
@@ -605,13 +613,15 @@ if True:
     before = len(applied)
     ms.handle("m"); ms.handle("DOWN"); ms.handle("DOWN"); ms.handle("CTRL_S")
     check("Ctrl-S applies the move (positions measured from the top-left)", len(applied) == before + 1 and "DP-4 1920x1080 --pos 2560x20 --primary" in applied[-1], applied[-1])
+    ms.handle("y")
 
     ms.handle("e")
     check("e opens the geometry as herbstluftwm reads it", ms.mode == "edit" and ms.editor.text() == "1920x1080+2560+20", ms.editor.text())
     for _ in range(30): ms.handle("BACKSPACE")
     for ch in "1920x1080+2560+0": ms.handle(ch)
     ms.handle("CTRL_S")
-    check("Ctrl-S applies the edited string", ms.mode == "browse" and "DP-4 1920x1080 --pos 2560x0 --primary" in applied[-1], applied[-1])
+    check("Ctrl-S applies the edited string", ms.mode == "keep" and "DP-4 1920x1080 --pos 2560x0 --primary" in applied[-1], applied[-1])
+    ms.handle("y")
     ms.handle("e")
     for _ in range(20): ms.handle("BACKSPACE")
     for ch in "nonsense": ms.handle(ch)
@@ -636,13 +646,15 @@ if True:
     check("the current resolution starts selected", ms.res_rows[ms.res_sel][:2] == ("1920x1080", "60.00"))
     ms.handle("DOWN"); ms.handle("ENTER")
     check("Enter on a line sets that resolution and Hz and applies",
-          ms.mode == "browse" and "DP-4 1920x1080 --rate 59.94 --pos 2560x0 --primary" in applied[-1], applied[-1])
+          ms.mode == "keep" and "DP-4 1920x1080 --rate 59.94 --pos 2560x0 --primary" in applied[-1], applied[-1])
+    ms.handle("y")
     ms.handle("r"); ms.handle("HOME"); ms.handle("ENTER")
     check("Enter on Custom opens the values for editing, filled with the current ones", ms.mode == "custom" and ms.editor.text() == "1920x1080 59.94", ms.editor.text())
     for _ in range(20): ms.handle("BACKSPACE")
     for ch in "1600x900 75": ms.handle(ch)
     ms.handle("CTRL_S")
-    check("Ctrl-S applies the custom resolution and rate", ms.mode == "browse" and "DP-4 1600x900 --rate 75 --pos 2560x0 --primary" in applied[-1], applied[-1])
+    check("Ctrl-S applies the custom resolution and rate", ms.mode == "keep" and "DP-4 1600x900 --rate 75 --pos 2560x0 --primary" in applied[-1], applied[-1])
+    ms.handle("y")
     ms.handle("r"); ms.handle("HOME"); ms.handle("ENTER")
     for _ in range(20): ms.handle("BACKSPACE")
     for ch in "wide": ms.handle(ch)
@@ -652,6 +664,28 @@ if True:
     check("Esc backs out of the custom values and then the list", ms.mode == "browse")
     before = len(applied)
     ms.handle("ESC")
+
+    before_lines = ms.model.layout_lines()
+    ms.handle("m"); ms.handle("DOWN"); ms.handle("CTRL_S")
+    check("an apply waits for a yes, showing the seconds left",
+          ms.mode == "keep" and ms.footer() == ("Keep these settings? Reverting in 15s", "y keep   n revert"), ms.footer())
+    ms.handle("UP"); ms.handle("q")
+    check("other keys do nothing while it waits", ms.mode == "keep")
+    n = len(applied)
+    ms.handle("n")
+    check("n puts the old positions back", ms.mode == "browse" and ms.message == "reverted" and len(applied) == n + 1
+          and applied[-1] == before_lines, (applied[-1], before_lines))
+    ms.handle("m"); ms.handle("DOWN"); ms.handle("CTRL_S")
+    real_clock = time.monotonic
+    time.monotonic = lambda: real_clock() + tui.KEEP_SECONDS + 1
+    n = len(applied)
+    ms.tick()
+    check("with no answer for 15 s it reverts by itself", ms.mode == "browse" and ms.message == "reverted" and len(applied) == n + 1, ms.message)
+    time.monotonic = real_clock
+    ms.handle("m"); ms.handle("DOWN"); ms.handle("CTRL_S"); ms.tick()
+    check("tick before the time is up changes nothing", ms.mode == "keep")
+    ms.handle("ENTER")
+    check("Enter keeps it", ms.mode == "browse" and ms.message == "applied")
 
     tui.apply_lines = lambda lines: (1, "xrandr: cannot do that")
     ms.handle("m"); ms.handle("DOWN"); ms.handle("CTRL_S")
@@ -704,7 +738,7 @@ if True:
     now, _ = where(mv)
     check("the moved monitor goes left of the first one without the group re-centring", now["2"] < now["1"] == start["1"], (start, now))
     check("and is still numbered 2 while the move is unsaved", "┃ 2" in "".join(flat1) and now["2"] != -1)
-    mv.handle("CTRL_S")
+    mv.handle("CTRL_S"); mv.handle("y")
     after, flat2 = where(mv)
     check("saving centres the group again and numbers it by position: the monitor now on the left is 1",
           after["1"] < after["2"] and "1" in after, after)
@@ -808,7 +842,9 @@ if True:
     check("xterm Ctrl+Up is ESC [ 1 ; 5 A", tui.decode_escape(feed("[", "1", ";", "5", "A")) == "CTRL_UP")
     check("xterm Shift+Down is ESC [ 1 ; 2 B", tui.decode_escape(feed("[", "1", ";", "2", "B")) == "SHIFT_DOWN")
     check("xterm Alt+Left is ESC [ 1 ; 3 D", tui.decode_escape(feed("[", "1", ";", "3", "D")) == "ALT_LEFT")
-    check("Alt plus a letter is ALT_letter", tui.decode_escape(feed("s")) == "ALT_s" and tui.decode_escape(feed("S")) == "ALT_S")
+    back = []
+    check("Esc then s is Alt-S", tui.decode_escape(feed("s"), back.append) == "ALT_s" and not back)
+    check("Esc then any other character is Esc, and the character is put back", tui.decode_escape(feed("q"), back.append) == "ESC" and tui.decode_escape(feed("S"), back.append) == "ESC" and back == ["q", "S"], back)
     check("anything else after Esc is just Esc", tui.decode_escape(feed("[", "Z")) == "ESC" and tui.decode_escape(feed("5")) == "ESC")
     check("curses' own shifted keys are named", tui.norm_key(tui.curses.KEY_SLEFT) == "SHIFT_LEFT" and tui.norm_key(tui.curses.KEY_SR) == "SHIFT_UP")
     check("layout_lines carries a chosen rate only for that output",
@@ -1009,6 +1045,143 @@ with tempfile.TemporaryDirectory() as tmp:
     tui.load_model = lambda: tui.Model([])
     ts2 = tui.TagsScreen(); ts2.handle("k")
     check("tags: with no monitors an edit says there is nothing to save it for", ts2.mode == "browse" and ts2.message == "no monitors to save it for", ts2.message)
+
+print("\nA monitor that is off")
+if True:
+    ids = {}
+    applied = []
+    tui.load_model = lambda: model(OFF)
+    tui.apply_lines = lambda lines: (applied.append(list(lines)), (0, ""))[1]
+    tui.DRY = True
+    mo = tui.MonitorScreen()
+    e, d = mo.model.outs
+    d.edid = "00ffffffffffff0005e3bbbbbbbbbbbb"
+    check("an off monitor is drawn right of the active ones, top-aligned, with a gap", mo.model.spots() == {"eDP-1": (0, 0), "DP-4": (2560 + tui.OFF_GAP, 0)}, mo.model.spots())
+    d.w, d.h = 1920, 1200               # whatever its preferred mode is, the outline is 16:9
+    check("an off monitor is always drawn 16:9", mo.model.size(d) == (1920, 1080) and mo.model.size(e) == (e.w, e.h), mo.model.size(d))
+    rows = ["".join(t for t, _ in r) for r in mo.diagram(100, 12)]
+    flat = "\n".join(rows)
+    check("the diagram draws it with heavy dashes, one cell of line and one of gap, and the active one solid", "┏ ━ ━ ━" in flat and "┏━━━" in flat, flat)
+    check("the dashed outline carries its number and no star", any("┃" in r and "2" in r for r in rows) and "2*" not in flat, rows)
+    box = [b for b in tui.monitor_boxes(mo.model, tui.frame_for(mo.model, 100, 12)) if b[0] is d][0]
+    check("drawn in cells it is wider than tall, 16:9 once a cell's two-to-one shape is counted", (box[3] - box[1] + 1) / ((box[4] - box[2] + 1) * 2) > 1.5, box)
+    check("an off monitor is tall enough to show a dash on each side", sum(r.count("┃") for r in rows) >= 2 + 3, rows)
+    mo.handle("RIGHT")
+    check("Right selects the off monitor", mo.name == "DP-4" and mo.cur() is d)
+    title, lines = mo.info()
+    text = " ".join("".join(t for t, _ in l) for l in lines)
+    check("the info panel says it is off and still shows its EDID", title == "2  DP-4" and "off" in text and "00ffffffffffff0005e3bbbbbbbbbbbb" in text, text)
+    rows = ["".join(t for t, _ in r) for r in mo.diagram(100, 12)]
+    check("selected, the dashed outline is still dashed", any("┏ ━ ━" in r for r in rows))
+    for key in ("p", "m", "e"):
+        mo.handle(key)
+        check(f"{key} on an off monitor says to turn it on first", mo.mode == "browse" and mo.message == "DP-4 is off: r to turn it on", mo.message)
+    mo.handle("r")
+    check("r opens the resolution list for it", mo.mode == "resolution" and len(mo.res_rows) > 1)
+    mo.handle("DOWN") if mo.res_sel == 0 else None
+    mo.handle("ENTER")
+    check("choosing one turns it on at the right of the others and asks to keep it",
+          mo.mode == "keep" and applied and any(l.startswith("DP-4 1920x1080") and "--pos 2560x0" in l for l in applied[-1]), applied[-1:])
+    mo.handle("n")
+    check("n turns it off again", mo.message == "reverted" and applied[-1][-1] == "DP-4 off", applied[-1])
+    d2 = mo.model.outs[1]
+    check("and it is back to being drawn dashed", not d2.on)
+    tui.load_model = lambda: model(OFF.replace("eDP-1 connected primary 2560x1600+0+0", "eDP-1 connected 340mm x 210mm").replace("   2560x1600    165.00*+", "   2560x1600    165.00 +"))
+    none = tui.MonitorScreen()
+    rows = ["".join(t for t, _ in r) for r in none.diagram(100, 12)]
+    check("with every monitor off they are all drawn dashed", len(none.model.active()) == 0 and any("┏ ━ ━" in r for r in rows) and not any("━━" in r for r in rows), rows)
+
+print("\nRotation and re-flow")
+if True:
+    ROT = """\
+eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
+   2560x1600    165.00*+
+DP-4 connected 1080x1920+2560+0 left (normal left inverted right x axis y axis) 530mm x 300mm
+   1920x1080     60.00*+
+   2560x1440     60.00
+HDMI-1 connected 1920x1080+3640+0 (normal left inverted right x axis y axis) 530mm x 300mm
+   1920x1080     60.00*+
+DP-5 connected 1920x1080+0+1600 (normal left inverted right x axis y axis) 530mm x 300mm
+   1920x1080     60.00*+
+"""
+    m = model(ROT)
+    e, d, h, v = m.outs
+    check("parse: a rotated output keeps its rotation and the rotated size", d.rot == "left" and (d.w, d.h) == (1080, 1920) and e.rot == "normal", (d.rot, d.w, d.h))
+    check("a rotated output's layout line carries --rotate, a normal one does not", "DP-4 1920x1080 --pos 2560x0 --rotate left" in m.layout_lines() and not any("eDP-1" in l and "rotate" in l for l in m.layout_lines()), m.layout_lines())
+    m.set_mode(d, "2560x1440")
+    check("a mode on a sideways output is stored rotated", (d.w, d.h) == (1440, 2560), (d.w, d.h))
+
+    m = model(ROT)
+    e, d, h, v = m.outs
+    m.rotate(d, "normal")
+    check("rotating back swaps width and height", (d.w, d.h) == (1920, 1080), (d.w, d.h))
+    check("the monitor beyond the grown edge moves out by the growth and still touches", h.x == d.x + d.w == 4480, (h.x, d.x + d.w))
+    check("a monitor beyond neither edge does not move", (v.x, v.y) == (0, 1600) and (e.x, e.y) == (0, 0), (v.x, v.y))
+    m.rotate(d, "left")
+    check("rotating the other way pulls it back in", h.x == d.x + d.w == 3640, h.x)
+
+    m = model(ROT)
+    e, d, h, v = m.outs
+    ow, oh = e.w, e.h
+    m.set_mode(e, "1920x1080")
+    m.reflow(e, ow, oh)
+    check("a shrink pulls in everything beyond the right edge, chained", d.x == 1920 and h.x == 3000, (d.x, h.x))
+    check("and what sat below the shrunk edge moves up", v.y == 1080, v.y)
+
+    tui.load_model = lambda: model(ROT)
+    applied = []
+    tui.apply_lines = lambda lines: (applied.append(list(lines)), (0, ""))[1]
+    tui.DRY = True
+    rs = tui.MonitorScreen()
+    rs.handle("RIGHT")
+    check("the rotated monitor is selected and the info panel says so", rs.name == "DP-4" and "rotated left" in " ".join("".join(t for t, _ in l) for l in rs.info()[1]))
+    def rot_pick(screen, label):
+        screen.handle("o")
+        while tui.ROT_LABELS[screen.rot_sel] != label:
+            screen.handle("DOWN" if tui.ROT_LABELS.index(label) > screen.rot_sel else "UP")
+        screen.handle("ENTER")
+
+    rs.handle("o")
+    check("o opens a menu of the four rotations with the current one selected", rs.mode == "rotate" and tui.ROTATIONS[rs.rot_sel] == "left", rs.mode)
+    rs.handle("ESC")
+    check("Esc closes it and changes nothing", rs.mode == "browse" and rs.model.outs[1].rot == "left")
+    rot_pick(rs, "Left 90°")
+    check("choosing the current rotation says so and applies nothing", rs.mode == "browse" and "already" in rs.message, rs.message)
+    rot_pick(rs, "Right 90°")
+    check("choosing Right 90° applies it and asks to keep it", rs.mode == "keep" and any(l.startswith("DP-4") and "--rotate right" in l for l in applied[-1]), applied[-1:])
+    rs.handle("y")
+    rot_pick(rs, "180°")
+    check("180° is inverted", any(l.startswith("DP-4") and "--rotate inverted" in l for l in applied[-1]) and rs.model.outs[1].rot == "inverted", applied[-1:])
+    rs.handle("y")
+    rot_pick(rs, "Normal")
+    check("Normal sends --rotate normal (xrandr keeps the old rotation otherwise) and moves what was beyond it", rs.model.outs[1].rot == "normal" and rs.model.outs[2].x == 4480 and any(l.startswith("DP-4") and "--rotate normal" in l for l in applied[-1]), applied[-1:])
+    rs.handle("y")
+    rot_pick(rs, "Left 90°")
+    check("Left 90° pulls the monitor beyond it in", rs.model.outs[1].rot == "left" and rs.model.outs[2].x == 3640, (rs.model.outs[1].rot, rs.model.outs[2].x))
+    rs.handle("n")
+    check("n sends the rotation of the old layout too", any(l.startswith("DP-4") and "--rotate normal" in l for l in applied[-1]), applied[-1:])
+    check("n undoes it, neighbours included", rs.model.outs[1].rot == "normal" and rs.model.outs[2].x == 4480, (rs.model.outs[1].rot, rs.model.outs[2].x))
+
+    tui.load_model = lambda: model(ROT)
+    rs = tui.MonitorScreen(); rs.handle("RIGHT"); rs.handle("e")
+    check("e shows the geometry as rotated", rs.editor.text() == "1080x1920+2560+0", rs.editor.text())
+    for _ in range(30): rs.handle("BACKSPACE")
+    for ch in "1080x1920+2560+0": rs.handle(ch)
+    rs.handle("CTRL_S")
+    check("typing it back applies the mode of the rotated monitor, not its swapped size", any(l.startswith("DP-4 1920x1080") and "--rotate left" in l for l in applied[-1]), applied[-1:])
+    rs.handle("y")
+
+    tui.load_model = lambda: model(ROT)
+    rs = tui.MonitorScreen(); rs.handle("RIGHT"); rs.handle("r")
+    rs.res_sel = next(i for i, r in enumerate(rs.res_rows) if r[0] == "2560x1440")
+    rs.handle("ENTER")
+    mm = rs.model.outs
+    check("a resolution change re-flows the monitors beyond it", rs.mode == "keep" and (mm[1].w, mm[1].h) == (1440, 2560) and mm[2].x == mm[1].x + mm[1].w, [(o.name, o.x, o.w) for o in mm])
+    rs.handle("y")
+
+    tui.load_model = lambda: model(OFF)
+    ro = tui.MonitorScreen(); ro.handle("RIGHT"); ro.handle("o")
+    check("o on a monitor that is off says to turn it on first", ro.message == "DP-4 is off: r to turn it on", ro.message)
 
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
