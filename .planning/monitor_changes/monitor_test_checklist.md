@@ -83,7 +83,7 @@ Use a second monitor you can lose without harm; changes apply immediately throug
 
 - **One event or several:** plugging a dock should log a burst but produce one `monitors_applied`. If bars restart repeatedly, raise `DEBOUNCE` in `monitor_changes.sh`.
 - **udevadm output format:** the awk filter assumes the action is field 3 and the path is field 4. Run `udevadm monitor --udev --subsystem-match=drm` by hand and compare.
-- **xev fallback:** run `monitor_changes.sh --xev` once and check the gawk pattern matches the lines xev prints.
+- **xev fallback:** done. Run live by the user, the gawk pattern matches the lines xev prints.
 - **Solid colour across monitors:** the 1x1 image should cover every monitor evenly. If not, switch `--bg-fill` to `--bg-scale` in `background.sh`.
 - **Mode on laptop-only boot:** `--auto` may pick a different resolution from the old hardcoded 2560x1600. If so, give the panel an explicit mode in a layout entry.
 

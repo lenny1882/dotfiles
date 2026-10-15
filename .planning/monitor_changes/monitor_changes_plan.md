@@ -25,7 +25,7 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 3. **Safety guard** - the panel is only switched off after another output is confirmed active; any failure leaves it on.
 4. **Hook plumbing** - `monitor_changes.sh` is only the event source: it emits `monitors_changed`. `rule_hook.sh`, the one place hooks are handled (the unfiltered `herbstclient --idle` loop in `startup.autostart`), reacts: `monitors_changed` runs reconcile, which emits `monitors_applied` after applying, and `monitors_applied` runs `panel.sh` and `background.sh`.
 5. **udevadm event source** - `monitor_udev_events`.
-6. **xev fallback and debounce** - auto-selected, `--xev` override.
+6. **xev fallback and debounce** - auto-selected, `--xev` override. Tested live by the user: `monitor_changes.sh --xev` prints `DP-4: Connected` and `DP-4: Disconnected` on a replug.
 7. **Startup integration** - `monitors.autostart` calls reconcile (falling back to `hc detect_monitors`); `startup.autostart` spawns the watcher on every autostart (a reload too) if `pgrep` does not find it running.
 8. **Bars and padding** - `monitors_applied` runs `panel.sh` (from `rule_hook.sh`).
 9. **Background** - `background.sh`, run at startup and on `monitors_applied`.
@@ -53,7 +53,6 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 
 ## Known gaps
 
-- The xev line format the gawk pattern expects, and the udevadm output fields, are unverified on real hardware.
 - Monitors screen: changing a mode or position does not move the other outputs; an overlap is refused. Rotation is not handled.
 - A letter typed within 40 ms of Esc is read as Alt plus that letter.
 - Layout screen: deleting a layout leaves the tag assignments that name it.
