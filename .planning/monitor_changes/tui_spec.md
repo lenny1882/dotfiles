@@ -205,10 +205,9 @@ tag under the current set of connected monitors in `hlwm_tag_layouts.conf`; if t
 the save editor instead. On the Monitors screen it asks `y/n`, then replaces the set's active entry in `monitor_layouts.conf`
 with the current layout (comments around it are left alone).
 
-Still open for this screen: `hc load` on a tag with windows is unverified; deleting a layout leaves the assignments that name it
-(they then read `unknown layout`).
+Still open for this screen: deleting a layout leaves the assignments that name it (they then read `unknown layout`).
 
-## Monitors screen (built, not yet seen live)
+## Monitors screen (built, tested live)
 
 Decided with the user (2026-10-09):
 - The active monitors drawn to scale, numbered, `*` on the primary (grey drawing; the selected monitor is green),
@@ -256,18 +255,10 @@ Layouts:
 1. Deleting a layout leaves the tag assignments that name it (the confirmation says how many).
 2. Decided: setting a layout is live only; Alt-S persists it (see above).
 3. **What `custom` should look like**: the word alone for now, plus a note on how to save it.
-4. **The auto-load script** is not written. Needs a live test of `hc load` on tags with windows,
-   especially which frame gets the windows in a multi-frame layout, and of the per-tag attribute. It would
-   be a new case in `rule_hook.sh` (or called from it).
-5. **Switching startup** from `layouts.autostart`'s hand-written `hc load` lines to the new files.
-6. **Whether the key needs more than the connected outputs** (see "Known limits of the key").
-7. Replace the placeholder per-set assignments with the user's own.
-
-Monitors:
-8. Whether to add a keep-or-revert prompt after an apply. Not decided. (Saving is Alt-S, see above.)
+4. **Whether the key needs more than the connected outputs** (see "Known limits of the key").
 
 General:
-9. Frame labels are cut off when a frame is narrow (e.g. `horizon`); cosmetic.
-10. Not handled: rotation (positions assume unrotated outputs).
-11. `hc load` on a tag with windows, and everything touching a live herbstluftwm beyond what the user has
-    run, is unverified: a throwaway herbstluftwm under `Xvnc` could not be started in the sandbox.
+5. Frame labels are cut off when a frame is narrow (e.g. `horizon`); cosmetic.
+6. Not handled: rotation (positions assume unrotated outputs).
+7. Everything touching a live herbstluftwm beyond what the user has run is unverified: a throwaway
+   herbstluftwm under `Xvnc` could not be started in the sandbox.

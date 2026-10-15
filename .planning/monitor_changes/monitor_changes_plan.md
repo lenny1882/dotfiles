@@ -55,18 +55,15 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 
 - The fallback is simpler than first planned: the "half screens" and "stacked when under 1080p" heuristics are missing.
 - Only the internal panel is guarded against being turned off; turning an external off is not checked.
-- `monitor_layouts.conf` has only the one docked entry; add others (for example the 3-monitor desk) using `monitor_reconcile.sh --key` while connected.
+- `monitor_layouts.conf` has only the ultrawide desk. A set with no entry, such as the panel with `DP-4`, uses the fallback: panel primary at `0x0`, the externals to its right, the blue background on any unrecognised monitor. Add more with `monitor_reconcile.sh --key` while connected.
 - Polybar and its padding go on the xrandr primary monitor, matched to the herbstluftwm monitor by rect (`panel.sh`); monitor 0 if none matches. Checked on real hardware.
 - The xev line format the gawk pattern expects, and the udevadm output fields, are unverified on real hardware.
 - Identical monitors cannot be told apart by name; EDID serial or port position may be needed.
-- Fixed, **not yet tested live**: an unknown external on `auto` that lists no mode, or only the 640x480 fallback (a rejected or missing EDID), now gets a created `1920x1080_custom` (`FALLBACK_MODE` in `monitor_reconcile.sh`), so it is turned on and gets the solid background. Before, X listed no modes at all for such a monitor (seen on `DP-2`: the kernel logs `EDID checksum invalid`, and its EDID cannot be read over I2C) and `auto` left it off. The monitor's EDID id still cannot be shown while the kernel does not expose one.
 - The root cause of the ASUS VS247's bad EDID is unknown (monitor, or the HDMI Expansion Card). Trying another input or card would tell.
 - `--auto` on a laptop-only boot picks the panel's preferred mode, which may differ from the old hardcoded 2560x1600.
-- Monitors screen: changing a mode or position does not move the other outputs; an overlap is refused.
-- Monitors screen: outputs that are off are not shown or selectable, so it cannot turn one on or off. Rotation is not handled.
-- Monitors screen: there is no keep-or-revert prompt, so a mode the monitor cannot show is not undone. A failed apply puts the old state back.
+- Monitors screen: changing a mode or position does not move the other outputs; an overlap is refused. Rotation is not handled.
 - A letter typed within 40 ms of Esc is read as Alt plus that letter.
-- Layout screen: setting a layout does not say whether `hc load` kept the windows; unverified on tags with windows. Deleting a layout leaves the tag assignments that name it.
+- Layout screen: deleting a layout leaves the tag assignments that name it.
 - The layout set key is the sorted connected output names, so the panel on and off, and virtual monitors, share one key.
 
 ## Risks
