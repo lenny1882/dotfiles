@@ -1146,7 +1146,7 @@ DP-5 connected 1920x1080+0+1600 (normal left inverted right x axis y axis) 530mm
     check("180° is inverted", any(l.startswith("DP-4") and "--rotate inverted" in l for l in applied[-1]) and rs.model.outs[1].rot == "inverted", applied[-1:])
     rs.handle("y")
     rot_pick(rs, "Normal")
-    check("Normal turns it back, moving what was beyond it", rs.model.outs[1].rot == "normal" and rs.model.outs[2].x == 4480 and not any("rotate" in l for l in applied[-1] if l.startswith("DP-4")), applied[-1:])
+    check("Normal sends --rotate normal (xrandr keeps the old rotation otherwise) and moves what was beyond it", rs.model.outs[1].rot == "normal" and rs.model.outs[2].x == 4480 and any(l.startswith("DP-4") and "--rotate normal" in l for l in applied[-1]), applied[-1:])
     rs.handle("y")
     rot_pick(rs, "Left 90°")
     check("Left 90° pulls the monitor beyond it in", rs.model.outs[1].rot == "left" and rs.model.outs[2].x == 3640, (rs.model.outs[1].rot, rs.model.outs[2].x))

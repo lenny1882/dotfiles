@@ -58,6 +58,7 @@ class Output:
         self.x = self.y = self.w = self.h = 0
         self.primary = False
         self.rot = "normal"     # normal, left, right or inverted; w and h are always as rotated
+        self.unrotate = False   # turned back to normal: the layout line must say so, xrandr keeps the old rotation
         self.splits = []    # virtual monitors cut from it, "WxH+X+Y" from its top-left corner
 
     @property
@@ -139,6 +140,7 @@ class Model:
         ow, oh = o.w, o.h
         if (rot in SIDEWAYS) != (o.rot in SIDEWAYS):
             o.w, o.h = o.h, o.w
+        o.unrotate = rot == "normal" and o.rot != "normal"
         o.rot = rot
         self.reflow(o, ow, oh)
 
@@ -245,7 +247,7 @@ class Model:
                 lines.append(f"{who} off")
                 continue
             s = f"{who} {o.mode}" + (f" --rate {o.rate}" if o.rate else "") + f" --pos {o.x - minx}x{o.y - miny}"
-            s += f" --rotate {o.rot}" if o.rot != "normal" else ""
+            s += f" --rotate {o.rot}" if o.rot != "normal" or o.unrotate else ""
             s += " --primary" if o.primary else ""
             lines.append(s + (" --split " + " ".join(o.splits) if o.splits else ""))
         return lines
