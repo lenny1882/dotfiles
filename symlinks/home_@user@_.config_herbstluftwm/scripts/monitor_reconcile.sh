@@ -192,7 +192,7 @@ quiet() {
     if [[ -n $DRY_RUN ]]; then run "$@"; else "$@" 2>/dev/null; fi
 }
 
-FALLBACK_MODE=1920x1080     # for an external that lists nothing but the 640x480 fallback
+FALLBACK_MODE=1920x1080     # for an external whose largest mode is 640x480, the stand-ins the kernel adds without an EDID
 
 # stdin: layout lines. args: xrandr --query output. Replaces each WxH the output lacks with a created WxH_custom, or `auto`.
 #   An external on `auto` that lists no usable mode gets FALLBACK_MODE.
@@ -201,7 +201,7 @@ resolve_modes() {
     while read -r name mode rest; do
         [[ -z $name ]] && continue
         if [[ $mode == auto ]] && ! is_internal "$name" \
-            && [[ -z $(output_modes "$state" "$name" | grep -vE '^(640x480(_custom)?)?$') ]]; then
+            && [[ -z $(output_modes "$state" "$name" | awk -F'[x_]' '!/_custom$/ && ($1 > 640 || $2 > 480)') ]]; then
             log "$name lists no usable mode (EDID missing or rejected), assuming $FALLBACK_MODE"
             mode=$FALLBACK_MODE
         fi
