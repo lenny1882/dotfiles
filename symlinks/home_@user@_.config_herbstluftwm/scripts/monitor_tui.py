@@ -26,6 +26,8 @@ HC = os.environ.get("HERBSTCLIENT", "herbstclient")
 DRY = bool(os.environ.get("MONITOR_TUI_DRY"))
 KEEP_SECONDS = 15     # how long an applied change waits for a yes before it is undone
 
+OFF_GAP = 160     # px between monitors that are off, and between them and the active ones, in the diagram
+
 GEOM = re.compile(r"^(\d+)x(\d+)\+(-?\d+)\+(-?\d+)$")
 GEOM_SIGNED = re.compile(r"^(\d+)x(\d+)([+-]\d+)([+-]\d+)$")
 MODE = re.compile(r"^(\d+)x(\d+)")
@@ -42,6 +44,7 @@ class Output:
     def __init__(self, name):
         self.name = name
         self.label = name   # the name layouts use: from MONITORS, else the EDID id, else the port
+        self.edid = ""      # the first line of its EDID, the key of MONITORS; empty if it has none
         self.modes = []
         self.pref = None
         self.rates = []
@@ -128,6 +131,33 @@ class Model:
         for a in self.outs:
             a.primary = a is o
         return ""
+
+    @staticmethod
+    def size(o):
+        """(w, h) as drawn: a monitor that is off is always drawn 16:9."""
+        return (o.w, o.h) if o.on else (o.w, round(o.w * 9 / 16))
+
+    def spots(self):
+        """{output name: (x, y)} as drawn: the active ones where they are, the ones that are off in a row to their right."""
+        act = self.active()
+        pos = {o.name: (o.x, o.y) for o in act}
+        x = max((o.x + o.w for o in act), default=0)
+        y = min((o.y for o in act), default=0)
+        for o in self.outs:
+            if not o.on:
+                x += OFF_GAP if pos else 0
+                pos[o.name] = (x, y)
+                x += self.size(o)[0]
+        return pos
+
+    def extent(self):
+        """(left, top, width, height) of everything drawn, the monitors that are off included."""
+        pos = self.spots()
+        minx = min((pos[o.name][0] for o in self.outs), default=0)
+        miny = min((pos[o.name][1] for o in self.outs), default=0)
+        tw = max((pos[o.name][0] + self.size(o)[0] for o in self.outs), default=0) - minx
+        th = max((pos[o.name][1] + self.size(o)[1] for o in self.outs), default=0) - miny
+        return minx, miny, tw, th
 
     def geometry(self, o):
         """WxH+X+Y, with a minus sign once moved past 0."""
@@ -233,6 +263,8 @@ def attach_names(outs):
         f = line.split()
         if len(f) >= 2 and f[0] in by_name:
             by_name[f[0]].label = f[1]
+            if len(f) > 2 and f[2] != "-":
+                by_name[f[0]].edid = f[2]
 
 
 def apply_lines(lines):
@@ -514,13 +546,10 @@ def numbered(model):
 
 
 def monitor_diagram(model, avail, max_rows=None):
-    """The active monitors to scale, shrunk to fit avail columns and max_rows rows."""
-    act = model.active()
-    if not act:
+    """The monitors to scale, those that are off dashed, shrunk to fit avail columns and max_rows rows."""
+    if not model.outs:
         return []
-    minx, miny = min(o.x for o in act), min(o.y for o in act)
-    tw = max(o.x + o.w for o in act) - minx
-    th = max(o.y + o.h for o in act) - miny
+    minx, miny, tw, th = model.extent()
     px = max(80.0, tw / max(avail, 1), th / (2 * max_rows) if max_rows else 0)
     frame = (minx, miny, px)
     nums = {o.name: i + 1 for i, o in enumerate(numbered(model))}
@@ -1165,7 +1194,7 @@ class LayoutScreen:
 # ----------------------------------------------------------- monitors screen
 
 ARROW_DIRS = {"UP": (0, -1), "DOWN": (0, 1), "LEFT": (-1, 0), "RIGHT": (1, 0)}
-MON_INFO_H = 3 + 2 + 2 * PAD_V
+MON_INFO_H = 4 + 2 + 2 * PAD_V
 MONITORS_MIN_ROWS = FOOTER_ROWS + MON_INFO_H + 2 + 2 * PAD_V + 7
 BROWSE_HINTS = "←↑↓→ select   p primary   m move   r resolution   e edit   Alt-S persist   Esc back   q quit"
 MOVE_HINTS = "←↑↓→ 10px   Ctrl 1px   Shift 100px   Alt hop   Ctrl-S done   Esc cancel"
@@ -1180,12 +1209,13 @@ def monitors_min_width():
 
 
 def neighbour(model, o, dx, dy):
-    cx, cy = o.x + o.w / 2, o.y + o.h / 2
+    pos = model.spots()
+    cx, cy = pos[o.name][0] + model.size(o)[0] / 2, pos[o.name][1] + model.size(o)[1] / 2
     best, best_score = None, None
-    for a in model.active():
+    for a in model.outs:
         if a is o:
             continue
-        ax, ay = a.x + a.w / 2 - cx, a.y + a.h / 2 - cy
+        ax, ay = pos[a.name][0] + model.size(a)[0] / 2 - cx, pos[a.name][1] + model.size(a)[1] / 2 - cy
         along = ax * dx + ay * dy
         across = abs(ay * dx) + abs(ax * dy)
         if along <= 0 or across > along:        # only what lies within 45 degrees of the direction
@@ -1198,10 +1228,7 @@ def neighbour(model, o, dx, dy):
 
 def frame_for(model, avail, rows):
     """(origin x, origin y, px per column) of a canvas with the monitors centred in it."""
-    act = model.active()
-    minx, miny = min(o.x for o in act), min(o.y for o in act)
-    tw = max(o.x + o.w for o in act) - minx
-    th = max(o.y + o.h for o in act) - miny
+    minx, miny, tw, th = model.extent()
     px = max(80.0, tw / (0.8 * max(avail, 1)), th / (2 * 0.8 * max(rows, 1)))
     return minx + tw / 2 - px * avail / 2, miny + th / 2 - px * rows, px
 
@@ -1209,11 +1236,16 @@ def frame_for(model, avail, rows):
 def monitor_boxes(model, frame):
     """[(output, x0, y0, x1, y1)] on a canvas where a character is px wide and 2 px tall."""
     ox, oy, px = frame
-    boxes = []
-    for o in model.active():
-        x0, y0 = round((o.x - ox) / px), round((o.y - oy) / (2 * px))
-        x1 = max(x0 + 5, round((o.x + o.w - ox) / px) - 1)
-        y1 = max(y0 + 2, round((o.y + o.h - oy) / (2 * px)) - 1)
+    boxes, pos = [], model.spots()
+    for o in model.outs:
+        x, y = pos[o.name]
+        w, h = model.size(o)
+        x0, y0 = round((x - ox) / px), round((y - oy) / (2 * px))
+        x1 = max(x0 + 5, round((x + w - ox) / px) - 1)
+        y1 = max(y0 + 2, round((y + h - oy) / (2 * px)) - 1)
+        if not o.on:    # keep 16:9 in cells (a cell is twice as tall as wide), at least five rows so each side shows a dash
+            rows = max(5, round((x1 - x0 + 1) * 9 / 32))
+            x1, y1 = x0 + round(rows * 32 / 9) - 1, y0 + rows - 1
         boxes.append((o, x0, y0, x1, y1))
     return boxes
 
@@ -1227,8 +1259,9 @@ def draw_canvas(model, avail, rows, frame, nums, selected=None):
         for x in range(x0, x1 + 1):
             for y in range(y0, y1 + 1):
                 edge_x, edge_y = x in (x0, x1), y in (y0, y1)
+                gap = not o.on and ((x - x0) if edge_y else (y - y0)) % 2     # one cell of line, one of gap, as the tags table
                 cells[(x, y)] = ("┏┓┗┛"[(y == y1) * 2 + (x == x1)] if edge_x and edge_y
-                                 else "━" if edge_y else "┃" if edge_x else " ")
+                                 else " " if gap else "━" if edge_y else "┃" if edge_x else " ")
         label = f"{nums.get(o.name, '?')}{'*' if o.primary else ''}"
         for i, ch in enumerate(label):
             cells[(x0 + 2 + i, y0 + 1)] = ch
@@ -1293,11 +1326,11 @@ class MonitorScreen:
             self.model, self.error = load_model(), ""
         except (OSError, subprocess.CalledProcessError) as e:
             self.model, self.error = Model([]), f"monitors: {e}"
-        names = [o.name for o in self.model.active()]
+        names = [o.name for o in self.model.outs]
         self.name = keep if keep in names else (names[0] if names else "")
 
     def cur(self):
-        return next((o for o in self.model.active() if o.name == self.name), None)
+        return next((o for o in self.model.outs if o.name == self.name), None)
 
 
     def handle(self, key, ncols=0):
@@ -1316,6 +1349,8 @@ class MonitorScreen:
             a = neighbour(self.model, o, *ARROW_DIRS[key])
             if a:
                 self.name = a.name
+        elif key in ("p", "m", "e") and not o.on:
+            self.message = f"{o.name} is off: r to turn it on"
         elif key == "p":
             if o.primary:
                 self.message = f"{o.name} is already the primary"
@@ -1396,7 +1431,10 @@ class MonitorScreen:
     def set_size_and_position(self, mode, rate, x=None, y=None):
         """Try on a copy and apply, unless it would overlap another output."""
         trial = self.model.copy()
-        o = next(a for a in trial.active() if a.name == self.name)
+        o = next(a for a in trial.outs if a.name == self.name)
+        if not o.on:
+            act = trial.active()                # turned on against the right edge of the others
+            o.x, o.y = max((a.x + a.w for a in act), default=0), min((a.y for a in act), default=0)
         if mode != o.mode:
             o.rate = None
         trial.set_mode(o, mode)
@@ -1511,7 +1549,7 @@ class MonitorScreen:
         return self.message or "Monitors", BROWSE_HINTS
 
     def diagram(self, avail, rows):
-        if not self.model.active():
+        if not self.model.outs:
             return []
         if self.mode == "move" and self.frame is None:
             self.frame = frame_for(self.model, avail, rows)
@@ -1529,9 +1567,14 @@ class MonitorScreen:
         nums = self.numbers()
         rate = o.rate or next((r for m, r, c, _ in o.rates if c and m == o.mode), "")
         mode = o.mode if dims(o.mode) else f"{o.w}x{o.h}"
+        if not o.on:
+            lines = [kv("Output", o.name.ljust(14)) + kv("Primary", "no"), kv("Mode", "off"),
+                     kv("Position", "off") + [("   r to turn it on", "dim")], kv("EDID", o.edid or "none")]
+            return f"{nums[o.name]}  {o.name}", lines
         lines = [kv("Output", o.name.ljust(14)) + kv("Primary", "yes" if o.primary else "no"),
                  kv("Mode", mode + (f" @ {rate} Hz" if rate else "")),
-                 kv("Position", self.model.geometry(o)) + ([("   moving", "dim")] if self.mode == "move" else [])]
+                 kv("Position", self.model.geometry(o)) + ([("   moving", "dim")] if self.mode == "move" else []),
+                 kv("EDID", o.edid or "none")]
         return f"{nums[o.name]}{'*' if o.primary else ''}  {o.name}", lines
 
     def render(self, width, height):
