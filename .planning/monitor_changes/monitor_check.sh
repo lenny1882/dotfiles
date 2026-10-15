@@ -70,6 +70,15 @@ eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis)
 DP-4 connected (normal left inverted right x axis y axis)
 EOF
 
+# DP-4 listing only the 640x480 fallback, as with a rejected EDID.
+cat >"$TMP/nomode-640.q" <<'EOF'
+eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
+   2560x1600    165.00*+
+DP-4 connected (normal left inverted right x axis y axis)
+   640x480       60.00
+EOF
+cp "$TMP/nomode.m" "$TMP/nomode-640.m"
+
 # Unplugged, but the output still holds a mode.
 cat >"$TMP/stale.q" <<'EOF'
 eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
@@ -215,10 +224,23 @@ run fb-docked docked "$TMP/empty.conf" "$RECONCILE" --dry-run --force
 [[ $(rc fb-docked) == 0 ]] && ok "docked, no layout: dry run succeeds" || bad "docked, no layout: dry run failed"
 expect "docked, no layout: fallback is announced" "$TMP/fb-docked.out" 'using fallback'
 reject "docked, no layout: panel stays on" "$TMP/fb-docked.out" 'eDP-1 --off'
+expect "docked, no layout: the panel stays primary at 0x0" "$TMP/fb-docked.out" 'xrandr --output eDP-1 --auto --primary --pos 0x0'
+expect "docked, no layout: the external goes to its right" "$TMP/fb-docked.out" 'DP-4 --auto --right-of eDP-1'
+reject "docked, no layout: the external is not primary" "$TMP/fb-docked.out" 'DP-4.*--primary'
 
 run lay-docked docked "$TMP/dock.conf" "$RECONCILE" --dry-run --force
 expect "docked, panel-off layout: DP-4 is set first" "$TMP/lay-docked.out" 'DP-4 --mode 1920x1080 --primary --pos 0x0'
 expect "docked, panel-off layout: panel is switched off after" "$TMP/lay-docked.out" 'eDP-1 --off'
+
+run fb-nomodes failed "$TMP/empty.conf" "$RECONCILE" --dry-run --force
+expect "unknown external with no modes: it is announced" "$TMP/fb-nomodes.out" 'DP-4 lists no usable mode'
+expect "unknown external with no modes: 1920x1080 is created" "$TMP/fb-nomodes.out" 'xrandr --newmode 1920x1080_custom'
+expect "unknown external with no modes: the mode is added" "$TMP/fb-nomodes.out" 'xrandr --addmode DP-4 1920x1080_custom'
+expect "unknown external with no modes: it is turned on, right of the panel" "$TMP/fb-nomodes.out" 'DP-4 --mode 1920x1080_custom --right-of eDP-1'
+run fb-640 nomode-640 "$TMP/empty.conf" "$RECONCILE" --dry-run --force
+expect "unknown external listing only 640x480: treated as having no usable mode" "$TMP/fb-640.out" 'DP-4 lists no usable mode'
+run fb-ok docked "$TMP/empty.conf" "$RECONCILE" --dry-run --force
+reject "unknown external with real modes: left on auto" "$TMP/fb-ok.out" 'no usable mode'
 
 run guard failed "$TMP/dock.conf" XRANDR_AFTER_FIXTURE="$TMP/failed.q" "$RECONCILE" --dry-run --force
 expect "guard: failed external keeps the panel on" "$TMP/guard.out" 'keeping the panel on'
@@ -351,6 +373,54 @@ three max  {3}  [x:0]
 CONF
 got=$(PATH="$TMP/tl:$PATH" "$TMP/tl/tag_layouts.sh" --dry-run 2>&1 | tr '\n' ';')
 if [[ $got == 'tag_layouts: one: max;tag_layouts: three: max;' ]]; then ok "tag_layouts.sh leaves a tag whose layout is none alone, and ignores {n} and [...]"; else bad "tag_layouts.sh leaves a tag whose layout is none alone"; echo "$got" | sed 's/^/        /'; fi
+
+# ---------------------------------------------------------------- tag windows
+head_ "3e. tag_windows.sh"
+W="$TMP/tw"; mkdir -p "$W/bin"
+cp "$DIR/tag_windows.sh" "$DIR/tags.sh" "$DIR/tag_programs.sh" "$W/"
+printf '#!/usr/bin/env bash\necho "$NEWSET"\n' >"$W/monitor_reconcile.sh"
+cat >"$W/bin/herbstclient" <<'STUB'
+#!/usr/bin/env bash
+case $1 in
+    get_attr)
+        case $2 in
+            my_tag_set) [[ -n $OLDSET ]] && echo "$OLDSET" || exit 1 ;;
+            clients.w1.instance) echo spotify ;;
+            clients.w2.instance) echo vivaldi-stable ;;
+            clients.w3.instance) echo vivaldi-stable ;;
+        esac ;;
+    list_clients)
+        case $2 in
+            --tag=x) echo w1; echo w2 ;;
+            --tag=y) echo w3 ;;
+        esac ;;
+    *) echo "$*" >>"$STUBLOG" ;;
+esac
+STUB
+chmod +x "$W/monitor_reconcile.sh" "$W/bin/herbstclient"
+cat >"$W/hlwm_tag_layouts.conf" <<'CONF'
+declare -gA TAG_LAYOUTS=()
+TAG_LAYOUTS["A"]="
+left|1  max [spotify:0]
+right|2 max [vivaldi-stable:1]
+"
+TAG_LAYOUTS["B"]="
+x max [vivaldi-stable:11]
+y max [spotify:10]
+"
+CONF
+tw() { : >"$W/log"; HLWM_TAG_LAYOUTS="$W/hlwm_tag_layouts.conf" PATH="$W/bin:$PATH" STUBLOG="$W/log" OLDSET="$1" NEWSET="$2" "$W/tag_windows.sh" "${@:3}" >/dev/null 2>&1; }
+tw A B
+got=$(sort "$W/log" | tr '\n' ';')
+if [[ $got == 'apply_tmp_rule w1 --tag=y --index=10;apply_tmp_rule w3 --tag=x --index=11;set_attr my_tag_set B;silent new_attr string my_tag_set;' ]]; then ok "tag_windows.sh moves windows still on their original tag, leaves one moved by hand, and records the set"; else bad "tag_windows.sh moves windows"; echo "$got" | sed 's/^/        /'; fi
+tw B B
+got=$(tr '\n' ';' <"$W/log")
+[[ $got == 'silent new_attr string my_tag_set;set_attr my_tag_set B;' ]] && ok "tag_windows.sh moves nothing when the set has not changed" || { bad "tag_windows.sh, same set"; echo "$got" | sed 's/^/        /'; }
+tw "" B
+got=$(tr '\n' ';' <"$W/log")
+[[ $got == 'silent new_attr string my_tag_set;set_attr my_tag_set B;' ]] && ok "tag_windows.sh only records when no set was remembered" || { bad "tag_windows.sh, no remembered set"; echo "$got" | sed 's/^/        /'; }
+tw A B --dry-run
+[[ ! -s $W/log ]] && ok "tag_windows.sh --dry-run changes nothing" || { bad "tag_windows.sh --dry-run"; sed 's/^/        /' "$W/log"; }
 
 # ---------------------------------------------------------------- tui
 head_ "4. monitor_tui.py (no display needed)"

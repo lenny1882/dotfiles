@@ -13,7 +13,7 @@ Step 10 of `monitor_changes_plan.md`. Needs a herbstluftwm session and real moni
 | # | Case | Expect |
 |---|------|--------|
 | 1 | Laptop only, fresh login | Panel on, wallpaper (`~/.fehbg`), polybar on the primary (the only monitor) |
-| 2 | Plug one external, no layout entry | Fallback layout: external primary, panel to its left, solid colour background |
+| 2 | Plug one external, no layout entry | Fallback layout: the panel stays primary at 0x0, the external is to its right, solid colour background |
 | 3 | Same set, with a layout entry | Your layout is used, wallpaper returns, panel on or off as the entry says |
 | 4 | The 3-monitor desk setup, with a layout entry | Left, middle and right as configured, padding correct on each |
 | 5 | Unplug back to laptop only | Panel on, wallpaper, bars rebuilt, no stale monitor |
@@ -21,7 +21,7 @@ Step 10 of `monitor_changes_plan.md`. Needs a herbstluftwm session and real moni
 | 7 | Unplug during a reconcile | Panel stays on, no blank screen |
 | 8 | Monitor with a rejected EDID (kernel log: `EDID checksum invalid`) and a layout naming `1920x1080` | `xrandr --query` shows `1920x1080_custom` on that output and it is used |
 | 9 | Reload config (`hc reload`) | No second watcher, no change to the layout |
-| 10 | Primary is not the leftmost monitor (fallback layout with the panel on, or a layout with `--primary` on a non-left output) | Polybar and the top padding are on the `--primary` output only; every other monitor has no bar and no padding |
+| 10 | Primary is not the leftmost monitor (a layout with `--primary` on a non-left output) | Polybar and the top padding are on the `--primary` output only; every other monitor has no bar and no padding |
 
 ## TUI overview (step 11)
 

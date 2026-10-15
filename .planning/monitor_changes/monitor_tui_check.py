@@ -1038,5 +1038,50 @@ with tempfile.TemporaryDirectory() as tmp:
     ts2 = tui.TagsScreen(); ts2.handle("k")
     check("tags: with no monitors an edit says there is nothing to save it for", ts2.mode == "browse" and ts2.message == "no monitors to save it for", ts2.message)
 
+print("\nA monitor that is off")
+if True:
+    ids = {}
+    applied = []
+    tui.load_model = lambda: model(OFF)
+    tui.apply_lines = lambda lines: (applied.append(list(lines)), (0, ""))[1]
+    tui.DRY = True
+    mo = tui.MonitorScreen()
+    e, d = mo.model.outs
+    d.edid = "00ffffffffffff0005e3bbbbbbbbbbbb"
+    check("an off monitor is drawn right of the active ones, top-aligned, with a gap", mo.model.spots() == {"eDP-1": (0, 0), "DP-4": (2560 + tui.OFF_GAP, 0)}, mo.model.spots())
+    d.w, d.h = 1920, 1200               # whatever its preferred mode is, the outline is 16:9
+    check("an off monitor is always drawn 16:9", mo.model.size(d) == (1920, 1080) and mo.model.size(e) == (e.w, e.h), mo.model.size(d))
+    rows = ["".join(t for t, _ in r) for r in mo.diagram(100, 12)]
+    flat = "\n".join(rows)
+    check("the diagram draws it with heavy dashes, one cell of line and one of gap, and the active one solid", "┏ ━ ━ ━" in flat and "┏━━━" in flat, flat)
+    check("the dashed outline carries its number and no star", any("┃" in r and "2" in r for r in rows) and "2*" not in flat, rows)
+    box = [b for b in tui.monitor_boxes(mo.model, tui.frame_for(mo.model, 100, 12)) if b[0] is d][0]
+    check("drawn in cells it is wider than tall, 16:9 once a cell's two-to-one shape is counted", (box[3] - box[1] + 1) / ((box[4] - box[2] + 1) * 2) > 1.5, box)
+    check("an off monitor is tall enough to show a dash on each side", sum(r.count("┃") for r in rows) >= 2 + 3, rows)
+    mo.handle("RIGHT")
+    check("Right selects the off monitor", mo.name == "DP-4" and mo.cur() is d)
+    title, lines = mo.info()
+    text = " ".join("".join(t for t, _ in l) for l in lines)
+    check("the info panel says it is off and still shows its EDID", title == "2  DP-4" and "off" in text and "00ffffffffffff0005e3bbbbbbbbbbbb" in text, text)
+    rows = ["".join(t for t, _ in r) for r in mo.diagram(100, 12)]
+    check("selected, the dashed outline is still dashed", any("┏ ━ ━" in r for r in rows))
+    for key in ("p", "m", "e"):
+        mo.handle(key)
+        check(f"{key} on an off monitor says to turn it on first", mo.mode == "browse" and mo.message == "DP-4 is off: r to turn it on", mo.message)
+    mo.handle("r")
+    check("r opens the resolution list for it", mo.mode == "resolution" and len(mo.res_rows) > 1)
+    mo.handle("DOWN") if mo.res_sel == 0 else None
+    mo.handle("ENTER")
+    check("choosing one turns it on at the right of the others and asks to keep it",
+          mo.mode == "keep" and applied and any(l.startswith("DP-4 1920x1080") and "--pos 2560x0" in l for l in applied[-1]), applied[-1:])
+    mo.handle("n")
+    check("n turns it off again", mo.message == "reverted" and applied[-1][-1] == "DP-4 off", applied[-1])
+    d2 = mo.model.outs[1]
+    check("and it is back to being drawn dashed", not d2.on)
+    tui.load_model = lambda: model(OFF.replace("eDP-1 connected primary 2560x1600+0+0", "eDP-1 connected 340mm x 210mm").replace("   2560x1600    165.00*+", "   2560x1600    165.00 +"))
+    none = tui.MonitorScreen()
+    rows = ["".join(t for t, _ in r) for r in none.diagram(100, 12)]
+    check("with every monitor off they are all drawn dashed", len(none.model.active()) == 0 and any("┏ ━ ━" in r for r in rows) and not any("━━" in r for r in rows), rows)
+
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
