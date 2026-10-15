@@ -229,7 +229,7 @@ nnn's own background is `nnn*background: [95]col_dark` (`Xresources:125`).
 | urxvt | `Xresources` | slots 0-15 (`:75-90`), foreground/background/cursor (`:92-94`), per-window backgrounds (`:105,125,128,131`), wrapper border (`:132`) |
 | herbstluftwm | `hlwm/theme.autostart:37-51` | `hlwm/variables.autostart:10-16`; literal `#11111177` at `theme.autostart:37` |
 | polybar | `hlwm/polybar/polybar.ini` | `include-file = scripts/colors_vscode_dark` (`polybar.ini:1`); active/urgent from env set in `hlwm/scripts/panel.sh:71-72` |
-| background (feh) | `hlwm/scripts/background.sh:39` | `col_grey` for an unknown monitor set; known sets use the wallpaper |
+| background (feh) | `hlwm/scripts/background.sh:39` | `col_blue` on a monitor that is not the panel and not listed in `MONITORS` (the wrapper border blue); the others use the wallpaper |
 | rofi | `cfg/rofi/custom.rasi` | its own variables (`:10-17`); `config.rasi:1` selects the theme |
 | bottom (btm) | `cfg/bottom_bottom.toml` and four widget files | hex in each file; `cfg/bottom_bottom-defaults.toml` is all comments |
 | lemurs | `lemurs` | hex plus the named colours `white`, `red`, `gray`, `dark gray` (`:95,185,204,208,219,230,235,254,255,287,288`) |

@@ -16,7 +16,7 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 - **Event source:** `udevadm monitor` on DRM events by default; xev if udevadm is missing or when forced with `monitor_changes.sh --xev`. Both feed one debounce (0.5 s of quiet ends a burst).
 - **Unknown means no layout entry.** A set is known if it has an entry in `monitor_layouts.conf` or is only the internal panel.
 - **Missing modes are created.** A monitor whose EDID is missing or rejected lists only fallback modes (the ASUS VS247 behind the Framework HDMI Expansion Card reports 640x480 because its EDID checksum is invalid). When a layout asks for a `WxH` the output does not list, reconcile adds it with `xrandr --newmode` and `--addmode` (named `WxH_custom`; 1920x1080 uses the standard HDMI timing, others use `cvt`).
-- **Background:** known sets run `~/.fehbg`; unknown sets get a solid `col_grey` colour set through feh with a generated 1x1 image.
+- **Background:** per monitor. The laptop panel and any monitor whose EDID id is listed in `MONITORS` get the wallpaper; any other monitor gets a solid `col_blue` colour (the same blue as the wrapper window border). feh is given one image per monitor, in the order `xrandr --listmonitors` lists them (the order feh uses, confirmed live), using a generated 64x64 image for the colour (a 1x1 image comes out black in feh). Tested live by the user: the panel shows the wallpaper and the unrecognised `DP-4` shows the blue.
 
 ## Built
 

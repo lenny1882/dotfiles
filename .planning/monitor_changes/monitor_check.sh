@@ -75,7 +75,8 @@ cat >"$TMP/nomode-640.q" <<'EOF'
 eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
    2560x1600    165.00*+
 DP-4 connected (normal left inverted right x axis y axis)
-   640x480       60.00
+   640x480       60.00    59.94
+   640x400       59.88    59.98
 EOF
 cp "$TMP/nomode.m" "$TMP/nomode-640.m"
 
@@ -239,6 +240,9 @@ expect "unknown external with no modes: the mode is added" "$TMP/fb-nomodes.out"
 expect "unknown external with no modes: it is turned on, right of the panel" "$TMP/fb-nomodes.out" 'DP-4 --mode 1920x1080_custom --right-of eDP-1'
 run fb-640 nomode-640 "$TMP/empty.conf" "$RECONCILE" --dry-run --force
 expect "unknown external listing only 640x480: treated as having no usable mode" "$TMP/fb-640.out" 'DP-4 lists no usable mode'
+run fb-again custom "$TMP/empty.conf" "$RECONCILE" --dry-run --force
+expect "unknown external whose big mode is one we created: still uses it, not auto" "$TMP/fb-again.out" 'DP-4 --mode 1920x1080_custom --right-of eDP-1'
+reject "unknown external whose big mode is one we created: the mode is not re-created" "$TMP/fb-again.out" 'newmode'
 run fb-ok docked "$TMP/empty.conf" "$RECONCILE" --dry-run --force
 reject "unknown external with real modes: left on auto" "$TMP/fb-ok.out" 'no usable mode'
 
@@ -421,6 +425,33 @@ got=$(tr '\n' ';' <"$W/log")
 [[ $got == 'silent new_attr string my_tag_set;set_attr my_tag_set B;' ]] && ok "tag_windows.sh only records when no set was remembered" || { bad "tag_windows.sh, no remembered set"; echo "$got" | sed 's/^/        /'; }
 tw A B --dry-run
 [[ ! -s $W/log ]] && ok "tag_windows.sh --dry-run changes nothing" || { bad "tag_windows.sh --dry-run"; sed 's/^/        /' "$W/log"; }
+
+# ---------------------------------------------------------------- background
+head_ "3f. background.sh"
+B="$TMP/bg"; mkdir -p "$B/bin"
+cp "$DIR/background.sh" "$B/"
+printf '#!/bin/sh\ncat "$IDS_FILE"\n' >"$B/monitor_reconcile.sh"; chmod +x "$B/monitor_reconcile.sh"
+printf '#!/bin/sh\ncat "$LISTMONITORS_FILE"\n' >"$B/bin/xrandr"
+printf '#!/bin/sh\necho "$*" >"$FEHLOG"\nfor a in "$@"; do case $a in *.ppm) cp "$a" "$FEHLOG.ppm" ;; esac; done\n' >"$B/bin/feh"
+chmod +x "$B/bin/xrandr" "$B/bin/feh"
+wall=$(bash -c 'source ~/.config/herbstluftwm/variables.autostart; echo $wallpaper')
+bg() {
+    printf '%s\n' "$1" >"$B/ids"; printf 'Monitors: 2\n%s\n' "$2" >"$B/lm"
+    PATH="$B/bin:$PATH" IDS_FILE="$B/ids" LISTMONITORS_FILE="$B/lm" FEHLOG="$B/feh.log" bash "$B/background.sh" >/dev/null 2>&1
+    cat "$B/feh.log"
+}
+PANEL=' 0: +*eDP-1 2560/340x1600/210+0+0  eDP-1'
+EXT=' 1: +DP-4 1920/530x1080/300+2560+0  DP-4'
+got=$(bg $'eDP-1 eDP-1 00ffffffffffff0009e5c90b00000000\nDP-4 DP-4 -' "$PANEL"$'\n'"$EXT")
+[[ $got == "--no-fehbg --bg-fill $wall "*.ppm ]] && ok "background: the panel keeps the wallpaper, an unrecognised external gets the solid colour" || { bad "background: panel wallpaper, unknown external colour"; echo "        $got"; }
+bg $'eDP-1 eDP-1 -\nDP-4 DP-4 -' "$PANEL"$'\n'"$EXT" >/dev/null
+read -r -d '' ppm <"$B/feh.log.ppm"
+[[ $(head -3 "$B/feh.log.ppm" | tr '\n' ' ') == 'P3 64 64 255 ' && $(tail -n +4 "$B/feh.log.ppm" | tr -s ' \n' '\n\n' | sort | uniq -c | tr -s ' \n' ' ') == ' 4096 101 4096 192 4096 21 ' ]] \
+    && ok "background: the solid colour is a 64x64 image of #1565C0 (a 1x1 image scales to black in feh)" || { bad "background: the solid image"; head -4 "$B/feh.log.ppm" | cut -c1-40 | sed 's/^/        /'; }
+got=$(bg $'eDP-1 eDP-1 00ffffffffffff0009e5c90b00000000\nDP-4 desk 00ffffffffffff0005e3bbbbbbbbbbbb' "$PANEL"$'\n'"$EXT")
+[[ $got == "--no-fehbg --bg-fill $wall" ]] && ok "background: an external listed in MONITORS keeps the wallpaper too" || { bad "background: listed external"; echo "        $got"; }
+got=$(bg $'eDP-1 eDP-1 -\nDP-4 00ffffffffffff0005e3bbbbbbbbbbbb 00ffffffffffff0005e3bbbbbbbbbbbb' "$EXT"$'\n'"$PANEL")
+[[ $got == "--no-fehbg --bg-fill "*".ppm $wall" ]] && ok "background: images follow xrandr's monitor order; an unlisted external with an EDID is unknown" || { bad "background: order, unlisted EDID"; echo "        $got"; }
 
 # ---------------------------------------------------------------- tui
 head_ "4. monitor_tui.py (no display needed)"
