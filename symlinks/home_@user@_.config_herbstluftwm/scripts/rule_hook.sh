@@ -34,6 +34,10 @@ case $hook in
         notify-send -t 10000 a a
         ;;
 
+    tag_changed)
+        "$SCRIPT_DIR/tag_layouts.sh" --only "$name"
+        ;;
+
     monitors_changed)
         "$SCRIPT_DIR/monitor_reconcile.sh"
         ;;

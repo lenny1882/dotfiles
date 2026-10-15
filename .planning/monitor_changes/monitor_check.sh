@@ -302,7 +302,7 @@ fi
 head_ "3b. hook dispatch (rule_hook.sh, with stubs for everything it runs)"
 H="$TMP/hooks"; mkdir -p "$H/bin"
 cp "$DIR/rule_hook.sh" "$H/rule_hook.sh"
-for stub in monitor_reconcile.sh panel.sh background.sh; do
+for stub in monitor_reconcile.sh panel.sh background.sh tag_layouts.sh; do
     printf '#!/bin/sh\necho "%s $*" >> "$STUBLOG"\n' "$stub" >"$H/$stub"; chmod +x "$H/$stub"
 done
 printf '#!/bin/sh\necho "herbstclient $*" >> "$STUBLOG"\n' >"$H/bin/herbstclient"; chmod +x "$H/bin/herbstclient"
@@ -319,7 +319,9 @@ reject "monitors_applied does not reconcile again" "$TMP/hooks.log" 'monitor_rec
 hook rule peek_opened
 expect "window rules still work" "$TMP/hooks.log" 'herbstclient set_attr clients.focus.decorated false'
 reject "window hooks leave the monitor scripts alone" "$TMP/hooks.log" 'monitor_reconcile|panel|background'
-hook tag_changed 1 0
+hook tag_changed "my tag" 0
+expect "tag_changed lays out just that tag" "$TMP/hooks.log" '^tag_layouts.sh --only my tag$'
+hook focus_changed 0x1 title
 reject "an unrelated hook runs nothing" "$TMP/hooks.log" '.'
 reject "monitor_changes.sh no longer listens for hooks" "$DIR/monitor_changes.sh" 'herbstclient --idle|handle_hooks'
 expect "monitor_changes.sh still emits monitors_changed" "$DIR/monitor_changes.sh" 'emit_hook "\$HOOK"'
@@ -365,7 +367,16 @@ head_ "3d. tag_layouts.sh"
 mkdir -p "$TMP/tl"
 cp "$DIR/tag_layouts.sh" "$DIR/hlwm_layouts.conf" "$TMP/tl/"
 printf '#!/usr/bin/env bash\necho "A-1"\n' >"$TMP/tl/monitor_reconcile.sh"
-printf '#!/usr/bin/env bash\ncase $1 in silent) exit 0 ;; dump) echo "(clients vertical:0)" ;; *) exit 0 ;; esac\n' >"$TMP/tl/herbstclient"
+cat >"$TMP/tl/herbstclient" <<'STUB'
+#!/usr/bin/env bash
+case $1 in
+    silent) exit 0 ;;
+    dump) echo "(clients vertical:0)" ;;
+    list_monitors) printf '%s\n' "$LISTMON" ;;
+    load) echo "load $2 $3" >>"$LOADLOG" ;;
+esac
+exit 0
+STUB
 chmod +x "$TMP/tl/monitor_reconcile.sh" "$TMP/tl/herbstclient"
 cat >"$TMP/tl/hlwm_tag_layouts.conf" <<'CONF'
 declare -gA TAG_LAYOUTS=()
@@ -377,6 +388,29 @@ three max  {3}  [x:0]
 CONF
 got=$(PATH="$TMP/tl:$PATH" "$TMP/tl/tag_layouts.sh" --dry-run 2>&1 | tr '\n' ';')
 if [[ $got == 'tag_layouts: one: max;tag_layouts: three: max;' ]]; then ok "tag_layouts.sh leaves a tag whose layout is none alone, and ignores {n} and [...]"; else bad "tag_layouts.sh leaves a tag whose layout is none alone"; echo "$got" | sed 's/^/        /'; fi
+
+cat >"$TMP/tl/hlwm_layouts.conf" <<'CONF'
+split_h='(split horizontal:0.5:0 (clients vertical:0) (clients horizontal:0))'
+CONF
+cat >"$TMP/tl/hlwm_tag_layouts.conf" <<'CONF'
+declare -gA TAG_LAYOUTS=()
+TAG_LAYOUTS["A-1"]="
+land   split_h
+port   split_h
+nowhere split_h
+"
+CONF
+LM=$'0: 2560x1600+0+0 with tag "land" [FOCUS]\n1: 1080x1920+2560+0 with tag "port"'
+: >"$TMP/load.log"
+PATH="$TMP/tl:$PATH" LISTMON="$LM" LOADLOG="$TMP/load.log" "$TMP/tl/tag_layouts.sh" >"$TMP/portrait.out" 2>&1
+expect "portrait: a tag on a landscape monitor keeps its layout" "$TMP/load.log" '^load land \(split horizontal:0.5:0 \(clients vertical:0\) \(clients horizontal:0\)\)$'
+expect "portrait: a tag on a portrait monitor gets every direction swapped" "$TMP/load.log" '^load port \(split vertical:0.5:0 \(clients horizontal:0\) \(clients vertical:0\)\)$'
+expect "portrait: a tag not on any monitor is not swapped" "$TMP/load.log" '^load nowhere \(split horizontal'
+expect "portrait: the log says which one was transposed" "$TMP/portrait.out" 'port: split_h \(portrait\)'
+reject "portrait: only the portrait one says so" "$TMP/portrait.out" 'land: split_h \(portrait\)'
+: >"$TMP/load.log"
+PATH="$TMP/tl:$PATH" LISTMON="$LM" LOADLOG="$TMP/load.log" "$TMP/tl/tag_layouts.sh" --only port >/dev/null 2>&1
+[[ $(wc -l <"$TMP/load.log") == 1 ]] && expect "--only lays out just that tag" "$TMP/load.log" '^load port ' || bad "--only lays out just that tag"
 
 # ---------------------------------------------------------------- tag windows
 head_ "3e. tag_windows.sh"
