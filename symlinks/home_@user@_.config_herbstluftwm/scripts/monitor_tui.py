@@ -2367,8 +2367,9 @@ XTERM_MODS = {"2": "SHIFT_", "3": "ALT_", "5": "CTRL_"}
 DIRECTIONS = ("UP", "DOWN", "LEFT", "RIGHT")
 
 
-def decode_escape(nxt):
-    """Key name for what follows an Esc; nxt() gives the next key or None."""
+def decode_escape(nxt, unget=lambda c: None):
+    """Key name for what follows an Esc; nxt() gives the next key or None. Only Alt-S is a key here, so any other
+    character typed right after Esc is Esc followed by that character: unget(c) puts it back."""
     c = nxt()
     if c is None:
         return "ESC"
@@ -2390,7 +2391,11 @@ def decode_escape(nxt):
         if d in CSI_ARROWS:
             return XTERM_MODS.get(params.split(";")[-1] if ";" in params else "", "") + CSI_ARROWS[d]
         return "ESC"
-    return "ALT_" + c if c.isalpha() else "ESC"
+    if c == "s":
+        return "ALT_s"
+    if c.isprintable():
+        unget(c)
+    return "ESC"
 
 
 def read_key(win):
@@ -2407,7 +2412,7 @@ def read_key(win):
         finally:
             win.timeout(-1)
 
-    return decode_escape(nxt)
+    return decode_escape(nxt, curses.unget_wch)
 
 
 def run(win):

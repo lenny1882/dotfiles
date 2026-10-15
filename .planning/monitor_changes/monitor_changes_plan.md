@@ -53,7 +53,6 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 
 ## Known gaps
 
-- A letter typed within 40 ms of Esc is read as Alt plus that letter.
 - The layout set key is the sorted connected output names, so the panel on and off, and virtual monitors, share one key.
 
 ## Risks

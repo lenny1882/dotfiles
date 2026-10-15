@@ -842,7 +842,9 @@ if True:
     check("xterm Ctrl+Up is ESC [ 1 ; 5 A", tui.decode_escape(feed("[", "1", ";", "5", "A")) == "CTRL_UP")
     check("xterm Shift+Down is ESC [ 1 ; 2 B", tui.decode_escape(feed("[", "1", ";", "2", "B")) == "SHIFT_DOWN")
     check("xterm Alt+Left is ESC [ 1 ; 3 D", tui.decode_escape(feed("[", "1", ";", "3", "D")) == "ALT_LEFT")
-    check("Alt plus a letter is ALT_letter", tui.decode_escape(feed("s")) == "ALT_s" and tui.decode_escape(feed("S")) == "ALT_S")
+    back = []
+    check("Esc then s is Alt-S", tui.decode_escape(feed("s"), back.append) == "ALT_s" and not back)
+    check("Esc then any other character is Esc, and the character is put back", tui.decode_escape(feed("q"), back.append) == "ESC" and tui.decode_escape(feed("S"), back.append) == "ESC" and back == ["q", "S"], back)
     check("anything else after Esc is just Esc", tui.decode_escape(feed("[", "Z")) == "ESC" and tui.decode_escape(feed("5")) == "ESC")
     check("curses' own shifted keys are named", tui.norm_key(tui.curses.KEY_SLEFT) == "SHIFT_LEFT" and tui.norm_key(tui.curses.KEY_SR) == "SHIFT_UP")
     check("layout_lines carries a chosen rate only for that output",
