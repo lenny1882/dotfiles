@@ -1151,6 +1151,7 @@ DP-5 connected 1920x1080+0+1600 (normal left inverted right x axis y axis) 530mm
     rot_pick(rs, "Left 90°")
     check("Left 90° pulls the monitor beyond it in", rs.model.outs[1].rot == "left" and rs.model.outs[2].x == 3640, (rs.model.outs[1].rot, rs.model.outs[2].x))
     rs.handle("n")
+    check("n sends the rotation of the old layout too", any(l.startswith("DP-4") and "--rotate normal" in l for l in applied[-1]), applied[-1:])
     check("n undoes it, neighbours included", rs.model.outs[1].rot == "normal" and rs.model.outs[2].x == 4480, (rs.model.outs[1].rot, rs.model.outs[2].x))
 
     tui.load_model = lambda: model(ROT)

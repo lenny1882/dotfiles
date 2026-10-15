@@ -1618,6 +1618,9 @@ class MonitorScreen:
 
     def revert(self):
         self.mode = "browse"
+        turned = {a.name for a in self.model.outs if a.rot != "normal"}
+        for a in self.undo.outs:
+            a.unrotate = a.rot == "normal" and a.name in turned
         rc, err = apply_lines(self.undo.layout_lines())
         if DRY:
             self.model = self.undo
