@@ -51,10 +51,6 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 17. **Live testing of the Tags screen** - done, all steps confirmed by the user. Steps were: open it with Super+Alt+L and try each edit on a copy of `hlwm_tag_layouts.conf`: key swap, rename, layout (including `None`), rules (tick, move to another tag, index), the confirmation before each write, the look at your window size (padding, bands, truncation of the right column), and that a relog or dock applies what was saved.
 18. **Live testing of the Monitors screen** - cases `M1`-`M12` approved by the user. Keep-or-revert decided: every apply on the Monitors screen (primary, move, geometry edit, resolution) asks `Keep these settings? Reverting in Ns` for 15 s (`KEEP_SECONDS`); `y` or Enter keeps, `n`, Esc or no answer puts the previous layout back. Built and covered by `monitor_tui_check.py`; tested live by the user: works. Added after that, tested live by the user, all work: the info panel shows the selected monitor's EDID id; a connected monitor that is off is drawn as a dashed outline to the right of the active ones on the overview and the Monitors screen, can be selected, and `r` turns it on (against the right edge of the others, with the keep-or-revert prompt); `p`, `m` and `e` say to turn it on first.
 
-## Known gaps
-
-- The layout set key is the sorted connected output names, so the panel on and off, and virtual monitors, share one key.
-
 ## Risks
 
 - **Event bursts.** One dock can fire several events; the debounce covers this. Raise `DEBOUNCE` if bars restart repeatedly.
