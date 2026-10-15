@@ -13,7 +13,7 @@ hc() { "${herbstclient_command[@]:-herbstclient}" "$@"; }
 [[ $1 == --dry-run ]] && DRY=1
 
 source "$TAG_LAYOUTS_FILE"
-set_key=$("$SCRIPT_DIR/monitor_reconcile.sh" --key)
+set_key=${TAG_SET_KEY:-$("$SCRIPT_DIR/monitor_reconcile.sh" --key)}
 
 names=() keys=()
 if [[ -v TAG_LAYOUTS[$set_key] ]]; then

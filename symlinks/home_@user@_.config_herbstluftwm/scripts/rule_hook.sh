@@ -44,5 +44,6 @@ case $hook in
         "$SCRIPT_DIR/background.sh"
         "$SCRIPT_DIR/tags.sh"
         "$SCRIPT_DIR/tag_layouts.sh"
+        "$SCRIPT_DIR/tag_windows.sh"
         ;;
 esac

@@ -5,3 +5,4 @@ source ~/.config/herbstluftwm/variables.autostart
 # Tags
 
 $SCRIPTS_DIR/tags.sh
+$SCRIPTS_DIR/tag_windows.sh --record
