@@ -41,6 +41,7 @@ def dims(mode):
 
 
 ROTATIONS = ("normal", "left", "right", "inverted")
+ROT_LABELS = ("Normal", "Left 90°", "Right 90°", "180°")
 SIDEWAYS = ("left", "right")
 
 
@@ -1249,6 +1250,7 @@ MOVE_HINTS = "←↑↓→ 10px   Ctrl 1px   Shift 100px   Alt hop   Ctrl-S done
 INPUT_HINTS = "Ctrl-S apply   Esc cancel"
 RES_HINTS = "↑↓ select   Enter choose   Esc cancel"
 RES_W = 44
+ROT_W = 30
 CUSTOM_ROW = ("Custom…", "", False, False)
 
 
@@ -1414,7 +1416,7 @@ class MonitorScreen:
         elif key == "r":
             self.begin_resolution()
         elif key == "o":
-            self.rotate_next()
+            self.begin_rotate()
         elif key == "ALT_s":
             self.confirm, self.mode = (f"Save these positions for {self.model.key()}?", "persist"), "confirm"
         return None
@@ -1455,13 +1457,33 @@ class MonitorScreen:
                     self.message = self.model.move_by(o, dx * step, dy * step)
         return None
 
-    def rotate_next(self):
-        """Turn the selected monitor to its next rotation (normal, left, right, inverted) and apply."""
+    def begin_rotate(self):
+        self.rot_sel = ROTATIONS.index(self.cur().rot)
+        self.mode = "rotate"
+
+    def key_rotate(self, key):
+        if key in ("ESC", "CTRL_C"):
+            self.mode = "browse"
+        elif key == "UP":
+            self.rot_sel = max(0, self.rot_sel - 1)
+        elif key == "DOWN":
+            self.rot_sel = min(len(ROTATIONS) - 1, self.rot_sel + 1)
+        elif key == "ENTER":
+            self.rotate_to(ROTATIONS[self.rot_sel])
+        return None
+
+    def rotate_to(self, rot):
+        """Turn the selected monitor to rot and apply, unless it is there already or would overlap."""
+        if rot == self.cur().rot:
+            self.mode = "browse"
+            self.message = f"{self.name} is already {ROT_LABELS[ROTATIONS.index(rot)].lower()}"
+            return
         trial = self.model.copy()
         o = next(a for a in trial.outs if a.name == self.name)
-        trial.rotate(o, ROTATIONS[(ROTATIONS.index(o.rot) + 1) % len(ROTATIONS)])
+        trial.rotate(o, rot)
         err = trial.move_to(o, o.x, o.y)
         if err:
+            self.mode = "browse"
             self.message = err
             return
         self.before = self.model.copy()
@@ -1614,6 +1636,8 @@ class MonitorScreen:
             return self.message or ("Edit " if self.mode == "edit" else "Custom resolution ") + self.name, INPUT_HINTS
         if self.mode == "resolution":
             return self.message or f"Resolution {self.name}", RES_HINTS
+        if self.mode == "rotate":
+            return f"Rotate {self.name}", RES_HINTS
         return self.message or "Monitors", BROWSE_HINTS
 
     def diagram(self, avail, rows):
@@ -1658,6 +1682,9 @@ class MonitorScreen:
         if self.mode == "resolution":
             box, top = self.res_box(body)
             rows = overlay(rows, box, top, (width - RES_W) // 2, width)
+        elif self.mode == "rotate":
+            box, top = self.rot_box(body)
+            rows = overlay(rows, box, top, (width - ROT_W) // 2, width)
         elif self.mode in ("edit", "custom"):
             box, top, cursor = self.input_box(body, width)
             left = self.box_left(box, width)
@@ -1685,6 +1712,13 @@ class MonitorScreen:
                 line += [(" " * (iw - 1 - len(text)), "text"), scroll_bar(k, n, vis, self.res_top)]
             lines.append(line)
         return panel("Resolution", lines, RES_W, bh, True), (body - bh) // 2
+
+    def rot_box(self, body):
+        now = ROTATIONS.index(self.cur().rot)
+        lines = [[(("› " if i == self.rot_sel else "  ") + f"{label:<{ROT_W - 8 - 2 * PAD}}" + ("*" if i == now else " "),
+                   "label" if i == self.rot_sel else "text")] for i, label in enumerate(ROT_LABELS)]
+        bh = len(lines) + 2 + 2 * PAD_V
+        return panel("Rotate", lines, ROT_W, bh, True), (body - bh) // 2
 
     def input_box(self, body, width):
         edit = self.mode == "edit"

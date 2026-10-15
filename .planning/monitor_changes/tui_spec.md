@@ -220,7 +220,7 @@ Decided with the user (2026-10-09):
   Esc cancels.
 - **r** opens an overlay list, vertical only with a scroll bar: `Custom…` first, then each resolution, one line per
   refresh rate, largest first; Enter chooses; Enter on Custom opens `WxH [Hz]` for editing, Ctrl-S applies.
-- **o** turns the monitor to its next rotation (normal, left, right, inverted) and applies. A rotated monitor is drawn
+- **o** opens a menu (Normal, Left 90°, Right 90°, 180°; the current one is selected); Enter applies. A rotated monitor is drawn
   with width and height swapped, its geometry string is as rotated, and its layout line carries `--rotate`.
 - A monitor that is off is drawn as a dashed outline (16:9) right of the active ones, can be selected, and **r** turns it
   on; **p**, **m**, **e** and **o** say to turn it on first.
