@@ -30,7 +30,7 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 8. **Bars and padding** - `monitors_applied` runs `panel.sh` (from `rule_hook.sh`).
 9. **Background** - `background.sh`, run at startup and on `monitors_applied`.
 10. **Real-hardware testing** - done, following `monitor_test_checklist.md` (`monitor_check.sh` for the read-only checks).
-11. **Monitor and layout TUI** - `monitor_tui.py` (Python curses), opened with Super+Alt+L through `monitor-tui-wrap.sh`. Overview (two columns: Layout over Monitors on the left, a Tags panel on the right showing the set's nine tags and their autostart programs), Tags screen (see 16), Layout screen (grid of named layouts, embedded editor with a syntax reference, set, edit, delete, save a custom layout) and Monitors screen (to-scale diagram, primary, move, resolution and refresh-rate list, geometry edit). Changes are live only; Alt-S persists (see below). Checks: `monitor_tui_check.py`, run by `monitor_check.sh`.
+11. **Monitor and layout TUI** - `monitor_tui.py` (Python curses), opened with Super+Alt+L through `monitor-tui-wrap.sh`. Overview (two columns: Layout over Monitors on the left, a Tags panel on the right showing the set's nine tags and their autostart programs), Tags screen (see 16), Layout screen (grid of named layouts, embedded editor with a syntax reference, set, edit, delete, save a custom layout) and Monitors screen (to-scale diagram, primary, move, resolution and refresh-rate list, geometry edit). Changes are live only; Alt-S persists (see below). Every apply (primary, move, edit, resolution, rotation) asks to keep it for 15 s. A resolution or rotation change re-flows the monitors beyond the changed edge, so those that touched it still do, and `o` cycles a monitor through normal, left, right and inverted (built, **not yet tested live**). Checks: `monitor_tui_check.py`, run by `monitor_check.sh`.
 12. **Layout files** - `hlwm_layouts.conf` (named frame layouts, one variable each, display name in a `# lname:` line) and `hlwm_tag_layouts.conf` (which layout each tag gets, per connected set). The TUI reads and writes both; `tag_layouts.sh`, `tag_programs.sh` and `tags.sh` read the second (see 15 and 16).
 13. **Persist** - Alt-S on the Layout screen writes the focused tag's current layout into `hlwm_tag_layouts.conf` for the connected set (or opens the save editor if it is custom); on the Monitors screen it replaces the set's entry in `monitor_layouts.conf` with the current layout. Both ask first.
 
@@ -53,7 +53,6 @@ Detect monitors being plugged or unplugged, work out the right layout, and apply
 
 ## Known gaps
 
-- Monitors screen: changing a mode or position does not move the other outputs; an overlap is refused. Rotation is not handled.
 - A letter typed within 40 ms of Esc is read as Alt plus that letter.
 - Layout screen: deleting a layout leaves the tag assignments that name it.
 - The layout set key is the sorted connected output names, so the panel on and off, and virtual monitors, share one key.

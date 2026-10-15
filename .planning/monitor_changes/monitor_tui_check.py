@@ -1083,5 +1083,84 @@ if True:
     rows = ["".join(t for t, _ in r) for r in none.diagram(100, 12)]
     check("with every monitor off they are all drawn dashed", len(none.model.active()) == 0 and any("┏ ━ ━" in r for r in rows) and not any("━━" in r for r in rows), rows)
 
+print("\nRotation and re-flow")
+if True:
+    ROT = """\
+eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
+   2560x1600    165.00*+
+DP-4 connected 1080x1920+2560+0 left (normal left inverted right x axis y axis) 530mm x 300mm
+   1920x1080     60.00*+
+   2560x1440     60.00
+HDMI-1 connected 1920x1080+3640+0 (normal left inverted right x axis y axis) 530mm x 300mm
+   1920x1080     60.00*+
+DP-5 connected 1920x1080+0+1600 (normal left inverted right x axis y axis) 530mm x 300mm
+   1920x1080     60.00*+
+"""
+    m = model(ROT)
+    e, d, h, v = m.outs
+    check("parse: a rotated output keeps its rotation and the rotated size", d.rot == "left" and (d.w, d.h) == (1080, 1920) and e.rot == "normal", (d.rot, d.w, d.h))
+    check("a rotated output's layout line carries --rotate, a normal one does not", "DP-4 1920x1080 --pos 2560x0 --rotate left" in m.layout_lines() and not any("eDP-1" in l and "rotate" in l for l in m.layout_lines()), m.layout_lines())
+    m.set_mode(d, "2560x1440")
+    check("a mode on a sideways output is stored rotated", (d.w, d.h) == (1440, 2560), (d.w, d.h))
+
+    m = model(ROT)
+    e, d, h, v = m.outs
+    m.rotate(d, "normal")
+    check("rotating back swaps width and height", (d.w, d.h) == (1920, 1080), (d.w, d.h))
+    check("the monitor beyond the grown edge moves out by the growth and still touches", h.x == d.x + d.w == 4480, (h.x, d.x + d.w))
+    check("a monitor beyond neither edge does not move", (v.x, v.y) == (0, 1600) and (e.x, e.y) == (0, 0), (v.x, v.y))
+    m.rotate(d, "left")
+    check("rotating the other way pulls it back in", h.x == d.x + d.w == 3640, h.x)
+
+    m = model(ROT)
+    e, d, h, v = m.outs
+    ow, oh = e.w, e.h
+    m.set_mode(e, "1920x1080")
+    m.reflow(e, ow, oh)
+    check("a shrink pulls in everything beyond the right edge, chained", d.x == 1920 and h.x == 3000, (d.x, h.x))
+    check("and what sat below the shrunk edge moves up", v.y == 1080, v.y)
+
+    tui.load_model = lambda: model(ROT)
+    applied = []
+    tui.apply_lines = lambda lines: (applied.append(list(lines)), (0, ""))[1]
+    tui.DRY = True
+    rs = tui.MonitorScreen()
+    rs.handle("RIGHT")
+    check("the rotated monitor is selected and the info panel says so", rs.name == "DP-4" and "rotated left" in " ".join("".join(t for t, _ in l) for l in rs.info()[1]))
+    rs.handle("o")
+    check("o turns it to the next rotation, left to right, and asks to keep it", rs.mode == "keep" and any(l.startswith("DP-4") and "--rotate right" in l for l in applied[-1]), applied[-1:])
+    rs.handle("y")
+    rs.handle("o")
+    check("then to inverted", any(l.startswith("DP-4") and "--rotate inverted" in l for l in applied[-1]) and rs.model.outs[1].rot == "inverted", applied[-1:])
+    rs.handle("y")
+    rs.handle("o")
+    check("and back to normal, moving what was beyond it", rs.model.outs[1].rot == "normal" and rs.model.outs[2].x == 4480 and not any("rotate" in l for l in applied[-1] if l.startswith("DP-4")), applied[-1:])
+    rs.handle("y")
+    rs.handle("o")
+    check("one more is left again, pulling the monitor beyond it in", rs.model.outs[1].rot == "left" and rs.model.outs[2].x == 3640, (rs.model.outs[1].rot, rs.model.outs[2].x))
+    rs.handle("n")
+    check("n undoes it, neighbours included", rs.model.outs[1].rot == "normal" and rs.model.outs[2].x == 4480, (rs.model.outs[1].rot, rs.model.outs[2].x))
+
+    tui.load_model = lambda: model(ROT)
+    rs = tui.MonitorScreen(); rs.handle("RIGHT"); rs.handle("e")
+    check("e shows the geometry as rotated", rs.editor.text() == "1080x1920+2560+0", rs.editor.text())
+    for _ in range(30): rs.handle("BACKSPACE")
+    for ch in "1080x1920+2560+0": rs.handle(ch)
+    rs.handle("CTRL_S")
+    check("typing it back applies the mode of the rotated monitor, not its swapped size", any(l.startswith("DP-4 1920x1080") and "--rotate left" in l for l in applied[-1]), applied[-1:])
+    rs.handle("y")
+
+    tui.load_model = lambda: model(ROT)
+    rs = tui.MonitorScreen(); rs.handle("RIGHT"); rs.handle("r")
+    rs.res_sel = next(i for i, r in enumerate(rs.res_rows) if r[0] == "2560x1440")
+    rs.handle("ENTER")
+    mm = rs.model.outs
+    check("a resolution change re-flows the monitors beyond it", rs.mode == "keep" and (mm[1].w, mm[1].h) == (1440, 2560) and mm[2].x == mm[1].x + mm[1].w, [(o.name, o.x, o.w) for o in mm])
+    rs.handle("y")
+
+    tui.load_model = lambda: model(OFF)
+    ro = tui.MonitorScreen(); ro.handle("RIGHT"); ro.handle("o")
+    check("o on a monitor that is off says to turn it on first", ro.message == "DP-4 is off: r to turn it on", ro.message)
+
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

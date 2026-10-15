@@ -40,6 +40,10 @@ def dims(mode):
     return (int(m.group(1)), int(m.group(2))) if m else None
 
 
+ROTATIONS = ("normal", "left", "right", "inverted")
+SIDEWAYS = ("left", "right")
+
+
 class Output:
     def __init__(self, name):
         self.name = name
@@ -52,6 +56,7 @@ class Output:
         self.mode = "off"
         self.x = self.y = self.w = self.h = 0
         self.primary = False
+        self.rot = "normal"     # normal, left, right or inverted; w and h are always as rotated
         self.splits = []    # virtual monitors cut from it, "WxH+X+Y" from its top-left corner
 
     @property
@@ -69,11 +74,14 @@ def parse_xrandr(text):
                 cur = Output(f[0])
                 outs.append(cur)
                 cur.primary = len(f) > 2 and f[2] == "primary"
-                for tok in f[2:]:
+                toks = f[2:]
+                for n, tok in enumerate(toks):
                     m = GEOM.match(tok)
                     if m:
                         cur.w, cur.h, cur.x, cur.y = (int(v) for v in m.groups())
                         cur.mode = "auto"
+                        if toks[n + 1:n + 2] and toks[n + 1] in ("left", "right", "inverted"):
+                            cur.rot = toks[n + 1]
                         break
         elif cur is not None and line.strip():
             f = line.split()
@@ -123,7 +131,46 @@ class Model:
         o.mode = mode
         d = dims(o.pref or (o.modes[0] if o.modes else None)) if mode == "auto" else dims(mode)
         if d:
-            o.w, o.h = d
+            o.w, o.h = d[::-1] if o.rot in SIDEWAYS else d
+
+    def rotate(self, o, rot):
+        """Turn o to rot, keeping its top-left corner; the monitors beyond it move as for a resize."""
+        ow, oh = o.w, o.h
+        if (rot in SIDEWAYS) != (o.rot in SIDEWAYS):
+            o.w, o.h = o.h, o.w
+        o.rot = rot
+        self.reflow(o, ow, oh)
+
+    def reflow(self, o, ow, oh):
+        """o went from ow x oh to its present size with its top-left corner fixed: move the monitors beyond its
+        changed edges by the same amount, so those that touched it still do (and a shrink pulls them in)."""
+        dw, dh = o.w - ow, o.h - oh
+        others = [a for a in self.active() if a is not o]
+        right = self._beyond(o, others, 0, ow, oh) if dw else []
+        below = self._beyond(o, others, 1, ow, oh) if dh else []
+        for a in right:
+            a.x += dw
+        for a in below:
+            a.y += dh
+
+    @staticmethod
+    def _beyond(o, others, axis, ow, oh):
+        """The monitors past o's old right (axis 0) or bottom (axis 1) edge, chained from the ones in line with it."""
+        def span(a, w, h):
+            return (a.x, a.x + w, a.y, a.y + h) if axis == 0 else (a.y, a.y + h, a.x, a.x + w)
+        refs, moved = [span(o, ow, oh)], []
+        grew = True
+        while grew:
+            grew = False
+            for b in others:
+                if b in moved:
+                    continue
+                start, _, lo, hi = span(b, b.w, b.h)
+                if any(start >= end and lo < rhi and rlo < hi for _, end, rlo, rhi in refs):
+                    moved.append(b)
+                    refs.append(span(b, b.w, b.h))
+                    grew = True
+        return moved
 
     def make_primary(self, o):
         if not o.on:
@@ -197,6 +244,7 @@ class Model:
                 lines.append(f"{who} off")
                 continue
             s = f"{who} {o.mode}" + (f" --rate {o.rate}" if o.rate else "") + f" --pos {o.x - minx}x{o.y - miny}"
+            s += f" --rotate {o.rot}" if o.rot != "normal" else ""
             s += " --primary" if o.primary else ""
             lines.append(s + (" --split " + " ".join(o.splits) if o.splits else ""))
         return lines
@@ -1196,7 +1244,7 @@ class LayoutScreen:
 ARROW_DIRS = {"UP": (0, -1), "DOWN": (0, 1), "LEFT": (-1, 0), "RIGHT": (1, 0)}
 MON_INFO_H = 4 + 2 + 2 * PAD_V
 MONITORS_MIN_ROWS = FOOTER_ROWS + MON_INFO_H + 2 + 2 * PAD_V + 7
-BROWSE_HINTS = "←↑↓→ select   p primary   m move   r resolution   e edit   Alt-S persist   Esc back   q quit"
+BROWSE_HINTS = "←↑↓→ select   p primary   m move   r resolution   o rotate   e edit   Alt-S persist   Esc back   q quit"
 MOVE_HINTS = "←↑↓→ 10px   Ctrl 1px   Shift 100px   Alt hop   Ctrl-S done   Esc cancel"
 INPUT_HINTS = "Ctrl-S apply   Esc cancel"
 RES_HINTS = "↑↓ select   Enter choose   Esc cancel"
@@ -1349,7 +1397,7 @@ class MonitorScreen:
             a = neighbour(self.model, o, *ARROW_DIRS[key])
             if a:
                 self.name = a.name
-        elif key in ("p", "m", "e") and not o.on:
+        elif key in ("p", "m", "e", "o") and not o.on:
             self.message = f"{o.name} is off: r to turn it on"
         elif key == "p":
             if o.primary:
@@ -1365,6 +1413,8 @@ class MonitorScreen:
             self.begin_edit()
         elif key == "r":
             self.begin_resolution()
+        elif key == "o":
+            self.rotate_next()
         elif key == "ALT_s":
             self.confirm, self.mode = (f"Save these positions for {self.model.key()}?", "persist"), "confirm"
         return None
@@ -1405,6 +1455,19 @@ class MonitorScreen:
                     self.message = self.model.move_by(o, dx * step, dy * step)
         return None
 
+    def rotate_next(self):
+        """Turn the selected monitor to its next rotation (normal, left, right, inverted) and apply."""
+        trial = self.model.copy()
+        o = next(a for a in trial.outs if a.name == self.name)
+        trial.rotate(o, ROTATIONS[(ROTATIONS.index(o.rot) + 1) % len(ROTATIONS)])
+        err = trial.move_to(o, o.x, o.y)
+        if err:
+            self.message = err
+            return
+        self.before = self.model.copy()
+        self.model = trial
+        self.apply()
+
     def begin_edit(self):
         self.prev = self.mode
         if self.mode == "browse":
@@ -1423,7 +1486,8 @@ class MonitorScreen:
                 self.message = "expected WxH+X+Y, like 1920x1080+0+0"
                 return None
             w, h, x, y = (int(v) for v in m.groups())
-            self.set_size_and_position(f"{w}x{h}", None, x, y)
+            sideways = self.cur().rot in SIDEWAYS
+            self.set_size_and_position(f"{h}x{w}" if sideways else f"{w}x{h}", None, x, y)
         elif key not in ("ENTER", "TAB", "RESIZE"):
             self.editor.handle(key)
         return None
@@ -1437,7 +1501,11 @@ class MonitorScreen:
             o.x, o.y = max((a.x + a.w for a in act), default=0), min((a.y for a in act), default=0)
         if mode != o.mode:
             o.rate = None
+        ow, oh = o.w, o.h
+        was_on = o.on
         trial.set_mode(o, mode)
+        if was_on:
+            trial.reflow(o, ow, oh)
         if rate:
             o.rate = rate
         err = trial.move_to(o, o.x if x is None else x, o.y if y is None else y)
@@ -1572,7 +1640,7 @@ class MonitorScreen:
                      kv("Position", "off") + [("   r to turn it on", "dim")], kv("EDID", o.edid or "none")]
             return f"{nums[o.name]}  {o.name}", lines
         lines = [kv("Output", o.name.ljust(14)) + kv("Primary", "yes" if o.primary else "no"),
-                 kv("Mode", mode + (f" @ {rate} Hz" if rate else "")),
+                 kv("Mode", mode + (f" @ {rate} Hz" if rate else "")) + ([(f"   rotated {o.rot}", "dim")] if o.rot != "normal" else []),
                  kv("Position", self.model.geometry(o)) + ([("   moving", "dim")] if self.mode == "move" else []),
                  kv("EDID", o.edid or "none")]
         return f"{nums[o.name]}{'*' if o.primary else ''}  {o.name}", lines

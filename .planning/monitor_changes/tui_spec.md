@@ -220,13 +220,18 @@ Decided with the user (2026-10-09):
   Esc cancels.
 - **r** opens an overlay list, vertical only with a scroll bar: `Custom…` first, then each resolution, one line per
   refresh rate, largest first; Enter chooses; Enter on Custom opens `WxH [Hz]` for editing, Ctrl-S applies.
+- **o** turns the monitor to its next rotation (normal, left, right, inverted) and applies. A rotated monitor is drawn
+  with width and height swapped, its geometry string is as rotated, and its layout line carries `--rotate`.
+- A monitor that is off is drawn as a dashed outline (16:9) right of the active ones, can be selected, and **r** turns it
+  on; **p**, **m**, **e** and **o** say to turn it on first.
+- A resolution or rotation change re-flows the monitors beyond the changed edge by the same amount, so those that touched
+  it still do (a shrink pulls them in); an overlap that remains is refused.
+- Every apply asks "Keep these settings?" for 15 s; `y` or Enter keeps it, `n`, Esc or no answer puts the old layout back.
 - Ctrl-S is the save/apply key everywhere something is typed; Esc always cancels / goes back.
 - Changes are applied at once through `monitor_reconcile.sh --layout` (a failure puts the old model back and shows the
   last line of the error). Modified arrows are decoded for urxvt (terminfo extended keys, `ESC ESC [ D` for Alt) and xterm.
 
-Not decided / not done: whether a change is also written to `monitor_layouts.conf` for the connected set (today it holds
-only until the connected set changes); a revert-after-N-seconds safety prompt; outputs that are off are not shown or
-selectable (no turn on/off); rotation; resizing does not move the neighbours (an overlap is refused instead).
+Alt-S writes the connected set's layout to `monitor_layouts.conf`; a change otherwise holds only until the connected set changes.
 
 ## Built so far (state of the work)
 
@@ -259,6 +264,5 @@ Layouts:
 
 General:
 5. Frame labels are cut off when a frame is narrow (e.g. `horizon`); cosmetic.
-6. Not handled: rotation (positions assume unrotated outputs).
-7. Everything touching a live herbstluftwm beyond what the user has run is unverified: a throwaway
+6. Everything touching a live herbstluftwm beyond what the user has run is unverified: a throwaway
    herbstluftwm under `Xvnc` could not be started in the sandbox.
