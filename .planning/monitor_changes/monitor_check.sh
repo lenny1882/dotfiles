@@ -323,7 +323,8 @@ hook tag_changed "my tag" 0
 expect "tag_changed lays out just that tag" "$TMP/hooks.log" '^tag_layouts.sh --only my tag$'
 hook focus_changed 0x1 title
 reject "an unrelated hook runs nothing" "$TMP/hooks.log" '.'
-reject "monitor_changes.sh no longer listens for hooks" "$DIR/monitor_changes.sh" 'herbstclient --idle|handle_hooks'
+reject "monitor_changes.sh no longer listens for hooks" "$DIR/monitor_changes.sh" 'handle_hooks|herbstclient --idle *[|]|while read.*hook'
+expect "monitor_changes.sh exits when herbstluftwm does (--idle output discarded)" "$DIR/monitor_changes.sh" 'herbstclient --idle >/dev/null'
 expect "monitor_changes.sh still emits monitors_changed" "$DIR/monitor_changes.sh" 'emit_hook "\$HOOK"'
 
 # ---------------------------------------------------------------- tag programs
