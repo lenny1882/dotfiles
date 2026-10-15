@@ -89,7 +89,6 @@ Use a second monitor you can lose without harm; changes apply immediately throug
 
 ## Known gaps
 
-- The fallback layout is simpler than the plan: the "half screens" and "stacked when under 1080p" heuristics are missing.
 - Only the internal panel is guarded against being turned off. Turning an external off isn't checked.
 - `monitor_layouts.conf` has only the one docked entry (`DP-4 eDP-1`); the rest are commented examples.
 - Polybar and its padding go on the xrandr primary monitor, matched to the herbstluftwm monitor by rect (`panel.sh`); monitor 0 if none matches. Checked on real hardware.
