@@ -284,6 +284,9 @@ with tempfile.TemporaryDirectory() as tmp:
     check("tags: one row per tag with its key, name and layout name",
           tl[2][:3] == ["1", "left|3", "Max"] and tl[3] == [] and tl[4][:3] == ["2", "middle|1", "Horizontal"], tl[2:5])
     check("tags: tags 8 and 9 are padded as unassigned", ["8", "8", "unassigned"] in tl and ["9", "9", "unassigned"] in tl)
+    UT = 'X=1\nTAG_LAYOUTS["a b"]="\nleft|3   max  {3}  [spotify:00]\nmy tag max {2}\nother grid\n"\n# max\nTAG_LAYOUTS["c"]="\nx max\n"\n'
+    check("unassign_layout keeps names, columns, keys and programs, and only touches tag blocks",
+          tui.unassign_layout(UT, "max") == UT.replace("left|3   max", "left|3   none").replace("my tag max", "my tag none").replace("x max", "x none"), tui.unassign_layout(UT, "max"))
     TB = tui.parse_tag_blocks('TAG_LAYOUTS["S"]="\nleft|3   max  {3}  [spotify:00 rambox:01]\nmy tag grid\n"\n')
     check("tags: blocks parse in file order with the key and programs",
           TB == {"S": [("left|3", "max", "3", [("spotify", "00"), ("rambox", "01")]), ("my tag", "grid", "", [])]}, TB)
@@ -462,11 +465,14 @@ with tempfile.TemporaryDirectory() as tmp:
           and "split horizontal:0.5:0" in live["loaded"][0][1])
     scr.sel = 1
     keys(scr, "d")
-    check("delete says how many tag assignments use it", scr.footer()[0] == 'Delete "Max"? Used by 4 tag assignments.', scr.footer())
+    check("delete says how many tag assignments use it", scr.footer()[0] == 'Delete "Max"? Used by 4 tag assignments, they will be unassigned.', scr.footer())
     keys(scr, "ESC")
     check("Esc cancels the delete", scr.mode == "browse" and "max='" in open(conf).read())
     keys(scr, "d", "y")
     text = open(conf).read()
+    tl = open(tui.HLWM_TAG_LAYOUTS).read()
+    check("y sets the tags that used it to none, in every block, and leaves the others",
+          "left|3   none" in tl and "right|2  none" in tl and tl.count(" max") == 0 and "middle|1 horizontal" in tl and "split|4  split" in tl, tl)
     check("y deletes the definition and its lname, and nothing else",
           "max='" not in text and "# lname: Max" not in text and "# lname: Horizontal" in text and len(scr.defs) == 5)
     scr.sel = 1

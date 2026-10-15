@@ -184,7 +184,7 @@ Decided with the user (2026-10-09):
   and a **Layouts** panel with a grid of cells. Each cell: the lname in its top border, a small drawing with no
   text. Selected cell: green border. The first cell is **Create new** with a big `+`.
 - Keys: arrows move; **Enter** sets the layout on the focused tag, after a `y/n` confirmation;
-  **e** opens the editor on that layout; **d** deletes after `y/n` (says how many tag assignments use it);
+  **e** opens the editor on that layout; **d** deletes after `y/n` (says how many tag assignments use it; those are set to `none`, so the tags show as unassigned);
   **s** (only when the live layout is `custom`; the Current panel says "Not saved as a layout. s to save it", the footer does not list it) opens the editor with the live shape, to save it;
   **Esc** goes back (and cancels the editor and the prompts); **q** quits. There is no rename key: the
   `# lname:` line is part of the editor text, so renaming is editing.

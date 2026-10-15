@@ -930,6 +930,22 @@ def put_assignment(text, key, tag, var):
     return "\n".join(lines)
 
 
+def unassign_layout(text, var):
+    """hlwm_tag_layouts.conf with every tag that names `var` set to none."""
+    out, inside = [], False
+    for line in text.split("\n"):
+        if line.startswith("TAG_LAYOUTS["):
+            inside = True
+        elif inside and line.strip() == '"':
+            inside = False
+        elif inside:
+            m = ASSIGN_LINE.match(line)
+            if m and m.group(4) == var:
+                line = m.group(1) + m.group(2) + m.group(3) + NONE + (m.group(5) or "") + (m.group(6) or "")
+        out.append(line)
+    return "\n".join(out)
+
+
 def put_monitor_layout(text, key, body):
     """monitor_layouts.conf with the active entry for `key` replaced by the lines `body`."""
     lines, head = text.split("\n"), f'LAYOUTS["{key}"]="'
@@ -1151,6 +1167,8 @@ class LayoutScreen:
                     self.message = "saved"
                 else:
                     write_file(HLWM_LAYOUTS, drop_entry(read_file(HLWM_LAYOUTS), var))
+                    if self.used_by(var):
+                        write_file(HLWM_TAG_LAYOUTS, unassign_layout(read_file(HLWM_TAG_LAYOUTS), var))
             except (HlwmError, OSError, ValueError) as e:
                 self.message = str(e)
             self.refresh()
@@ -1166,7 +1184,7 @@ class LayoutScreen:
                 prompt = f'Use "{self.title(var)}" for tag {self.tag} with {self.key}?'
             else:
                 n = self.used_by(var)
-                prompt = f'Delete "{self.title(var)}"?' + (f" Used by {n} tag assignment{'s' * (n != 1)}." if n else "")
+                prompt = f'Delete "{self.title(var)}"?' + (f" Used by {n} tag assignment{'s' * (n != 1)}, {'they' if n != 1 else 'it'} will be unassigned." if n else "")
             return prompt, "y yes   n no"
         if self.mode == "edit":
             return self.message or "Edit", "Ctrl-S save   Esc cancel"
