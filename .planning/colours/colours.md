@@ -69,7 +69,7 @@ Notes: `#000000` in polybar is the fully transparent `#00000000`. Polybar and he
 | `#7b1fa2` | col_purple | ✓ | ✓ |  |  | ✓ |  | ✓ | ✓ |  |  |
 | `#d670d6` |  | ✓ |  |  |  |  |  |  |  |  |  |
 | `#b48ead` | nord15 | ✓ |  |  |  |  | ✓ |  |  |  |  |
-| `#af0087` |  |  |  |  |  |  |  |  |  |  | ✓ |
+| `#d70087` |  |  |  |  |  |  |  |  |  |  | ✓ |
 | `#bf616a` | nord11 | ✓ |  |  |  |  | ✓ |  |  |  |  |
 
 
@@ -218,7 +218,7 @@ Alternatives kept as comments: the nord set (`Xresources:24-39`, built from the 
 | fifo | `03` | slot 3, `#e5e510` |
 | socket | `0D` | slot 13, `#d670d6` |
 | unknown | `00` | no colour (terminal default text) |
-| contexts 1-4 (`NNN_COLORS="#a21f4c07"`, line 17) | `a2` `1f` `4c` `07` | 256-colour `#af0087`, `#0087af`, `#5fd700`; slot 7 |
+| contexts 1-4 (`NNN_COLORS="#a21f4c07"`, line 17) | `a2` `1f` `4c` `07` | 256-colour `#d70087`, `#0087af`, `#5fd700`; slot 7 |
 
 nnn's own background is `nnn*background: [95]col_dark` (`Xresources:125`).
 
