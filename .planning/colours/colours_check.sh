@@ -70,14 +70,6 @@ col_t_256=ab
 if (colour_256 col_t) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL non-numeric override accepted"; else pass=$((pass + 1)); fi
 unset col_t_256
 
-check ansi_white "white" "$(colour_ansi col_white)"
-check ansi_red "red" "$(colour_ansi col_red)"
-check ansi_gray "gray" "$(colour_ansi col_grey_light)"
-check ansi_dark_gray "dark gray" "$(colour_ansi col_grey)"
-col_t="#999999"; col_t_ansi="dark gray"; check ansi_override "dark gray" "$(colour_ansi col_t)"
-unset col_t_ansi
-if (colour_ansi col_t) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL colour_ansi without an override succeeded"; else pass=$((pass + 1)); fi
-if (colour_ansi nope) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL colour_ansi accepted an unknown name"; else pass=$((pass + 1)); fi
 
 if (colour_hex nope) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL unknown name accepted"; else pass=$((pass + 1)); fi
 if (colour_hex 'a;b') 2>/dev/null; then fail=$((fail + 1)); echo "FAIL bad name accepted"; else pass=$((pass + 1)); fi

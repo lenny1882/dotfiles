@@ -1,26 +1,21 @@
 #!/bin/sh
 
 # colours: edit the values below; the helpers after them convert a colour to the format a program needs
-# NAME_256=N and NAME_ansi=name next to a colour set the value for a format its hex cannot convert to exactly
+# NAME_256=N next to a colour sets its 256-colour value where the hex is not exactly an xterm entry
 
 col_dark=#252526
 col_dark2=#2D2D30
 col_light=#ECEFF4
-col_white=#ffffff
-col_white_ansi=white
 col_grey=#3E3E42
-col_grey_ansi="dark gray"
 col_grey_dark=#333333
 col_grey_mid=#777777
 col_grey_light=#999999
-col_grey_light_ansi=gray
 
 col_green=#2E7D32
 col_green_256=28
 col_purple=#7B1FA2
 col_blue=#1565C0
 col_red=#D32F2F
-col_red_ansi=red
 col_orange=#FF9800
 col_chartblue=#2D77CE
 col_cyan=#1F88A2
@@ -163,13 +158,4 @@ colour_256() {
 	fi
 	echo "colours: $1 is not an xterm 256 colour, set ${1}_256" >&2
 	return 1
-}
-
-colour_ansi() {
-	_colour_value "$1" || return 1
-	if ! _colour_override "$1" ansi; then
-		echo "colours: ${1}_ansi is not set" >&2
-		return 1
-	fi
-	printf '%s\n' "$_ov"
 }
