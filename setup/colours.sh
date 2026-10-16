@@ -10,24 +10,15 @@ col_dark=#252526
 col_dark2=#2D2D30
 col_light=#ECEFF4
 col_grey=#3E3E42
-col_grey_dark=#333333
-col_grey_mid=#777777
-col_grey_light=#999999
+col_grey_light=#9E9E9E
 
 col_green=#2E7D32
 col_green_256=28
 col_purple=#7B1FA2
-col_blue=#1565C0
 col_red=#D32F2F
 col_orange=#FF9800
-col_chartblue=#2D77CE
-col_cyan=#1F88A2
-col_seagreen=#3CA341
-col_lightgreen=#87D75F
 col_almost_black=#111111
-col_lime=#00FF00
 
-col_nord4=#D8DEE9
 col_nord9=#81A1C1
 col_nord10=#5E81AC
 col_nord11=#BF616A
@@ -36,14 +27,10 @@ col_nord13=#EBCB8B
 col_nord14=#A3BE8C
 col_nord15=#B48EAD
 
-tui_grey=#8A8A8A
-tui_dimmed=#A8A8A8
 tui_white=#FFFFFF
 
 nnn_symlink=#875FAF
-nnn_details=#9E9E9E
 nnn_context1=#D70087
-nnn_context2=#0087AF
 nnn_context3=#5FD700
 
 ansi_black=#000000
@@ -60,7 +47,7 @@ ansi_purple=$col_purple
 ansi_purple_256=5
 ansi_cyan=#11A8CD
 ansi_cyan_256=6
-ansi_white=#E5E5E5
+ansi_white=$col_light
 ansi_white_256=7
 ansi_bright_black=#666666
 ansi_bright_black_256=8

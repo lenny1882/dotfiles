@@ -29,8 +29,8 @@ printf 'no placeholders here\nuser@example.com and @ alone\n' > "$work/templates
 check no_placeholders_unchanged 'no placeholders here
 user@example.com and @ alone' "$("$gen" plain)"
 
-printf 'b = "@col_nord4@@col_light@"\n' > "$work/templates/adj.tmpl"
-check adjacent 'b = "#D8DEE9#ECEFF4"' "$("$gen" adj)"
+printf 'b = "@col_nord9@@col_light@"\n' > "$work/templates/adj.tmpl"
+check adjacent 'b = "#81A1C1#ECEFF4"' "$("$gen" adj)"
 
 printf 'ok = "@col_red@"\nbad = "@col_nope@"\n' > "$work/templates/bad.tmpl"
 out=$("$gen" bad 2>"$work/err")

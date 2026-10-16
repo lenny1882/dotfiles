@@ -2233,8 +2233,8 @@ def put(win, y, x, s, attr=0):
         pass
 
 
-ART_GREY = int(os.environ.get("TUI_COLOUR_ART", 245))
-DIM_FG = int(os.environ.get("TUI_COLOUR_DIM", 248))
+ART_GREY = int(os.environ.get("TUI_COLOUR_ART", 247))
+DIM_FG = int(os.environ.get("TUI_COLOUR_DIM", 247))
 HILITE_FG = int(os.environ.get("TUI_COLOUR_HILITE", 231))
 SELECT_256 = int(os.environ.get("TUI_COLOUR_SELECT_256", 28))
 SELECT_SLOT = 200

@@ -124,5 +124,5 @@ bottom*background: [95]col_dark
 
 !! urxvt - wrapper
 wrapper*background: [95]col_dark
-wrapper*borderColor: col_blue
+wrapper*borderColor: ansi_blue
 wrapper*internalBorder: 2

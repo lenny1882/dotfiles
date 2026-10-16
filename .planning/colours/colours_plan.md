@@ -40,25 +40,18 @@ Decided 2026-10-16: the renderer is built with plain `@name@` only. Every templa
 
 ### Names
 
-Existing: `col_dark`, `col_light`, `col_grey`, `col_green`, `col_purple`, `col_blue`. New project colours:
+Existing: `col_dark`, `col_light`, `col_grey`, `col_green`, `col_purple`, `col_blue` (the last later merged into `ansi_blue`). New project colours:
 
 | Name | Hex |
 |---|---|
 | `col_red` | `#D32F2F` |
 | `col_orange` | `#FF9800` |
 | `col_dark2` | `#2D2D30` |
-| `col_chartblue` | `#2D77CE` |
-| `col_cyan` | `#1F88A2` |
-| `col_seagreen` | `#3CA341` |
-| `col_lightgreen` | `#87D75F` |
-| `col_grey_dark` | `#333333` |
-| `col_grey_mid` | `#777777` |
-| `col_grey_light` | `#999999` |
+| `col_grey_light` | `#9E9E9E` |
 | `col_almost_black` | `#111111` (active frame background) |
-| `col_lime` | `#00FF00` (man-page blink) |
-| `col_nord4`, `col_nord9` … `col_nord15` | the eight nord colours bottom's CPU graph uses (`#D8DEE9`, `#81A1C1`, `#5E81AC`, `#BF616A`, `#D08770`, `#EBCB8B`, `#A3BE8C`, `#B48EAD`) |
-| `tui_grey`, `tui_dimmed`, `tui_white` | the monitor TUI's 256-colour codes 245, 248 and 231 as hex |
-| `nnn_symlink`, `nnn_details`, `nnn_context1`–`3` | nnn's codes `61`, `F7`, `a2`, `1f`, `4c` as hex (these are hex pairs in nnn, so decimal 97, 247, 162, 31, 76) |
+| `col_nord9` … `col_nord15` | the seven nord colours bottom's CPU graph uses (`#81A1C1`, `#5E81AC`, `#BF616A`, `#D08770`, `#EBCB8B`, `#A3BE8C`, `#B48EAD`); its eighth core colour is `col_light` |
+| `tui_white` | the monitor TUI's 256-colour code 231 as hex |
+| `nnn_symlink`, `nnn_context1`–`3` | nnn's codes `61`, `F7`, `a2`, `1f`, `4c` as hex (these are hex pairs in nnn, so decimal 97, 247, 162, 31, 76) |
 
 Only colours that something uses get an entry. The unused nord defines, the commented-out palettes and the unused polybar colour files are left out.
 
@@ -70,9 +63,9 @@ The 16 palette slots are `ansi_black` … `ansi_bright_white`, (decided 2026-10-
 2. The template renderer `setup/colours-gen` (done), then lemurs (done: `setup/templates/lemurs.tmpl`, the generation in `step_display_manager`, and `symlinks/etc_lemurs_config.toml` staged as a deletion, regenerated on disk, and gitignored; its rendered output is byte-identical to the old file), then bottom (done, confirmed live: templates, `bottom-wrap.sh`, call sites, alias, old toml files removed).
 3. The herbstluftwm files (done, confirmed live 2026-10-16): `variables.autostart` sources `colours.sh` (found through the real path of its own directory, `../../setup`) in place of its six colour definitions, and `theme.autostart`'s `#11111177` literal is `${col_almost_black}77`. `col_active` stays in `variables.autostart`. The alpha suffixes in `theme.autostart` (`${col_grey}cc` and so on) are left as plain string concatenation, which produces the same text as `colour_alpha`.
 4. `panel.sh` and the polybar colour file (done, confirmed live 2026-10-16): `panel.sh` sources `colours.sh` and exports twelve `COLOUR_*` variables (the argb alpha forms through `colour_argb`, the plain ones through `colour_hex`); `polybar/scripts/colors_vscode_dark` reads them with `${env:COLOUR_…}` for every key that has a literal and is used. `COLOUR_ACTIVE` and `COLOUR_URGENT` still come from the arguments. Left as literals because nothing uses them: `bg_med`, `line_yellow` and `line_red` (the last is only in a commented-out line).
-5. `nnn-wrap.sh` (done, confirmed live 2026-10-16): it sources `colours.sh` and builds `NNN_FCOLORS` and `NNN_COLORS` from `colour_256`, printed as two lowercase hex digits. The palette-slot entries (directory, executable and so on) come from the 16 `ansi_*` palette colours, each of which now carries its slot number as a `_256` override (`ansi_blue_256=4`), since a palette slot is its own 256-colour number; the symlink, details and context colours are `nnn_symlink`, `nnn_details` and `nnn_context1`–`3`. `_unknown` stays the literal `00` (no colour). The old values were mixed case; the new ones are all lowercase.
-6. The monitor TUI (done, confirmed live 2026-10-16): `monitor-tui-wrap.sh` sources `colours.sh` and exports five variables, `TUI_COLOUR_ART` (245, `tui_grey`), `TUI_COLOUR_DIM` (248, `tui_dimmed`), `TUI_COLOUR_HILITE` (231, `tui_white`), `TUI_COLOUR_SELECT_256` (28, the `col_green_256` override) and `TUI_COLOUR_SELECT_RGB` (`46;125;50`, `col_green`). `monitor_tui.py` reads them with `os.environ`, defaulting to today's values, so it still runs without the wrapper. No Python port of the helpers.
-7. Xresources (done, confirmed live 2026-10-16): `scripts/xrdb-wrap.sh` sources `colours.sh` and runs `xrdb` with a `-D name=#hex` flag for every `col_*`, `ansi_*`, `tui_*` and `nnn_*` colour (50 flags; the `_256` overrides are skipped). `startup.autostart` calls it in place of `xrdb`. `home_@user@_.Xresources` loses its five `#define col_*` lines and the live palette (`*.color0`–`15`) now reads `ansi_black` … `ansi_bright_white`; `col_dark`, `col_light` and `col_blue` are used as before. Left alone because they are unused or commented out: the `nord0`–`nord15` defines and the three commented palettes. The palette is now uppercase hex instead of lowercase, which urxvt reads the same.
+5. `nnn-wrap.sh` (done, confirmed live 2026-10-16): it sources `colours.sh` and builds `NNN_FCOLORS` and `NNN_COLORS` from `colour_256`, printed as two lowercase hex digits. The palette-slot entries (directory, executable and so on) come from the 16 `ansi_*` palette colours, each of which now carries its slot number as a `_256` override (`ansi_blue_256=4`), since a palette slot is its own 256-colour number; the symlink, details and context colours were `nnn_symlink`, `nnn_details` and `nnn_context1`–`3` (details is now `col_grey_light`, context 2 is `ansi_cyan`). `_unknown` stays the literal `00` (no colour). The old values were mixed case; the new ones are all lowercase.
+6. The monitor TUI (done, confirmed live 2026-10-16): `monitor-tui-wrap.sh` sources `colours.sh` and exports five variables, `TUI_COLOUR_ART` (245, now 247 `col_grey_light`), `TUI_COLOUR_DIM` (248, now 247 `col_grey_light`), `TUI_COLOUR_HILITE` (231, `tui_white`), `TUI_COLOUR_SELECT_256` (28, the `col_green_256` override) and `TUI_COLOUR_SELECT_RGB` (`46;125;50`, `col_green`). `monitor_tui.py` reads them with `os.environ`, defaulting to today's values, so it still runs without the wrapper. No Python port of the helpers.
+7. Xresources (done, confirmed live 2026-10-16): `scripts/xrdb-wrap.sh` sources `colours.sh` and runs `xrdb` with a `-D name=#hex` flag for every `col_*`, `ansi_*`, `tui_*` and `nnn_*` colour (50 flags; the `_256` overrides are skipped). `startup.autostart` calls it in place of `xrdb`. `home_@user@_.Xresources` loses its five `#define col_*` lines and the live palette (`*.color0`–`15`) now reads `ansi_black` … `ansi_bright_white`; `col_dark` and `col_light` are used as before (`col_blue` was merged into `ansi_blue` later). Left alone because they are unused or commented out: the `nord0`–`nord15` defines and the three commented palettes. The palette is now uppercase hex instead of lowercase, which urxvt reads the same.
 8. rofi (done, confirmed live 2026-10-16): `scripts/rofi-wrap.sh [rofi args]`, also reachable as `alias rofi` in `.shellrc_aliases` like `btm`, sources `colours.sh` and runs rofi with a `-theme-str` that sets `col-dark1`, `col-dark2`, `col-grey`, `col-light`, `col-green` and `col-purple`. The four rofi keybindings in `shortcuts.autostart` call it. The colour definitions are removed from `custom.rasi` (decided 2026-10-16), so a rofi launched without the wrapper is visibly unthemed; the unused `col-light-green` went with them.
 
 Each migration must leave the program's output unchanged. Colours that have a 256-colour value today (the TUI's 28, 245, 248 and 231, and nnn's `61`, `F7`, `a2`, `1f` and `4c`) get a name and, where the hex is not an exact xterm entry, an override that reproduces today's value.
@@ -94,5 +87,5 @@ The colours are defined in these different formats today, so one source has to f
 Not decided or not done (written down 2026-10-16 so they survive the session):
 
 - **Merging `colours` into `main`:** `symlinks/etc_lemurs_config.toml` is tracked on `main` and deleted on this branch, so the merge removes it from the working tree. Regenerate straight after: `setup/colours-gen lemurs > symlinks/etc_lemurs_config.toml.new && mv symlinks/etc_lemurs_config.toml.new symlinks/etc_lemurs_config.toml`. Not cleanly tested. In a scratch repo, switching to `main` while the file is gitignored silently replaced it with main's tracked copy, and with it not ignored the checkout was refused.
-- **Consolidation:** merging the near-duplicate colours (four blues, seven greys, five greens; `colours.md` section 5) is for later, after the migration. Each is a one-line edit in `colours.sh` followed by a look at the result. The `ansi_*` palette is part of it.
+- **Consolidation:** blues, greens and greys done (2026-10-16: `col_chartblue` into `ansi_blue`; `col_seagreen` and `col_lightgreen` into `ansi_bright_green`; `col_grey_dark` into `col_grey`; the mid and light greys into `col_grey_light` at `#9E9E9E`). Darks were looked at and kept (2026-10-16). Whites (`col_nord4`, `ansi_white` into `col_light`), `col_blue` into `ansi_blue` and cyans (`col_cyan`, `nnn_context2` into `ansi_cyan`) and lime (`col_lime` into `nnn_context3`) also done. Still to do: the rest of the `ansi_*` palette; `colours.md` section 5. Each is a one-line edit in `colours.sh` followed by a look at the result.
 - **Left as literals on purpose** (unused or not hex): polybar `bg_med`, `line_yellow`, `line_red`; the `nord0`–`nord15` defines and three commented palettes in Xresources; lemurs' four named colours.
