@@ -6,21 +6,47 @@
 col_dark=#252526
 col_dark2=#2D2D30
 col_light=#ECEFF4
+col_white=#ffffff
+col_white_ansi=white
 col_grey=#3E3E42
+col_grey_ansi="dark gray"
 col_grey_dark=#333333
 col_grey_mid=#777777
 col_grey_light=#999999
+col_grey_light_ansi=gray
 
 col_green=#2E7D32
 col_green_256=28
 col_purple=#7B1FA2
 col_blue=#1565C0
 col_red=#D32F2F
+col_red_ansi=red
 col_orange=#FF9800
 col_chartblue=#2D77CE
 col_cyan=#1F88A2
 col_seagreen=#3CA341
 col_lightgreen=#87D75F
+col_almost_black=#111111
+col_lime=#00FF00
+
+col_nord4=#D8DEE9
+col_nord9=#81A1C1
+col_nord10=#5E81AC
+col_nord11=#BF616A
+col_nord12=#D08770
+col_nord13=#EBCB8B
+col_nord14=#A3BE8C
+col_nord15=#B48EAD
+
+tui_grey=#8a8a8a
+tui_dimmed=#a8a8a8
+tui_white=#ffffff
+
+nnn_symlink=#875faf
+nnn_details=#9e9e9e
+nnn_context1=#d70087
+nnn_context2=#0087af
+nnn_context3=#5fd700
 
 ansi_black=#000000
 ansi_red=$col_red

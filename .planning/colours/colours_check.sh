@@ -44,6 +44,17 @@ col_t="#008700"; check 256_cube28 "28" "$(colour_256 col_t)"
 col_t="#000000"; check 256_black "16" "$(colour_256 col_t)"
 col_t="#ff0000"; check 256_red "196" "$(colour_256 col_t)"
 
+check 256_tui_grey "245" "$(colour_256 tui_grey)"
+check 256_tui_dimmed "248" "$(colour_256 tui_dimmed)"
+check 256_tui_white "231" "$(colour_256 tui_white)"
+check 256_nnn_symlink "97" "$(colour_256 nnn_symlink)"
+check 256_nnn_details "247" "$(colour_256 nnn_details)"
+check 256_nnn_context1 "162" "$(colour_256 nnn_context1)"
+check 256_nnn_context2 "31" "$(colour_256 nnn_context2)"
+check 256_nnn_context3 "76" "$(colour_256 nnn_context3)"
+check rgb_lime "0;255;0" "$(colour_rgb col_lime)"
+check alpha_almost_black "#11111177" "$(colour_alpha col_almost_black 77)"
+check alpha_nord4 "#D8DEE977" "$(colour_alpha col_nord4 77)"
 check 256_override "28" "$(colour_256 col_green)"
 col_t="#2E7D32"
 if (colour_256 col_t) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL colour_256 guessed a colour that is not an xterm entry"; else pass=$((pass + 1)); fi
@@ -59,6 +70,10 @@ col_t_256=ab
 if (colour_256 col_t) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL non-numeric override accepted"; else pass=$((pass + 1)); fi
 unset col_t_256
 
+check ansi_white "white" "$(colour_ansi col_white)"
+check ansi_red "red" "$(colour_ansi col_red)"
+check ansi_gray "gray" "$(colour_ansi col_grey_light)"
+check ansi_dark_gray "dark gray" "$(colour_ansi col_grey)"
 col_t="#999999"; col_t_ansi="dark gray"; check ansi_override "dark gray" "$(colour_ansi col_t)"
 unset col_t_ansi
 if (colour_ansi col_t) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL colour_ansi without an override succeeded"; else pass=$((pass + 1)); fi

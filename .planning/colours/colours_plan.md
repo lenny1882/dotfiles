@@ -53,6 +53,14 @@ Existing: `col_dark`, `col_light`, `col_grey`, `col_green`, `col_purple`, `col_b
 | `col_grey_dark` | `#333333` |
 | `col_grey_mid` | `#777777` |
 | `col_grey_light` | `#999999` |
+| `col_almost_black` | `#111111` (active frame background) |
+| `col_lime` | `#00FF00` (man-page blink) |
+| `col_white` | `#ffffff` (lemurs `white`) |
+| `col_nord4`, `col_nord9` … `col_nord15` | the eight nord colours bottom's CPU graph uses (`#D8DEE9`, `#81A1C1`, `#5E81AC`, `#BF616A`, `#D08770`, `#EBCB8B`, `#A3BE8C`, `#B48EAD`) |
+| `tui_grey`, `tui_dimmed`, `tui_white` | the monitor TUI's 256-colour codes 245, 248 and 231 as hex |
+| `nnn_symlink`, `nnn_details`, `nnn_context1`–`3` | nnn's codes `61`, `F7`, `a2`, `1f`, `4c` as hex (these are hex pairs in nnn, so decimal 97, 247, 162, 31, 76) |
+
+Only colours that something uses get an entry. The unused nord defines, the commented-out palettes and the unused polybar colour files are left out.
 
 The 16 palette slots are `ansi_black` … `ansi_bright_white`. A slot that is a project colour references it (`ansi_red=$col_red`, `ansi_purple=$col_purple`, `ansi_bright_white=$col_light`); `ansi_black` stays `#000000`, which is why the terminal background (`col_dark`) and ANSI black differ.
 
@@ -84,4 +92,4 @@ To be checked or settled while building:
 - That `colours.sh` is POSIX (only `bash --posix` is available here).
 - The palette slots are named `ansi_*` and the name overrides are `NAME_ansi`; two uses of "ansi" that are easy to confuse.
 - Names for the values with none yet: the `#111111` literal at `theme.autostart:37`, polybar's transparent `#000000`, and the nord block in Xresources.
-- Which project colour each of lemurs' `white`, `red`, `gray` and `dark gray` stands for, and likewise nano's names, so their `NAME_ansi` values can be written. Today they are palette names, not hex, so nothing can be derived from the config; the migration must keep each name as it is.
+- Which project colour each of nano's named colours (`lightwhite`, `grey`, `white`, `red`, `black`, `lightyellow`, `magenta`) stands for, so their `NAME_ansi` values can be written; the migration must keep each name as it is.
