@@ -77,7 +77,7 @@ The 16 palette slots are `ansi_black` … `ansi_bright_white`, (decided 2026-10-
 
 Each migration must leave the program's output unchanged. Colours that have a 256-colour value today (the TUI's 28, 245, 248 and 231, and nnn's `61`, `F7`, `a2`, `1f` and `4c`) get a name and, where the hex is not an exact xterm entry, an override that reproduces today's value.
 
-`colours.md` in this directory lists every colour, what uses it and where it is defined. That is the starting inventory for this work.
+`colours.md` in this directory lists how each program gets its colours, every colour and what uses it, and what is still defined elsewhere. Refreshed 2026-10-16 after the migration.
 
 ## What the script has to cover
 
@@ -97,6 +97,5 @@ Not decided or not done (written down 2026-10-16 so they survive the session):
 - **Merging `colours` into `main`:** `symlinks/etc_lemurs_config.toml` is tracked on `main` and deleted on this branch, so the merge removes it from the working tree. Regenerate straight after: `setup/colours-gen lemurs > symlinks/etc_lemurs_config.toml.new && mv symlinks/etc_lemurs_config.toml.new symlinks/etc_lemurs_config.toml`. Not cleanly tested. In a scratch repo, switching to `main` while the file is gitignored silently replaced it with main's tracked copy, and with it not ignored the checkout was refused.
 - **Push:** the branch is ahead of the remote `colours`. The sandbox cannot reach `github.com:22`, so the user pushes from their own session.
 - **Live checks outstanding:** rofi from the four keybindings, then a bare `/usr/bin/rofi -show drun` to see what an unwrapped launch looks like. Xresources was verified with real `xrdb -n` (identical to before) but `xrdb-wrap.sh ~/.Xresources` has not been run to load it into the running session.
-- **`colours.md`** still describes the repo as it was before the migration. Refresh it, or keep it as the pre-migration inventory. Not decided.
-- **Consolidation:** merging the near-duplicate colours (four blues, five greys, five greens; `colours.md` section 7) is for later, after the migration. Each is a one-line edit in `colours.sh` followed by a look at the result. The `ansi_*` palette is part of it.
+- **Consolidation:** merging the near-duplicate colours (four blues, seven greys, five greens; `colours.md` section 5) is for later, after the migration. Each is a one-line edit in `colours.sh` followed by a look at the result. The `ansi_*` palette is part of it.
 - **Left as literals on purpose** (unused or not hex): polybar `bg_med`, `line_yellow`, `line_red`; the `nord0`–`nord15` defines and three commented palettes in Xresources; lemurs' four named colours.
