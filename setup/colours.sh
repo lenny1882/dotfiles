@@ -47,21 +47,37 @@ nnn_context2=#0087AF
 nnn_context3=#5FD700
 
 ansi_black=#000000
+ansi_black_256=0
 ansi_red=$col_red
+ansi_red_256=1
 ansi_green=#0DBC79
+ansi_green_256=2
 ansi_yellow=#E5E510
+ansi_yellow_256=3
 ansi_blue=#2472C8
+ansi_blue_256=4
 ansi_purple=$col_purple
+ansi_purple_256=5
 ansi_cyan=#11A8CD
+ansi_cyan_256=6
 ansi_white=#E5E5E5
+ansi_white_256=7
 ansi_bright_black=#666666
+ansi_bright_black_256=8
 ansi_bright_red=#EF5350
+ansi_bright_red_256=9
 ansi_bright_green=#66BB6A
+ansi_bright_green_256=10
 ansi_bright_yellow=#F5F543
+ansi_bright_yellow_256=11
 ansi_bright_blue=#3B8EEA
+ansi_bright_blue_256=12
 ansi_bright_purple=#D670D6
+ansi_bright_purple_256=13
 ansi_bright_cyan=#29B8DB
+ansi_bright_cyan_256=14
 ansi_bright_white=$col_light
+ansi_bright_white_256=15
 
 _colour_value() {
 	case $1 in

@@ -55,6 +55,12 @@ check 256_nnn_context3 "76" "$(colour_256 nnn_context3)"
 check rgb_lime "0;255;0" "$(colour_rgb col_lime)"
 check alpha_almost_black "#11111177" "$(colour_alpha col_almost_black 77)"
 check alpha_nord4 "#D8DEE977" "$(colour_alpha col_nord4 77)"
+i=0
+for n in black red green yellow blue purple cyan white bright_black bright_red bright_green bright_yellow bright_blue bright_purple bright_cyan bright_white; do
+	check "256_slot_$n" "$i" "$(colour_256 "ansi_$n")"
+	i=$((i + 1))
+done
+
 check 256_override "28" "$(colour_256 col_green)"
 col_t="#2E7D32"
 if (colour_256 col_t) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL colour_256 guessed a colour that is not an xterm entry"; else pass=$((pass + 1)); fi
