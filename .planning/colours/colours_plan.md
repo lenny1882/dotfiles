@@ -68,6 +68,7 @@ The 16 palette slots are `ansi_black` … `ansi_bright_white`, (decided 2026-10-
 
 1. `colours.sh` (done) and the bash prompt as the first consumer. The `rgb` helper is checked against the values already written in `shellrc:52-73`.
 2. The template renderer `setup/colours-gen` (done), then lemurs (done: `setup/templates/lemurs.tmpl`, the `step_colours` install step, and `symlinks/etc_lemurs_config.toml` staged as a deletion, regenerated on disk, and gitignored; its rendered output is byte-identical to the old file), then bottom (done, confirmed live: templates, `bottom-wrap.sh`, call sites, alias, old toml files removed).
+3. The herbstluftwm files (done here, to be confirmed live): `variables.autostart` sources `colours.sh` (found through the real path of its own directory, `../../setup`) in place of its six colour definitions, and `theme.autostart`'s `#11111177` literal is `${col_almost_black}77`. `col_active` stays in `variables.autostart`. The alpha suffixes in `theme.autostart` (`${col_grey}cc` and so on) are left as plain string concatenation, which produces the same text as `colour_alpha`.
 
 Each migration must leave the program's output unchanged. Colours that have a 256-colour value today (the TUI's 28, 245, 248 and 231, and nnn's `61`, `F7`, `a2`, `1f` and `4c`) get a name and, where the hex is not an exact xterm entry, an override that reproduces today's value.
 

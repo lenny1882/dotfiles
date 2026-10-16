@@ -3,6 +3,9 @@
 # colours: edit the values below; the helpers after them convert a colour to the format a program needs
 # NAME_256=N next to a colour sets its 256-colour value where the hex is not exactly an xterm entry
 
+# based on the vscode dark, mui pallettes
+# https://www.color-hex.com/color-palette/98179
+# https://mui.com/customization/palette/
 col_dark=#252526
 col_dark2=#2D2D30
 col_light=#ECEFF4

@@ -34,7 +34,7 @@ hc set window_gap 0
 hc attr theme.title_font 'Dejavu Sans:pixelsize=12'  # example using Xft
 
 # hex-alpha: rrggbbaa
-hc set frame_bg_active_color "#11111177"
+hc set frame_bg_active_color "${col_almost_black}77"
 hc set frame_bg_normal_color "${col_grey}FF"
 hc set frame_border_active_color "${col_grey}cc"
 hc set frame_border_normal_color "${col_grey}cc"
