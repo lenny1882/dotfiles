@@ -13,9 +13,9 @@ A script that lets me define colours in a single place and propagates them out t
 - **Overrides for formats a hex cannot convert to exactly:** a `NAME_256=N` or `NAME_ansi=name` line next to the colour in `colours.sh`. `colour_256` uses the override if there is one, otherwise returns the colour only if it is exactly an xterm 256 entry, otherwise fails (it never picks a nearest colour). `colour_ansi` is override-only and fails if none is set. The exact formats (hex, rgb, alpha, argb) have no override.
 - **Anything that can run shell sources `colours.sh` directly:** the herbstluftwm files, `panel.sh`, `rule_hook.sh`, `background.sh`, `nnn-wrap.sh` and the bash prompt, each converting to the form it needs.
 - **Programs that cannot read it directly:** wrap their launch in a script that sources `colours.sh` and injects the colours.
-  - Xresources: `xrdb` run with `-D` flags (`startup.autostart:9`), with the file using macros for every colour including the palette slots. To be checked: that `cpp` accepts a `#` value in `-D`.
+  - Xresources: `xrdb` run with `-D` flags (`startup.autostart:9`), with the file using macros for every colour including the palette slots. Checked: real `xrdb -n -Dcol_dark=#252526` fills in `#` values, including `[80]col_dark`.
   - polybar: env vars from `panel.sh`, extending the `${env:...}` it already uses; the alpha forms built by the helpers.
-  - rofi: `-theme-str` overrides in the four keybindings in `shortcuts.autostart`. To be tested.
+  - rofi: `-theme-str` overrides for the variables in `custom.rasi:10-17`, for the four keybindings in `shortcuts.autostart`. Checked with rofi 2.0.0: `-theme-str '* { col-dark1: #ff0000; }'` overrides the variable and everything that uses it (`var(col-dark1)`); the file has no hex outside that block.
   - bottom: a new `bottom-wrap.sh` (for example `bottom-wrap.sh cpu`) renders the template to a temp file and runs `pty_inset.py btm -C <temp file>`. The `btm` lines in `polybar.ini` and the `shortcuts.autostart` keybinding change to call it.
   - monitor TUI: `monitor-tui-wrap.sh` exports the values the TUI needs (the exact green as RGB plus its 256-colour fallback, and the other 256-colour numbers) as environment variables; `monitor_tui.py` reads them with `os.environ`, defaulting to today's values. No Python port of the helpers.
   - `pty_inset.py` stays generic. It also wraps `bluetui`, `nmtui`, `nnn` and an `sh -c` update command, so it is not touched.
@@ -87,8 +87,6 @@ The colours are defined in these different formats today, so one source has to f
 
 To be checked or settled while building:
 
-- Whether `cpp` accepts a `#` value in `xrdb -D`.
-- Whether rofi's `-theme-str` overrides the variables in `custom.rasi`.
 - That `colours.sh` is POSIX (only `bash --posix` is available here).
 - The palette slots are named `ansi_*` and the name overrides are `NAME_ansi`; two uses of "ansi" that are easy to confuse.
 - Which project colour each of nano's named colours (`lightwhite`, `grey`, `white`, `red`, `black`, `lightyellow`, `magenta`) stands for, so their `NAME_ansi` values can be written; the migration must keep each name as it is.
