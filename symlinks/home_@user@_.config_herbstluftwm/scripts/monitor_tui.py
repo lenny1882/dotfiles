@@ -2233,9 +2233,12 @@ def put(win, y, x, s, attr=0):
         pass
 
 
-ART_GREY = 245
+ART_GREY = int(os.environ.get("TUI_COLOUR_ART", 245))
+DIM_FG = int(os.environ.get("TUI_COLOUR_DIM", 248))
+HILITE_FG = int(os.environ.get("TUI_COLOUR_HILITE", 231))
+SELECT_256 = int(os.environ.get("TUI_COLOUR_SELECT_256", 28))
 SELECT_SLOT = 200
-SELECT_RGB = (0x2E, 0x7D, 0x32)
+SELECT_RGB = tuple(int(v) for v in os.environ.get("TUI_COLOUR_SELECT_RGB", "46;125;50").split(";"))
 ATTR = {"art": 0, "bold": curses.A_BOLD, "label": 0, "key": 0, "dim": 0, "border": 0, "border_sel": 0, "text": 0,
         "green": 0, "hilite": 0, "name": curses.A_BOLD, "italic": getattr(curses, "A_ITALIC", curses.A_DIM)}
 
@@ -2257,8 +2260,8 @@ def init_colours():
     green = curses.COLOR_GREEN
     dim_fg = curses.COLOR_WHITE
     if curses.COLORS >= 256:
-        dim_fg = 248
-        green = 28
+        dim_fg = DIM_FG
+        green = SELECT_256
         if curses.can_change_color():
             try:
                 curses.init_color(SELECT_SLOT, *(round(v * 1000 / 255) for v in SELECT_RGB))
@@ -2276,7 +2279,7 @@ def init_colours():
         curses.init_pair(3, ART_GREY if curses.COLORS >= 256 else curses.COLOR_WHITE, -1)
         ATTR["art"] = curses.color_pair(3)
         ATTR["green"] = curses.color_pair(1)
-        curses.init_pair(4, 231 if curses.COLORS >= 256 else curses.COLOR_WHITE, green)
+        curses.init_pair(4, HILITE_FG if curses.COLORS >= 256 else curses.COLOR_WHITE, green)
         ATTR["hilite"] = curses.color_pair(4)
     except curses.error:
         pass
