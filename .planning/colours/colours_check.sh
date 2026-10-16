@@ -76,5 +76,17 @@ if (colour_hex 'a;b') 2>/dev/null; then fail=$((fail + 1)); echo "FAIL bad name 
 col_bad="red"
 if (colour_hex col_bad) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL non-hex value accepted"; else pass=$((pass + 1)); fi
 
+leftover=$(
+	colour_rgb col_green >/dev/null; colour_256 col_green >/dev/null; colour_argb col_dark CC >/dev/null
+	colours_unload
+	for n in $(grep -oE '^[a-z][a-z0-9_]*=' "$dir/colours.sh" | tr -d =; grep -oE '(^|[[:space:];])_[a-z]+=' "$dir/colours.sh" | tr -d '[:space:];='); do
+		eval "[ -z \"\${$n+x}\" ]" || echo "variable $n"
+	done
+	for f in $(grep -oE '^[a-z_][a-z0-9_]*\(\)' "$dir/colours.sh" | tr -d '()'); do
+		command -v "$f" >/dev/null 2>&1 && echo "function $f"
+	done
+)
+check unload_leaves_nothing "" "$leftover"
+
 echo "$pass passed, $fail failed"
 [ "$fail" -eq 0 ]
