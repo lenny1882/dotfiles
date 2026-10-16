@@ -15,11 +15,6 @@
 #define nord14 #A3BE8C
 #define nord15 #B48EAD
 
-#define col_dark #252526
-#define col_light #ECEFF4
-#define col_purple #7B1FA2
-#define col_green #2E7D32
-#define col_blue #1565C0
 
 ! *.color0: nord1
 ! *.color1: nord11
@@ -72,22 +67,22 @@
 ! *.color14: #29b8db
 ! *.color15: #e5e5e5
 
-*.color0:  #000000
-*.color1:  #d32f2f
-*.color2:  #0dbc79
-*.color3:  #e5e510
-*.color4:  #2472c8
-*.color5:  #7b1fa2
-*.color6:  #11a8cd
-*.color7:  #e5e5e5
-*.color8:  #666666
-*.color9:  #ef5350
-*.color10: #66bb6a
-*.color11: #f5f543
-*.color12: #3b8eea
-*.color13: #d670d6
-*.color14: #29b8db
-*.color15: #eceff4
+*.color0:  ansi_black
+*.color1:  ansi_red
+*.color2:  ansi_green
+*.color3:  ansi_yellow
+*.color4:  ansi_blue
+*.color5:  ansi_purple
+*.color6:  ansi_cyan
+*.color7:  ansi_white
+*.color8:  ansi_bright_black
+*.color9:  ansi_bright_red
+*.color10: ansi_bright_green
+*.color11: ansi_bright_yellow
+*.color12: ansi_bright_blue
+*.color13: ansi_bright_purple
+*.color14: ansi_bright_cyan
+*.color15: ansi_bright_white
 
 *.foreground:   col_light
 *.background:   col_dark
