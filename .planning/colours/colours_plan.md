@@ -8,7 +8,7 @@ A script that lets me define colours in a single place and propagates them out t
 
 ## Decided (2026-10-16)
 
-- **Source and helpers in one file:** `setup/colours.sh` holds the colours (`name=#RRGGBB` lines, including the 16 terminal palette slots; lightened variants are their own lines) and the helpers below them. It is sourced by the wrappers, the generator and the prompt. Written in POSIX `sh` so that both `sh` and bash scripts can source it (`monitor-tui-wrap.sh` stays `#!/bin/sh`). Checked: `colours_check.sh` passes (53 checks) under `dash` and BusyBox 1.36.1 `sh` on Ubuntu 24.04, and under `bash --posix`. `/bin/sh` on the Arch machine is bash, with no `dash`, so a regression would only show under `bash --posix` there.
+- **Source and helpers in one file:** `setup/colours.sh` holds the colours (`name=#RRGGBB` lines, all hex in uppercase; including the 16 terminal palette slots; lightened variants are their own lines) and the helpers below them. It is sourced by the wrappers, the generator and the prompt. Written in POSIX `sh` so that both `sh` and bash scripts can source it (`monitor-tui-wrap.sh` stays `#!/bin/sh`). Checked: `colours_check.sh` passes (53 checks) under `dash` and BusyBox 1.36.1 `sh` on Ubuntu 24.04, and under `bash --posix`. `/bin/sh` on the Arch machine is bash, with no `dash`, so a regression would only show under `bash --posix` there.
 - **Helpers:** `colour_hex`, `colour_rgb` (`r;g;b`), `colour_alpha NAME AA` (`#RRGGBBAA`), `colour_argb NAME AA` (`#AARRGGBB`) and `colour_256`.
 - **Overrides for formats a hex cannot convert to exactly:** a `NAME_256=N` line next to the colour in `colours.sh`. `colour_256` uses the override if there is one, otherwise returns the colour only if it is exactly an xterm 256 entry, otherwise fails (it never picks a nearest colour). The exact formats (hex, rgb, alpha, argb) have no override.
 - **Anything that can run shell sources `colours.sh` directly:** the herbstluftwm files, `panel.sh`, `rule_hook.sh`, `background.sh`, `nnn-wrap.sh` and the bash prompt, each converting to the form it needs.
@@ -25,6 +25,8 @@ A script that lets me define colours in a single place and propagates them out t
 - **Install order:** a new `step_colours` in `quickstart_arch.sh`, just before `step_config_links` (defined at line 295, called at line 584), runs the generator for lemurs. Until it has run, that link dangles (a broken login screen).
 
 ### Template variants
+
+Decided 2026-10-16: the renderer is built with plain `@name@` only. Every template today (lemurs, bottom) uses plain hex, so the variants below are added when a template needs one. Hex case is not preserved from the old files: output uses the stored uppercase, and a migration is checked by comparing case-insensitively.
 
 | Placeholder | Output |
 |---|---|
@@ -65,7 +67,7 @@ The 16 palette slots are `ansi_black` … `ansi_bright_white`, (decided 2026-10-
 ### Build order
 
 1. `colours.sh` (done) and the bash prompt as the first consumer. The `rgb` helper is checked against the values already written in `shellrc:52-73`.
-2. The template renderer, then bottom.
+2. The template renderer `setup/colours-gen` (done), then lemurs (done: `setup/templates/lemurs.tmpl`, the `step_colours` install step, and `symlinks/etc_lemurs_config.toml` staged as a deletion, regenerated on disk, and gitignored; its rendered output is byte-identical to the old file), then bottom.
 
 Each migration must leave the program's output unchanged. Colours that have a 256-colour value today (the TUI's 28, 245, 248 and 231, and nnn's `61`, `F7`, `a2`, `1f` and `4c`) get a name and, where the hex is not an exact xterm entry, an override that reproduces today's value.
 

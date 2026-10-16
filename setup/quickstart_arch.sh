@@ -292,6 +292,11 @@ step_symlinks() {
 	{ "$SCRIPT_DIR/symlinks.sh"; } 2>&1 | pinnedOutput
 }
 
+step_colours() {
+	local out="$SCRIPT_DIR/../symlinks/etc_lemurs_config.toml"
+	{ "$SCRIPT_DIR/colours-gen" lemurs > "$out.new" && mv "$out.new" "$out" || rm -f "$out.new"; } 2>&1 | pinnedOutput
+}
+
 step_config_links() {
 	{ "$SCRIPT_DIR/config_links.sh"; } 2>&1 | pinnedOutput
 }
@@ -562,6 +567,7 @@ STEP_NAMES=(
 	"SSD trim"
 	"Reload udev rules (boot)"
 	"Symlink user directories"
+	"Generate colour config files"
 	"Link config files"
 	"SSH agent (autostart)"
 	"Load shell rc files"
@@ -581,6 +587,7 @@ STEP_FUNCS=(
 	step_ssd_trim
 	step_udev_reload
 	step_symlinks
+	step_colours
 	step_config_links
 	step_ssh_agent
 	step_shell_loader
@@ -597,7 +604,7 @@ STEP_FUNCS=(
 # groups: name + how many of the STEP_NAMES entries (taken in order,
 # starting where the previous group left off) belong to it
 GROUP_NAMES=("System" "User setup" "Desktop" "Software")
-GROUP_SIZES=(5 4 6 2)
+GROUP_SIZES=(5 5 6 2)
 
 # STEP_NAMES/STEP_FUNCS are index-paired, and GROUP_SIZES assumes STEP_NAMES
 # is laid out as contiguous runs matching GROUP_NAMES in order - none of that

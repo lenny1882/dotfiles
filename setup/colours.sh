@@ -33,31 +33,31 @@ col_nord13=#EBCB8B
 col_nord14=#A3BE8C
 col_nord15=#B48EAD
 
-tui_grey=#8a8a8a
-tui_dimmed=#a8a8a8
-tui_white=#ffffff
+tui_grey=#8A8A8A
+tui_dimmed=#A8A8A8
+tui_white=#FFFFFF
 
-nnn_symlink=#875faf
-nnn_details=#9e9e9e
-nnn_context1=#d70087
-nnn_context2=#0087af
-nnn_context3=#5fd700
+nnn_symlink=#875FAF
+nnn_details=#9E9E9E
+nnn_context1=#D70087
+nnn_context2=#0087AF
+nnn_context3=#5FD700
 
 ansi_black=#000000
 ansi_red=$col_red
-ansi_green=#0dbc79
-ansi_yellow=#e5e510
-ansi_blue=#2472c8
+ansi_green=#0DBC79
+ansi_yellow=#E5E510
+ansi_blue=#2472C8
 ansi_purple=$col_purple
-ansi_cyan=#11a8cd
-ansi_white=#e5e5e5
+ansi_cyan=#11A8CD
+ansi_white=#E5E5E5
 ansi_bright_black=#666666
-ansi_bright_red=#ef5350
-ansi_bright_green=#66bb6a
-ansi_bright_yellow=#f5f543
-ansi_bright_blue=#3b8eea
-ansi_bright_purple=#d670d6
-ansi_bright_cyan=#29b8db
+ansi_bright_red=#EF5350
+ansi_bright_green=#66BB6A
+ansi_bright_yellow=#F5F543
+ansi_bright_blue=#3B8EEA
+ansi_bright_purple=#D670D6
+ansi_bright_cyan=#29B8DB
 ansi_bright_white=$col_light
 
 _colour_value() {

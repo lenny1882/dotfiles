@@ -1,0 +1,37 @@
+#!/bin/sh
+
+# usage: colours-gen PROGRAM > output
+# renders templates/PROGRAM.tmpl to stdout, replacing each @name@ with that colour's hex from colours.sh
+
+dir=$(cd "$(dirname "$0")" && pwd)
+
+if [ $# -ne 1 ]; then
+	echo "usage: colours-gen PROGRAM" >&2
+	exit 2
+fi
+
+prog=$1
+tmpl="$dir/templates/$prog.tmpl"
+if [ ! -f "$tmpl" ]; then
+	echo "colours-gen: no template $tmpl" >&2
+	exit 2
+fi
+
+. "$dir/colours.sh"
+
+set --
+for placeholder in $(grep -oE '@[A-Za-z0-9_]+@' "$tmpl" | sort -u); do
+	name=${placeholder#@}
+	name=${name%@}
+	if ! value=$(colour_hex "$name"); then
+		echo "colours-gen: $prog.tmpl uses $placeholder" >&2
+		exit 1
+	fi
+	set -- "$@" -e "s/$placeholder/$value/g"
+done
+
+if [ $# -eq 0 ]; then
+	cat "$tmpl"
+else
+	sed "$@" "$tmpl"
+fi
