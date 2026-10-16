@@ -5,6 +5,8 @@
 #   etc_pacman.d_hooks_abc.hook  ->  /etc/pacman.d/hooks/abc.hook
 # and @user@ stands for the user running the install, so
 #   home_@user@_.config_abc  ->  /home/<user>/.config/abc
+# a "\_" is a literal underscore, not a separator, so
+#   etc_modprobe.d_audio\_power\_save.conf  ->  /etc/modprobe.d/audio_power_save.conf
 # entries are linked as-is (a folder is linked as a folder, never drilled into)
 #
 # usage: config_links.sh [-n|--dry-run] [-f|--force]
@@ -48,7 +50,9 @@ linker() {
 			echo "skip   $name (no _ in name, can't derive a target)"
 			continue
 		fi
-		target="/${name//_//}"
+		target="${name//\\_/$'\x01'}"
+		target="/${target//_//}"
+		target="${target//$'\x01'/_}"
 		target="${target//@user@/$link_user}"
 
 		if [[ -L $target && $(readlink "$target") == "$src" ]]; then
