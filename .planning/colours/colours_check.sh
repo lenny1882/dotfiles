@@ -45,14 +45,24 @@ col_t="#000000"; check 256_black "16" "$(colour_256 col_t)"
 col_t="#ff0000"; check 256_red "196" "$(colour_256 col_t)"
 
 check 256_override "28" "$(colour_256 col_green)"
-col_t="#2E7D32"; check 256_nearest_not_grey "29" "$(colour_256 col_t)"
-check 256_nearest_purple "91" "$(colour_256 col_purple)"
+col_t="#2E7D32"
+if (colour_256 col_t) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL colour_256 guessed a colour that is not an xterm entry"; else pass=$((pass + 1)); fi
+if (colour_256 col_purple) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL colour_256 guessed for col_purple"; else pass=$((pass + 1)); fi
+col_t="#808080"; check 256_exact_grey244 "244" "$(colour_256 col_t)"
+col_t="#080808"; check 256_exact_grey232 "232" "$(colour_256 col_t)"
+col_t="#eeeeee"; check 256_exact_grey255 "255" "$(colour_256 col_t)"
+col_t="#8a8a8b"; if (colour_256 col_t) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL near-grey accepted"; else pass=$((pass + 1)); fi
 col_t="#ffffff"; col_t_256=16; check 256_override_wins_over_exact "16" "$(colour_256 col_t)"
 col_t_256=300
 if (colour_256 col_t) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL override above 255 accepted"; else pass=$((pass + 1)); fi
 col_t_256=ab
 if (colour_256 col_t) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL non-numeric override accepted"; else pass=$((pass + 1)); fi
 unset col_t_256
+
+col_t="#999999"; col_t_ansi="dark gray"; check ansi_override "dark gray" "$(colour_ansi col_t)"
+unset col_t_ansi
+if (colour_ansi col_t) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL colour_ansi without an override succeeded"; else pass=$((pass + 1)); fi
+if (colour_ansi nope) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL colour_ansi accepted an unknown name"; else pass=$((pass + 1)); fi
 
 if (colour_hex nope) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL unknown name accepted"; else pass=$((pass + 1)); fi
 if (colour_hex 'a;b') 2>/dev/null; then fail=$((fail + 1)); echo "FAIL bad name accepted"; else pass=$((pass + 1)); fi

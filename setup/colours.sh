@@ -1,9 +1,7 @@
 #!/bin/sh
 
 # colours: edit the values below; the helpers after them convert a colour to the format a program needs
-# NAME_FORMAT=value next to a colour overrides the helper for a format the hex cannot convert to exactly
-# (only 256 so far). Without one, 256 uses the nearest xterm entry
-# usage: . colours.sh; colour_hex NAME | colour_rgb NAME | colour_256 NAME | colour_alpha NAME AA | colour_argb NAME AA
+# NAME_256=N and NAME_ansi=name next to a colour set the value for a format its hex cannot convert to exactly
 
 col_dark=#252526
 col_dark2=#2D2D30
@@ -129,21 +127,23 @@ colour_256() {
 	_colour_level "$_r"; _ri=$_lv; _colour_levelval "$_ri"; _rv=$_lvv
 	_colour_level "$_g"; _gi=$_lv; _colour_levelval "$_gi"; _gv=$_lvv
 	_colour_level "$_b"; _bi=$_lv; _colour_levelval "$_bi"; _bv=$_lvv
-	_cube=$((16 + 36 * _ri + 6 * _gi + _bi))
-	_cd=$(((_r - _rv) * (_r - _rv) + (_g - _gv) * (_g - _gv) + (_b - _bv) * (_b - _bv)))
-
-	_gn=$((((_r + _g + _b) / 3 - 3) / 10))
-	[ "$_gn" -lt 0 ] && _gn=0
-	[ "$_gn" -gt 23 ] && _gn=23
-	_gl=$((8 + 10 * _gn))
-	_gd=$(((_r - _gl) * (_r - _gl) + (_g - _gl) * (_g - _gl) + (_b - _gl) * (_b - _gl)))
-
-	_mx=$_r; [ "$_g" -gt "$_mx" ] && _mx=$_g; [ "$_b" -gt "$_mx" ] && _mx=$_b
-	_mn=$_r; [ "$_g" -lt "$_mn" ] && _mn=$_g; [ "$_b" -lt "$_mn" ] && _mn=$_b
-
-	if [ $((_mx - _mn)) -lt 16 ] && [ "$_gd" -lt "$_cd" ]; then
-		printf '%s\n' "$((232 + _gn))"
-	else
-		printf '%s\n' "$_cube"
+	if [ "$_r" -eq "$_rv" ] && [ "$_g" -eq "$_gv" ] && [ "$_b" -eq "$_bv" ]; then
+		printf '%s\n' "$((16 + 36 * _ri + 6 * _gi + _bi))"
+		return
 	fi
+	if [ "$_r" -eq "$_g" ] && [ "$_g" -eq "$_b" ] && [ "$_r" -ge 8 ] && [ "$_r" -le 238 ] && [ $(((_r - 8) % 10)) -eq 0 ]; then
+		printf '%s\n' "$((232 + (_r - 8) / 10))"
+		return
+	fi
+	echo "colours: $1 is not an xterm 256 colour, set ${1}_256" >&2
+	return 1
+}
+
+colour_ansi() {
+	_colour_value "$1" || return 1
+	if ! _colour_override "$1" ansi; then
+		echo "colours: ${1}_ansi is not set" >&2
+		return 1
+	fi
+	printf '%s\n' "$_ov"
 }
