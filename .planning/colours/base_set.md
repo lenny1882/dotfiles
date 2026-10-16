@@ -8,7 +8,7 @@ The interactive page with every attempt is an Artifact: https://claude.ai/artifa
 
 Can the base palette be reduced by deriving colours from a few base colours with simple, human-readable rules?
 
-Scope: the 24 chromatic colours in `colours.sh`. The 9 greys (`col_black`, `col_almost_black`, `col_dark`, `col_dark2`, `col_grey`, `col_bright_black`, `col_grey_light`, `col_light`, `col_white`) are not part of it: their levels are 0, 17, 37, 46, 63, 102, 158, 239 and 255 of 255, unevenly spaced, no shared rule produces them, and treating them as a free "grey ramp" made earlier results look better than they were.
+Scope: the 24 chromatic colours in `colours.sh`. The 9 greys (`col_black`, `col_almost_black`, `col_dark`, `col_dark2`, `col_grey`, `col_bright_black`, `col_grey_light`, `col_light`, `col_white`) are not part of this question (their levels are 0, 17, 37, 46, 63, 102, 158, 239 and 255 of 255, unevenly spaced, and treating them as a free "grey ramp" made earlier results look better than they were). They were searched separately with the same chains; see the Greys section.
 
 ## The final spec (user's words, in order of authority)
 
@@ -102,6 +102,26 @@ The colours come from three designers: Material/MUI (`col_red`, `col_bright_red`
 | Pinning `col_green` as a hard limit | Rejected; weighted instead |
 | Fitting `col_nord15` in another group | Worse everywhere (48 to 65) |
 | Base hue shifted one or two steps warm or cool in any group | Each group's base is already at its compromise; every step breaks more than it fixes |
+
+## Greys
+
+Decided 2026-10-16: three bases, `col_black` (`#000000`) and `col_white` (`#FFFFFF`) stay exactly black and white as bases themselves, plus one neutral grey base `#AAAAAA`. Only the chain definitions and step ranges above are used, on neutral greys; soft, hard, muted, warm and cool do nothing to a neutral. Nothing is implemented.
+
+Search: every base from 0 to 255, chains dark, light, shade and pale, levels 1 to 3, steps varied by up to plus or minus 25% of the shared step (dark and light 0.12, shade 0.16, pale 0.20), all nine greys as targets, errors on the scale above. One base fits nothing within error 26. Two bases fit at worst error 12 (`#010101` and about `#EFEFEF`) but make black and white derived. Three free bases fit at 9.5. With black and white forced as bases the best is 18, only for a grey base of 169 to 171.
+
+| Colour | Real | Rule gives | Error | Rule |
+|---|---|---|---|---|
+| `col_black` | `#000000` | `#000000` | 0 | base |
+| `col_white` | `#FFFFFF` | `#FFFFFF` | 0 | base |
+| `col_bright_black` | `#666666` | `#666666` | 0 | white, shadest (3 steps of 0.20) |
+| `col_grey_light` | `#9E9E9E` | `#9E9E9E` | 0 | white, darkest (3 steps of 0.10) |
+| `col_almost_black` | `#111111` | `#121212` | 3 | black, lighter (2 steps of 0.09) |
+| `col_dark` | `#252526` | `#262626` | 2.5 | black, lightest (3 steps of 0.09) |
+| `col_dark2` | `#2D2D30` | `#2F2F2F` | 5 | black, pale (1 step of 0.183) |
+| `col_grey` | `#3E3E42` | `#444444` | 15 | `#AAAAAA`, shadest (3 steps of 0.20) |
+| `col_light` | `#ECEFF4` | `#EAEAEA` | 18 | `#AAAAAA`, palest (3 steps of 0.25) |
+
+Weak points: `col_grey` (borders, bars, lemurs, prompt) and `col_light` (text everywhere) are the visible shifts, and all the slight blue tint on `col_dark`, `col_dark2`, `col_grey` and `col_light` is lost. A tinted grey base `#A6AAB2` gives 15.8 and 16.1 for the same two colours, a small gain. Alpha changes were considered and rejected as not within reason: a colour drawn at alpha `a` is off by about `a` times its solid error, which only helps `col_almost_black` (alpha `77`, error about 13 effective). `col_bright_black` is palette slot 8 and `col_grey_light` is read as xterm 247 by nnn and the monitor TUI, so `col_grey_light` would need `col_grey_light_256=247`. The visual comparison of this and two other base sets is an Artifact: https://claude.ai/artifact/Wuws5b1pUDxgvntG8LtXyD
 
 ## Tab history (permanent numbers; new tabs are only ever added at the end)
 
