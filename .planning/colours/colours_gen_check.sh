@@ -47,5 +47,10 @@ colours-gen: bad.tmpl uses @col_nope@" "$(cat "$work/err")"
 printf 'x = "@col_green_256@"\n' > "$work/templates/num.tmpl"
 "$gen" num >/dev/null 2>&1; check non_hex_value_rejected 1 "$?"
 
+for t in "$src"/templates/*.tmpl; do
+	name=$(basename "$t" .tmpl)
+	"$src/colours-gen" "$name" >/dev/null 2>"$work/err"; check "real_template_$name" 0 "$?"
+done
+
 echo "$pass passed, $fail failed"
 [ "$fail" -eq 0 ]
