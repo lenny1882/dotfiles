@@ -67,22 +67,22 @@
 ! *.color14: #29b8db
 ! *.color15: #e5e5e5
 
-*.color0:  ansi_black
-*.color1:  ansi_red
-*.color2:  ansi_green
-*.color3:  ansi_yellow
-*.color4:  ansi_blue
-*.color5:  ansi_purple
-*.color6:  ansi_cyan
-*.color7:  ansi_white
-*.color8:  ansi_bright_black
-*.color9:  ansi_bright_red
-*.color10: ansi_bright_green
-*.color11: ansi_bright_yellow
-*.color12: ansi_bright_blue
-*.color13: ansi_bright_purple
-*.color14: ansi_bright_cyan
-*.color15: ansi_bright_white
+*.color0:  col_black
+*.color1:  col_red
+*.color2:  col_emerald
+*.color3:  col_yellow
+*.color4:  col_blue
+*.color5:  col_purple
+*.color6:  col_cyan
+*.color7:  col_light
+*.color8:  col_bright_black
+*.color9:  col_bright_red
+*.color10: col_bright_green
+*.color11: col_bright_yellow
+*.color12: col_bright_blue
+*.color13: col_bright_purple
+*.color14: col_bright_cyan
+*.color15: col_light
 
 *.foreground:   col_light
 *.background:   col_dark
@@ -124,5 +124,5 @@ bottom*background: [95]col_dark
 
 !! urxvt - wrapper
 wrapper*background: [95]col_dark
-wrapper*borderColor: ansi_blue
+wrapper*borderColor: col_blue
 wrapper*internalBorder: 2

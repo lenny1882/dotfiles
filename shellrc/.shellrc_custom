@@ -10,8 +10,8 @@ export GIT_PS1_SHOWUPSTREAM=1
 source "$(dirname "${BASH_SOURCE[0]}")/../setup/colours.sh"
 
 # colourful man
-_man_blink=$'\e[38;2;'$(colour_rgb nnn_context3)'m'
-_man_reverse=$'\e[48;2;'$(colour_rgb ansi_cyan)'m'
+_man_blink=$'\e[38;2;'$(colour_rgb col_lime)'m'
+_man_reverse=$'\e[48;2;'$(colour_rgb col_cyan)'m'
 _man_underline=$'\e[38;2;'$(colour_rgb col_red)'m'
 man() {
     local ltc_mb=$'\e[1;31m'                # begin bold
@@ -54,25 +54,25 @@ _bold="\[\e[1m\]"
 _italics="\[\e[4m\]"
 _underline="\[\e[7m\]"
 
-_bgcyan="\[\e[48;2;$(colour_rgb ansi_cyan)m\]"
-_bgblue="\[\e[48;2;$(colour_rgb ansi_blue)m\]"
+_bgcyan="\[\e[48;2;$(colour_rgb col_cyan)m\]"
+_bgblue="\[\e[48;2;$(colour_rgb col_blue)m\]"
 _bgdefault="\[\e[49m\]"
 _bggreen="\[\e[48;2;$(colour_rgb col_green)m\]"
-_bgbrightgreen="\[\e[48;2;$(colour_rgb ansi_bright_green)m\]"
+_bgbrightgreen="\[\e[48;2;$(colour_rgb col_bright_green)m\]"
 _bggrey="\[\e[48;2;$(colour_rgb col_grey)m\]"
 _bglightgrey="\[\e[48;2;$(colour_rgb col_grey_light)m\]"
 
 _bgpurple="\[\e[48;2;$(colour_rgb col_purple)m\]"
 _bgred="\[\e[48;2;$(colour_rgb col_red)m\]"
 
-_fgcyan="\[\e[38;2;$(colour_rgb ansi_cyan)m\]"
-_fgblue="\[\e[38;2;$(colour_rgb ansi_blue)m\]"
+_fgcyan="\[\e[38;2;$(colour_rgb col_cyan)m\]"
+_fgblue="\[\e[38;2;$(colour_rgb col_blue)m\]"
 _fgdefault="\[\e[39m\]"
 _fgwhite="\[\e[38;2;$(colour_rgb col_light)m\]"
 _fggreen="\[\e[38;2;$(colour_rgb col_green)m\]"
-_fgbrightgreen="\[\e[38;2;$(colour_rgb ansi_bright_green)m\]"
+_fgbrightgreen="\[\e[38;2;$(colour_rgb col_bright_green)m\]"
 _fggrey="\[\e[38;2;$(colour_rgb col_grey)m\]"
-#_fglightgreen="\[\e[38;2;$(colour_rgb nnn_context3)m\]"
+#_fglightgreen="\[\e[38;2;$(colour_rgb col_lime)m\]"
 _fglightgrey="\[\e[38;2;$(colour_rgb col_grey_light)m\]"
 _fgpurple="\[\e[38;2;$(colour_rgb col_purple)m\]"
 _fgred="\[\e[38;2;$(colour_rgb col_red)m\]"

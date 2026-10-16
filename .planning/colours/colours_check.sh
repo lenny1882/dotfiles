@@ -17,23 +17,22 @@ check() {
 }
 
 check hex_green "#2E7D32" "$(colour_hex col_green)"
-check hex_reference "#D32F2F" "$(colour_hex ansi_red)"
-check hex_reference_light "#ECEFF4" "$(colour_hex ansi_bright_white)"
+check hex_reference "#D32F2F" "$(colour_hex col_red)"
 
 # the r;g;b values written in shellrc/.shellrc_custom
 check rgb_light "236;239;244" "$(colour_rgb col_light)"
 check rgb_green "46;125;50" "$(colour_rgb col_green)"
 check rgb_purple "123;31;162" "$(colour_rgb col_purple)"
 check rgb_red "211;47;47" "$(colour_rgb col_red)"
-check rgb_ansi_blue "36;114;200" "$(colour_rgb ansi_blue)"
-check rgb_cyan "17;168;205" "$(colour_rgb ansi_cyan)"
-check rgb_bright_green "102;187;106" "$(colour_rgb ansi_bright_green)"
+check rgb_ansi_blue "36;114;200" "$(colour_rgb col_blue)"
+check rgb_cyan "17;168;205" "$(colour_rgb col_cyan)"
+check rgb_bright_green "102;187;106" "$(colour_rgb col_bright_green)"
 check rgb_grey_light "158;158;158" "$(colour_rgb col_grey_light)"
-check rgb_black "0;0;0" "$(colour_rgb ansi_black)"
+check rgb_black "0;0;0" "$(colour_rgb col_black)"
 
 check alpha "#252526CC" "$(colour_alpha col_dark CC)"
 check argb "#CC252526" "$(colour_argb col_dark CC)"
-check argb_zero "#00000000" "$(colour_argb ansi_black 00)"
+check argb_zero "#00000000" "$(colour_argb col_black 00)"
 
 # exact xterm 256-colour entries
 col_t="#ffffff"; check 256_white "231" "$(colour_256 col_t)"
@@ -43,24 +42,24 @@ col_t="#008700"; check 256_cube28 "28" "$(colour_256 col_t)"
 col_t="#000000"; check 256_black "16" "$(colour_256 col_t)"
 col_t="#ff0000"; check 256_red "196" "$(colour_256 col_t)"
 
-check 256_tui_white "231" "$(colour_256 tui_white)"
-check 256_nnn_symlink "97" "$(colour_256 nnn_symlink)"
+check 256_col_white "231" "$(colour_256 col_white)"
+check 256_col_violet "97" "$(colour_256 col_violet)"
 check 256_grey_light "247" "$(colour_256 col_grey_light)"
-check 256_nnn_context1 "162" "$(colour_256 nnn_context1)"
-check 256_nnn_context3 "76" "$(colour_256 nnn_context3)"
-check rgb_context3 "95;215;0" "$(colour_rgb nnn_context3)"
+check 256_col_magenta "162" "$(colour_256 col_magenta)"
+check 256_col_lime "76" "$(colour_256 col_lime)"
+check rgb_lime "95;215;0" "$(colour_rgb col_lime)"
 check alpha_almost_black "#11111177" "$(colour_alpha col_almost_black 77)"
 check alpha_light "#ECEFF477" "$(colour_alpha col_light 77)"
 i=0
-for n in black red green yellow blue purple cyan white bright_black bright_red bright_green bright_yellow bright_blue bright_purple bright_cyan bright_white; do
-	check "256_slot_$n" "$i" "$(colour_256 "ansi_$n")"
+for n in black red emerald yellow blue purple cyan skip bright_black bright_red bright_green bright_yellow bright_blue bright_purple bright_cyan light; do
+	[ "$n" = skip ] || check "256_slot_$n" "$i" "$(colour_256 "col_$n")"
 	i=$((i + 1))
 done
 
 check 256_override "28" "$(colour_256 col_green)"
 col_t="#2E7D32"
 if (colour_256 col_t) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL colour_256 guessed a colour that is not an xterm entry"; else pass=$((pass + 1)); fi
-if (colour_256 col_purple) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL colour_256 guessed for col_purple"; else pass=$((pass + 1)); fi
+if (colour_256 col_orange) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL colour_256 guessed for col_orange"; else pass=$((pass + 1)); fi
 col_t="#808080"; check 256_exact_grey244 "244" "$(colour_256 col_t)"
 col_t="#080808"; check 256_exact_grey232 "232" "$(colour_256 col_t)"
 col_t="#eeeeee"; check 256_exact_grey255 "255" "$(colour_256 col_t)"

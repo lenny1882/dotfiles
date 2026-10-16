@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Set the desktop background per monitor: the wallpaper ($wallpaper) on the laptop panel and on any monitor
-# listed in MONITORS, a solid blue (ansi_blue, the wrapper border colour) on one that is not (a projector, say).
+# listed in MONITORS, a solid blue (col_blue, the wrapper border colour) on one that is not (a projector, say).
 # feh sets both, so it always owns the root pixmap. For the colour it is given
 # a solid image, which --bg-fill stretches over the monitor. rule_hook.sh runs this whenever the monitors change.
 source ~/.config/herbstluftwm/variables.autostart
@@ -47,7 +47,7 @@ trap restore_virtual_monitors EXIT
 
 # feh gives its images to the monitors in the order xrandr lists them; one image is used for all of them.
 img=$(mktemp --suffix=.ppm) || exit 1
-solid_ppm "$ansi_blue" >"$img"
+solid_ppm "$col_blue" >"$img"
 images=() unknown=0
 while read -r line; do
     read -r _ name _ out <<<"$line"

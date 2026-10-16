@@ -9,13 +9,16 @@
 col_dark=#252526
 col_dark2=#2D2D30
 col_light=#ECEFF4
+col_light_256=15
 col_grey=#3E3E42
 col_grey_light=#9E9E9E
 
 col_green=#2E7D32
 col_green_256=28
 col_purple=#7B1FA2
+col_purple_256=5
 col_red=#D32F2F
+col_red_256=1
 col_orange=#FF9800
 col_almost_black=#111111
 
@@ -27,44 +30,36 @@ col_nord13=#EBCB8B
 col_nord14=#A3BE8C
 col_nord15=#B48EAD
 
-tui_white=#FFFFFF
+col_white=#FFFFFF
 
-nnn_symlink=#875FAF
-nnn_context1=#D70087
-nnn_context3=#5FD700
+col_violet=#875FAF
+col_magenta=#D70087
+col_lime=#5FD700
 
-ansi_black=#000000
-ansi_black_256=0
-ansi_red=$col_red
-ansi_red_256=1
-ansi_green=#0DBC79
-ansi_green_256=2
-ansi_yellow=#E5E510
-ansi_yellow_256=3
-ansi_blue=#2472C8
-ansi_blue_256=4
-ansi_purple=$col_purple
-ansi_purple_256=5
-ansi_cyan=#11A8CD
-ansi_cyan_256=6
-ansi_white=$col_light
-ansi_white_256=7
-ansi_bright_black=#666666
-ansi_bright_black_256=8
-ansi_bright_red=#EF5350
-ansi_bright_red_256=9
-ansi_bright_green=#66BB6A
-ansi_bright_green_256=10
-ansi_bright_yellow=#F5F543
-ansi_bright_yellow_256=11
-ansi_bright_blue=#3B8EEA
-ansi_bright_blue_256=12
-ansi_bright_purple=#D670D6
-ansi_bright_purple_256=13
-ansi_bright_cyan=#29B8DB
-ansi_bright_cyan_256=14
-ansi_bright_white=$col_light
-ansi_bright_white_256=15
+col_black=#000000
+col_black_256=0
+col_emerald=#0DBC79
+col_emerald_256=2
+col_yellow=#E5E510
+col_yellow_256=3
+col_blue=#2472C8
+col_blue_256=4
+col_cyan=#11A8CD
+col_cyan_256=6
+col_bright_black=#666666
+col_bright_black_256=8
+col_bright_red=#EF5350
+col_bright_red_256=9
+col_bright_green=#66BB6A
+col_bright_green_256=10
+col_bright_yellow=#F5F543
+col_bright_yellow_256=11
+col_bright_blue=#3B8EEA
+col_bright_blue_256=12
+col_bright_purple=#D670D6
+col_bright_purple_256=13
+col_bright_cyan=#29B8DB
+col_bright_cyan_256=14
 
 _colour_value() {
 	case $1 in
@@ -167,7 +162,7 @@ colour_256() {
 }
 
 colours_unload() {
-	for _n in $(set | sed -n -e 's/^\(col_[A-Za-z0-9_]*\)=.*/\1/p' -e 's/^\(ansi_[A-Za-z0-9_]*\)=.*/\1/p' -e 's/^\(tui_[A-Za-z0-9_]*\)=.*/\1/p' -e 's/^\(nnn_[A-Za-z0-9_]*\)=.*/\1/p'); do
+	for _n in $(set | sed -n -e 's/^\(col_[A-Za-z0-9_]*\)=.*/\1/p'); do
 		unset "$_n"
 	done
 	unset _n _cv _h _r _g _b _ov _lv _lvv _ri _gi _bi _rv _gv _bv _cube

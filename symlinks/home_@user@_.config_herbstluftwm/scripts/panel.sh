@@ -20,7 +20,7 @@ panel_padding=5
 source "$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../setup/colours.sh"
 export COLOUR_BG_DARK=$(colour_argb col_dark CC)
 export COLOUR_BG_LIGHT=$(colour_argb col_grey CC)
-export COLOUR_BG_TRANSPARENT=$(colour_argb ansi_black 00)
+export COLOUR_BG_TRANSPARENT=$(colour_argb col_black 00)
 export COLOUR_BG_DARK_TRANSLUCENT=$(colour_argb col_grey 55)
 export COLOUR_BG_YELLOW=$(colour_hex col_orange)
 export COLOUR_BG_RED=$(colour_hex col_red)
@@ -28,7 +28,7 @@ export COLOUR_FG_DISABLED=$(colour_argb col_light 33)
 export COLOUR_FG_ERROR=$(colour_hex col_red)
 export COLOUR_FG_LABEL=$(colour_argb col_light 77)
 export COLOUR_FG_MONITOR_EMPTY=$(colour_argb col_light 33)
-export COLOUR_FG_TRANSPARENT=$(colour_argb ansi_black 00)
+export COLOUR_FG_TRANSPARENT=$(colour_argb col_black 00)
 export COLOUR_FG_WHITE=$(colour_hex col_light)
 
 # assoc array of hc monitor id to monitor rect, e.g. ([0]=1920x1080+0+0)

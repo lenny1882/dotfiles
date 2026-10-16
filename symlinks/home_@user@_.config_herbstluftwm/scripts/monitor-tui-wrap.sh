@@ -8,7 +8,7 @@ esac
 . "$(cd -P "$(dirname "$0")" && pwd)/../../../setup/colours.sh"
 export TUI_COLOUR_ART=$(colour_256 col_grey_light)
 export TUI_COLOUR_DIM=$(colour_256 col_grey_light)
-export TUI_COLOUR_HILITE=$(colour_256 tui_white)
+export TUI_COLOUR_HILITE=$(colour_256 col_white)
 export TUI_COLOUR_SELECT_256=$(colour_256 col_green)
 export TUI_COLOUR_SELECT_RGB=$(colour_rgb col_green)
 

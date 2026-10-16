@@ -46,37 +46,38 @@ Rows follow the order in `colours.sh`. "Alpha" means the colour is used with an 
 | `col_orange` | `#FF9800` | polybar power-reboot button |
 | `col_almost_black` | `#111111` | herbstluftwm active frame background (alpha `77`) |
 | `col_nord9`–`col_nord15` | `#81A1C1` `#5E81AC` `#BF616A` `#D08770` `#EBCB8B` `#A3BE8C` `#B48EAD` | bottom CPU core colours (nord9, nord10, nord11, nord12, nord13, nord14, nord15) |
-| `tui_white` | `#FFFFFF` | monitor TUI highlighted-selection foreground (231) |
-| `nnn_symlink` | `#875FAF` | nnn symlinks (`61`) |
-| `nnn_context1`, `nnn_context3` | `#D70087` `#5FD700` | nnn contexts 1 and 3 (`a2`, `4c`); man-page blink (`nnn_context3`); context 2 is palette slot 6 and context 4 is slot 7 |
-| `ansi_black` | `#000000` | palette slot 0; polybar transparent (alpha `00`) |
+| `col_white` | `#FFFFFF` | monitor TUI highlighted-selection foreground (231, exact); was `tui_white` |
+| `col_violet` | `#875FAF` | nnn symlinks (`61`); was `nnn_symlink` |
+| `col_magenta` | `#D70087` | nnn context 1 (`a2`); was `nnn_context1` |
+| `col_lime` | `#5FD700` | nnn context 3 (`4c`) and the man-page blink; was `nnn_context3`. Context 2 is palette slot 6 and context 4 is slot 7 |
+| `col_black` | `#000000` | palette slot 0; polybar transparent (alpha `00`) |
 
-The 256-colour override `col_green_256=28` (the TUI's fallback) is the only override on a project colour. `colours.sh` also holds `ansi_*_256` slot numbers (section 3).
+The 256-colour override `col_green_256=28` (the TUI's fallback) is the only override on a project colour that is not a palette slot. `col_red_256=1` and `col_purple_256=5` carry the palette slot numbers of the two project colours that are also slots. `colours.sh` also holds the `col_*_256` slot numbers of the other palette colours (section 3).
 
 ## 3. Terminal palette (ANSI slots 0–15)
 
-Live in `Xresources` as `*.color0`–`*.color15`, written as the `ansi_*` names. Everything that draws with ANSI colours in urxvt reads these: eza, bluetui, git, ls and nnn's palette-slot entries. Nano and a Linux console are not covered (see section 4).
+Live in `Xresources` as `*.color0`–`*.color15`, written as the `col_*` names. Everything that draws with ANSI colours in urxvt reads these: eza, bluetui, git, ls and nnn's palette-slot entries. Nano and a Linux console are not covered (see section 4).
 
 | Slot | Name | Hex | Note |
 |---|---|---|---|
-| 0 | `ansi_black` | `#000000` | VS Code Dark+ |
-| 1 | `ansi_red` | `#D32F2F` | is `col_red` |
-| 2 | `ansi_green` | `#0DBC79` | VS Code Dark+; nnn executables |
-| 3 | `ansi_yellow` | `#E5E510` | VS Code Dark+; nnn fifos |
-| 4 | `ansi_blue` | `#2472C8` | VS Code Dark+; nnn directories; bottom RAM and receive; prompt git-branch segment; urxvt wrapper window border; wallpaper on a monitor with none |
-| 5 | `ansi_purple` | `#7B1FA2` | is `col_purple` |
-| 6 | `ansi_cyan` | `#11A8CD` | VS Code Dark+; nnn hard links; nnn context 2; man-page reverse video |
-| 7 | `ansi_white` | `#ECEFF4` | is `col_light`; nnn block devices, regular files and context 4 |
-| 8 | `ansi_bright_black` | `#666666` | VS Code Dark+ |
-| 9 | `ansi_bright_red` | `#EF5350` | nnn orphaned symlinks |
-| 10 | `ansi_bright_green` | `#66BB6A` | bottom table headers; prompt nested-nnn level |
-| 11 | `ansi_bright_yellow` | `#F5F543` | nnn character devices |
-| 12 | `ansi_bright_blue` | `#3B8EEA` | VS Code Dark+ |
-| 13 | `ansi_bright_purple` | `#D670D6` | nnn sockets |
-| 14 | `ansi_bright_cyan` | `#29B8DB` | VS Code Dark+ |
-| 15 | `ansi_bright_white` | `#ECEFF4` | is `col_light` |
+| 0 | `col_black` | `#000000` | VS Code Dark+ |
+| 1 | `col_red` | `#D32F2F` | the project red (`col_red`); `col_red_256=1` |
+| 2 | `col_emerald` | `#0DBC79` | VS Code Dark+; nnn executables |
+| 3 | `col_yellow` | `#E5E510` | VS Code Dark+; nnn fifos |
+| 4 | `col_blue` | `#2472C8` | VS Code Dark+; nnn directories; bottom RAM and receive; prompt git-branch segment; urxvt wrapper window border; wallpaper on a monitor with none |
+| 5 | `col_purple` | `#7B1FA2` | the project purple (`col_purple`); `col_purple_256=5` |
+| 6 | `col_cyan` | `#11A8CD` | VS Code Dark+; nnn hard links; nnn context 2; man-page reverse video |
+| 7 | `col_light` | `#ECEFF4` | same colour as slot 15; nnn block devices, regular files and context 4 read `col_light` (its slot number is 15) |
+| 8 | `col_bright_black` | `#666666` | VS Code Dark+ |
+| 9 | `col_bright_red` | `#EF5350` | nnn orphaned symlinks |
+| 10 | `col_bright_green` | `#66BB6A` | bottom table headers; prompt nested-nnn level |
+| 11 | `col_bright_yellow` | `#F5F543` | nnn character devices |
+| 12 | `col_bright_blue` | `#3B8EEA` | VS Code Dark+ |
+| 13 | `col_bright_purple` | `#D670D6` | nnn sockets |
+| 14 | `col_bright_cyan` | `#29B8DB` | VS Code Dark+ |
+| 15 | `col_light` | `#ECEFF4` | `col_light_256=15`; terminal foreground and cursor |
 
-Each carries its slot number as a `_256` override (`ansi_blue_256=4`), which `nnn-wrap.sh` uses. The terminal background (`col_dark`) differs from slot 0.
+Each carries its slot number as a `_256` override (`col_blue_256=4`), which `nnn-wrap.sh` uses. The terminal background (`col_dark`) differs from slot 0.
 
 ## 4. Defined outside `colours.sh`
 
@@ -91,10 +92,9 @@ All of these are unused, not hex, or intentionally left:
 
 ## 5. Near-duplicates, for the later consolidation
 
-- **Blues:** merged 2026-10-16: `col_chartblue` is gone and its uses (bottom RAM and receive, prompt git-branch segment) read `ansi_blue` `#2472C8`. Also merged 2026-10-16: `col_blue` into `ansi_blue` (wrapper border and the no-wallpaper background). Left: `ansi_blue` and `ansi_bright_blue` `#3B8EEA`.
-- **Greys:** merged 2026-10-16: `col_grey_dark` into `col_grey`; `col_grey_mid`, `tui_grey`, `tui_dimmed` and `nnn_details` into `col_grey_light` at `#9E9E9E` (xterm 247, so the monitor TUI art moved from 245 and its dimmed text from 248 to 247, bottom borders and the prompt success symbol got lighter). Left: `col_dark2`, `col_grey`, `col_grey_light`, `tui_white`, and the palette slots `ansi_white` and `ansi_bright_black`.
-- **Greens:** merged 2026-10-16: `col_seagreen` and `col_lightgreen` are gone and their uses (bottom table headers, prompt nested-nnn level) read `ansi_bright_green` `#66BB6A`. Left: `col_green` `#2E7D32` (project green) and `ansi_green` `#0DBC79` (slot 2), the latter for the palette work.
-- **Darks:** decided 2026-10-16 to keep as they are (shown again later the same day and kept): `col_dark2` (rofi mode switcher), `col_almost_black` (herbstluftwm active frame) and `ansi_black` (slot 0, deliberately not `col_dark`).
-- **Whites:** merged 2026-10-16: `col_nord4` and `ansi_white` (slot 7) into `col_light` `#ECEFF4`, so slots 7 and 15 are now the same hex. Left: `tui_white` `#FFFFFF` (the TUI's exact 231).
-- **Cyans:** merged 2026-10-16: `col_cyan` and `nnn_context2` into `ansi_cyan` `#11A8CD`. nnn context 2 now uses palette slot 6 instead of 256-colour 31. Left: `ansi_bright_cyan` `#29B8DB`.
-- **Lime:** merged 2026-10-16: `col_lime` into `nnn_context3` `#5FD700` (xterm 76), so the man-page blink is softer than the old `#00FF00`.
+- **Blues:** merged 2026-10-16: `col_chartblue` is gone and its uses (bottom RAM and receive, prompt git-branch segment) read `col_blue` `#2472C8`. Also merged 2026-10-16: `col_blue` into `col_blue` (wrapper border and the no-wallpaper background). Left: `col_blue` and `col_bright_blue` `#3B8EEA`.
+- **Greys:** merged 2026-10-16: `col_grey_dark` into `col_grey`; `col_grey_mid`, `tui_grey`, `tui_dimmed` and `nnn_details` into `col_grey_light` at `#9E9E9E` (xterm 247, so the monitor TUI art moved from 245 and its dimmed text from 248 to 247, bottom borders and the prompt success symbol got lighter). Left: `col_dark2`, `col_grey`, `col_grey_light`, `tui_white`, and the palette slots `col_white` and `col_bright_black`.
+- **Greens:** merged 2026-10-16: `col_seagreen` and `col_lightgreen` are gone and their uses (bottom table headers, prompt nested-nnn level) read `col_bright_green` `#66BB6A`. Left: `col_green` `#2E7D32` (project green) and `col_emerald` `#0DBC79` (slot 2), the latter for the palette work.
+- **Whites:** merged 2026-10-16: `col_nord4` into `col_light` `#ECEFF4`. The palette's slot 7 and slot 15 whites (`ansi_white`, `ansi_bright_white`) were first made references to `col_light`, then folded into it (`col_light_256=15`; slots 7 and 15 are the same hex). The TUI's `tui_white` `#FFFFFF` (exact 231) was renamed `col_white`, the freed name.
+- **Cyans:** merged 2026-10-16: the old project `col_cyan` (`#1F88A2`) and `nnn_context2` (`#0087AF`) into the palette cyan, now `col_cyan` `#11A8CD`. nnn context 2 uses palette slot 6 instead of 256-colour 31. Left: `col_bright_cyan` `#29B8DB`.
+- **Lime:** merged 2026-10-16: the old `col_lime` (`#00FF00`) into `nnn_context3` `#5FD700` (xterm 76), which was then renamed `col_lime`; the man-page blink is softer than before. `nnn_symlink` became `col_violet` and `nnn_context1` `col_magenta` in the same rename, so every colour now has a `col_` name.

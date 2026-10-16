@@ -5,7 +5,7 @@
 
 . "$(cd -P "$(dirname "$0")" && pwd)/../../../setup/colours.sh"
 
-for name in $(set | sed -n -e 's/^\(col_[a-z0-9_]*\)=.*/\1/p' -e 's/^\(ansi_[a-z0-9_]*\)=.*/\1/p' -e 's/^\(tui_[a-z0-9_]*\)=.*/\1/p' -e 's/^\(nnn_[a-z0-9_]*\)=.*/\1/p'); do
+for name in $(set | sed -n -e 's/^\(col_[a-z0-9_]*\)=.*/\1/p'); do
 	case $name in *_256) continue ;; esac
 	set -- "-D$name=$(colour_hex "$name")" "$@"
 done
