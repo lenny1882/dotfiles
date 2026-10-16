@@ -91,5 +91,4 @@ To be checked or settled while building:
 - Whether rofi's `-theme-str` overrides the variables in `custom.rasi`.
 - That `colours.sh` is POSIX (only `bash --posix` is available here).
 - The palette slots are named `ansi_*` and the name overrides are `NAME_ansi`; two uses of "ansi" that are easy to confuse.
-- Names for the values with none yet: the `#111111` literal at `theme.autostart:37`, polybar's transparent `#000000`, and the nord block in Xresources.
 - Which project colour each of nano's named colours (`lightwhite`, `grey`, `white`, `red`, `black`, `lightyellow`, `magenta`) stands for, so their `NAME_ansi` values can be written; the migration must keep each name as it is.
