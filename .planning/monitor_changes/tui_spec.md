@@ -171,12 +171,6 @@ back, `q` quits.
    Sketch: source both files, `key=$(monitor_reconcile.sh --key)`, read the block, split each line on its
    last space, `hc load "$tag" "${!name}"`; skip an unknown variable or tag with a message.
 
-### Known limits of the key
-
-The set key lists *connected* outputs. So panel-on and panel-off with the same plugged monitors share one
-block, and one physical monitor split into virtual monitors (`xrandr --setmonitor`) is the same key as one
-without. If either needs different tag layouts, the key needs more than output names.
-
 ## Layout screen (built, not yet seen live)
 
 Decided with the user (2026-10-09):
@@ -205,7 +199,7 @@ tag under the current set of connected monitors in `hlwm_tag_layouts.conf`; if t
 the save editor instead. On the Monitors screen it asks `y/n`, then replaces the set's active entry in `monitor_layouts.conf`
 with the current layout (comments around it are left alone).
 
-Still open for this screen: deleting a layout leaves the assignments that name it (they then read `unknown layout`).
+Deleting a layout sets the tag assignments that named it to `none`.
 
 ## Monitors screen (built, tested live)
 
@@ -257,12 +251,10 @@ manager.
 ## Open questions and remaining work
 
 Layouts:
-1. Deleting a layout leaves the tag assignments that name it (the confirmation says how many).
-2. Decided: setting a layout is live only; Alt-S persists it (see above).
-3. **What `custom` should look like**: the word alone for now, plus a note on how to save it.
-4. **Whether the key needs more than the connected outputs** (see "Known limits of the key").
+1. Decided: setting a layout is live only; Alt-S persists it (see above).
+2. **What `custom` should look like**: the word alone for now, plus a note on how to save it.
 
 General:
-5. Frame labels are cut off when a frame is narrow (e.g. `horizon`); cosmetic.
-6. Everything touching a live herbstluftwm beyond what the user has run is unverified: a throwaway
+3. Frame labels are cut off when a frame is narrow (e.g. `horizon`); cosmetic.
+4. Everything touching a live herbstluftwm beyond what the user has run is unverified: a throwaway
    herbstluftwm under `Xvnc` could not be started in the sandbox.
