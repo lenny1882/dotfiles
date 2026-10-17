@@ -10,7 +10,8 @@
 # palette slots (Xresources *.colorN) except symlink, missing/details, unknown and contexts, which are 256-colour values
 # block 07, char device 0B, directory 04, executable 02, regular 07, hard link 06
 # symlink 61, missing/details F7, orphaned symlink 09, fifo 03, socket 0D, unknown 00
-. "$(cd -P "$(dirname "$0")" && pwd)/../../../setup/colours.sh"
+colours_dir=$(cd -P "$(dirname "$0")/../../../setup" && pwd)
+. "$colours_dir/colours.sh"
 _nnn() { printf '%02x' "$(colour_256 "$1")"; }
 _block=$(_nnn col_light);			_charDevice=$(_nnn col_bright_yellow);	_directory=$(_nnn col_blue);	_executable=$(_nnn col_emerald);
 _regularFile=$(_nnn col_light);		_hardLink=$(_nnn col_cyan);		_symLink=$(_nnn col_violet);	_missingOrFileDetails=$(_nnn col_grey_light);

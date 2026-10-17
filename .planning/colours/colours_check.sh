@@ -3,6 +3,7 @@
 # usage: colours_check.sh   (run it under sh, bash and bash --posix)
 
 dir=$(cd "$(dirname "$0")/../../setup" && pwd)
+colours_dir=$dir
 . "$dir/colours.sh"
 
 pass=0
@@ -16,22 +17,22 @@ check() {
 	fi
 }
 
-check hex_green "#2E7D32" "$(colour_hex col_green)"
-check hex_reference "#D32F2F" "$(colour_hex col_red)"
+check hex_green "#287D2D" "$(colour_hex col_green)"
+check hex_reference "#C5292C" "$(colour_hex col_red)"
 
 # the r;g;b values written in shellrc/.shellrc_custom
-check rgb_light "236;239;244" "$(colour_rgb col_light)"
-check rgb_green "46;125;50" "$(colour_rgb col_green)"
-check rgb_purple "123;31;162" "$(colour_rgb col_purple)"
-check rgb_red "211;47;47" "$(colour_rgb col_red)"
-check rgb_ansi_blue "36;114;200" "$(colour_rgb col_blue)"
-check rgb_cyan "17;168;205" "$(colour_rgb col_cyan)"
-check rgb_bright_green "102;187;106" "$(colour_rgb col_bright_green)"
+check rgb_light "234;234;234" "$(colour_rgb col_light)"
+check rgb_green "40;125;45" "$(colour_rgb col_green)"
+check rgb_purple "122;37;159" "$(colour_rgb col_purple)"
+check rgb_red "197;41;44" "$(colour_rgb col_red)"
+check rgb_ansi_blue "40;110;204" "$(colour_rgb col_blue)"
+check rgb_cyan "31;183;208" "$(colour_rgb col_cyan)"
+check rgb_bright_green "105;194;111" "$(colour_rgb col_bright_green)"
 check rgb_grey_light "158;158;158" "$(colour_rgb col_grey_light)"
 check rgb_black "0;0;0" "$(colour_rgb col_black)"
 
-check alpha "#252526CC" "$(colour_alpha col_dark CC)"
-check argb "#CC252526" "$(colour_argb col_dark CC)"
+check alpha "#262626CC" "$(colour_alpha col_dark CC)"
+check argb "#CC262626" "$(colour_argb col_dark CC)"
 check argb_zero "#00000000" "$(colour_argb col_black 00)"
 
 # exact xterm 256-colour entries
@@ -47,9 +48,9 @@ check 256_col_violet "97" "$(colour_256 col_violet)"
 check 256_grey_light "247" "$(colour_256 col_grey_light)"
 check 256_col_magenta "162" "$(colour_256 col_magenta)"
 check 256_col_lime "76" "$(colour_256 col_lime)"
-check rgb_lime "95;215;0" "$(colour_rgb col_lime)"
-check alpha_almost_black "#11111177" "$(colour_alpha col_almost_black 77)"
-check alpha_light "#ECEFF477" "$(colour_alpha col_light 77)"
+check rgb_lime "120;203;2" "$(colour_rgb col_lime)"
+check alpha_almost_black "#12121277" "$(colour_alpha col_almost_black 77)"
+check alpha_light "#EAEAEA77" "$(colour_alpha col_light 77)"
 i=0
 for n in black red emerald yellow blue purple cyan skip bright_black bright_red bright_green bright_yellow bright_blue bright_purple bright_cyan light; do
 	[ "$n" = skip ] || check "256_slot_$n" "$i" "$(colour_256 "col_$n")"
@@ -80,7 +81,7 @@ if (colour_hex col_bad) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL non-hex
 leftover=$(
 	colour_rgb col_green >/dev/null; colour_256 col_green >/dev/null; colour_argb col_dark CC >/dev/null
 	colours_unload
-	for n in $(grep -oE '^[a-z][a-z0-9_]*=' "$dir/colours.sh" | tr -d =; grep -oE '(^|[[:space:];])_[a-z]+=' "$dir/colours.sh" | tr -d '[:space:];='); do
+	for n in $(grep -ohE '^[a-z][a-z0-9_]*=' "$dir/colours.sh" "$dir/colours.g.sh" | tr -d =; grep -oE '(^|[[:space:];])_[a-z]+=' "$dir/colours.sh" | tr -d '[:space:];='); do
 		eval "[ -z \"\${$n+x}\" ]" || echo "variable $n"
 	done
 	for f in $(grep -oE '^[a-z_][a-z0-9_]*\(\)' "$dir/colours.sh" | tr -d '()'); do
@@ -88,6 +89,28 @@ leftover=$(
 	done
 )
 check unload_leaves_nothing "" "$leftover"
+
+# the generated file, and colours-derive
+"$dir/colours-derive" --check; check derive_check_passes 0 "$?"
+work=$(mktemp -d "${TMPDIR:-/tmp}/colours-check.XXXXXX") || exit 1
+trap 'rm -rf "$work"' EXIT
+cp "$dir/colours.sh" "$dir/colours-derive" "$work/"
+"$work/colours-derive"; check derive_writes 0 "$?"
+check derive_reproduces_committed_file "$(cat "$dir/colours.g.sh")" "$(cat "$work/colours.g.sh")"
+check derive_output_read_only "" "$(find "$work/colours.g.sh" -perm /222)"
+head -n 1 "$work/colours.g.sh" | grep -q 'DO NOT EDIT'; check derive_warning_header 0 "$?"
+"$work/colours-derive" >/dev/null 2>&1; check derive_overwrites_read_only 0 "$?"
+chmod u+w "$work/colours.g.sh"; echo 'col_red=#000000' >> "$work/colours.g.sh"
+"$work/colours-derive" --check >/dev/null 2>&1; check derive_check_detects_drift 1 "$?"
+rm "$work/colours.g.sh"
+"$work/colours-derive" --check >/dev/null 2>&1; check derive_check_detects_missing_file 1 "$?"
+"$work/colours-derive" --nope >/dev/null 2>&1; check derive_bad_argument 2 "$?"
+sed 's/base_red\([[:space:]]*\)soft/base_red\1softish/' "$work/colours.sh" > "$work/bad.sh" && mv "$work/bad.sh" "$work/colours.sh"
+"$work/colours-derive" >/dev/null 2>&1; check derive_rejects_unknown_modifier 1 "$?"
+sed 's/base_red\([[:space:]]*\)softish/base_nope\1soft/' "$work/colours.sh" > "$work/bad.sh" && mv "$work/bad.sh" "$work/colours.sh"
+"$work/colours-derive" >/dev/null 2>&1; check derive_rejects_unknown_base 1 "$?"
+(unset colours_dir; . "$dir/colours.sh") >/dev/null 2>&1; check source_needs_colours_dir 1 "$?"
+(colours_dir=$work; . "$dir/colours.sh") >/dev/null 2>&1; check source_without_generated_file_warns_but_loads 0 "$?"
 
 echo "$pass passed, $fail failed"
 [ "$fail" -eq 0 ]

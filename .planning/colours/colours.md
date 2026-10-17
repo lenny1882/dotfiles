@@ -1,6 +1,6 @@
 # Colours
 
-Refreshed 2026-10-16, after the migration, from a scan of tracked files on the `colours` branch. Every colour that something uses is now defined once, in `setup/colours.sh`; the plan and its decisions are in `colours_plan.md`. This file lists how each program gets its colours, what uses each colour, and what is still defined elsewhere.
+Refreshed 2026-10-16, after the migration, from a scan of tracked files on the `colours` branch. Every colour that something uses is defined once, in `setup/colours.sh` (nine bases and rules; since 2026-10-17 the derived hexes are generated into `setup/colours.g.sh` by `setup/colours-derive`, so the hex values in the tables below are from that file and consumers set `colours_dir` before sourcing `colours.sh`); the plan and its decisions are in `colours_plan.md`. This file lists how each program gets its colours, what uses each colour, and what is still defined elsewhere.
 
 Scope of the scan: tracked files, minus `symlinks/home_@user@_.config_nnn_plugins/` (third-party plugins), the `*.bak` and `*.orig-bak` autostart copies, and images. The untracked dotfiles in the repo root (`.bashrc`, `.zshrc` and the rest) were not readable, so they are not covered.
 

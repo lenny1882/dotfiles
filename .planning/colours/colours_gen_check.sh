@@ -6,7 +6,7 @@ src=$(cd "$(dirname "$0")/../../setup" && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/colours-gen-check.XXXXXX") || exit 1
 trap 'rm -rf "$work"' EXIT
 mkdir "$work/templates"
-cp "$src/colours.sh" "$src/colours-gen" "$work/"
+cp "$src/colours.sh" "$src/colours.g.sh" "$src/colours-gen" "$work/"
 gen="$work/colours-gen"
 
 pass=0
@@ -21,8 +21,8 @@ check() {
 }
 
 printf 'bg = "@col_dark@"\nfg = "@col_light@" # @col_light@ again\nplain = "#abcdef"\n' > "$work/templates/t.tmpl"
-check substitutes 'bg = "#252526"
-fg = "#ECEFF4" # #ECEFF4 again
+check substitutes 'bg = "#262626"
+fg = "#EAEAEA" # #EAEAEA again
 plain = "#abcdef"' "$("$gen" t)"
 
 printf 'no placeholders here\nuser@example.com and @ alone\n' > "$work/templates/plain.tmpl"
@@ -30,7 +30,7 @@ check no_placeholders_unchanged 'no placeholders here
 user@example.com and @ alone' "$("$gen" plain)"
 
 printf 'b = "@col_nord9@@col_light@"\n' > "$work/templates/adj.tmpl"
-check adjacent 'b = "#81A1C1#ECEFF4"' "$("$gen" adj)"
+check adjacent 'b = "#87A1C6#EAEAEA"' "$("$gen" adj)"
 
 printf 'ok = "@col_red@"\nbad = "@col_nope@"\n' > "$work/templates/bad.tmpl"
 out=$("$gen" bad 2>"$work/err")

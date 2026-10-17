@@ -5,7 +5,8 @@ case "${LC_ALL:-${LC_CTYPE:-$LANG}}" in
     *) export LC_CTYPE=C.UTF-8 ;;
 esac
 
-. "$(cd -P "$(dirname "$0")" && pwd)/../../../setup/colours.sh"
+colours_dir=$(cd -P "$(dirname "$0")/../../../setup" && pwd)
+. "$colours_dir/colours.sh"
 export TUI_COLOUR_ART=$(colour_256 col_grey_light)
 export TUI_COLOUR_DIM=$(colour_256 col_grey_light)
 export TUI_COLOUR_HILITE=$(colour_256 col_white)

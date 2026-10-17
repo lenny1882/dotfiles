@@ -1,6 +1,6 @@
 # Base set exploration
 
-Written 2026-10-16. Status: design exploration only. Nothing here is implemented in `setup/colours.sh`; the 33 colours there are unchanged by this work. This file records the question, the decisions, the final candidate (tab 33) and what was tried, so none of it has to be rediscovered.
+Written 2026-10-16. Status: implemented 2026-10-17 (see Implementation at the end). Until then this was design exploration only. This file records the question, the decisions, the final candidate (tab 33) and what was tried, so none of it has to be rediscovered.
 
 The interactive page with every attempt is an Artifact: https://claude.ai/artifact/H6fFomAmxEkJHAjhPAB4gV (tabs 1 to 33, click a base to see only its chain). Side-by-side of tabs 27 and 29: https://claude.ai/artifact/DaAJAhG6xehYumthdvfFbW. Purple options: https://claude.ai/artifact/KuMxsnwRtHxa8VdMT7688B. They are snapshots (hex values are embedded); they do not read `colours.sh`. Tab 33 as swatches (real against rule result, grouped by base): https://claude.ai/artifact/FvZRtdMZXkAdehcSnL9Xna.
 
@@ -105,7 +105,7 @@ The colours come from three designers: Material/MUI (`col_red`, `col_bright_red`
 
 ## Greys
 
-Decided 2026-10-16: three bases, `col_black` (`#000000`) and `col_white` (`#FFFFFF`) stay exactly black and white as bases themselves, plus one neutral grey base `#AAAAAA`. Only the chain definitions and step ranges above are used, on neutral greys; soft, hard, muted, warm and cool do nothing to a neutral. Nothing is implemented.
+Decided 2026-10-16: three bases, `col_black` (`#000000`) and `col_white` (`#FFFFFF`) stay exactly black and white as bases themselves, plus one neutral grey base `#AAAAAA`. Only the chain definitions and step ranges above are used, on neutral greys; soft, hard, muted, warm and cool do nothing to a neutral.
 
 Search: every base from 0 to 255, chains dark, light, shade and pale, levels 1 to 3, steps varied by up to plus or minus 25% of the shared step (dark and light 0.12, shade 0.16, pale 0.20), all nine greys as targets, errors on the scale above. One base fits nothing within error 26. Two bases fit at worst error 12 (`#010101` and about `#EFEFEF`) but make black and white derived. Three free bases fit at 9.5. With black and white forced as bases the best is 18, only for a grey base of 169 to 171.
 
@@ -127,9 +127,18 @@ Weak points: `col_grey` (borders, bars, lemurs, prompt) and `col_light` (text ev
 
 1 Tint and mute with greys as a ramp, tolerance 45 / 2 same at 60 / 3 greys excluded, 45 / 4 greys excluded, 60 / 5 two numeric rules with hue rotation / 6 three / 7 four / 8 keywords, unscaled, 45 / 9 same at 60 / 10 scaled keywords in RGB mixing, 45 / 11 same at 60 / 12 perceptual steps, 30 / 13 same at 20 / 14 same at 45 / 15 new bases, no hue shift / 16 hue shift up to 24 degrees / 17 up to 12 degrees / 18 warm and cool, up to 12 degrees / 19 warm, warmer, cool, cooler, up to 24 / 20 one modifier per colour / 21 one modifier, bases 40 degrees apart, tolerance 60 / 22 eight families, existing colours as bases / 23 every member tried as the base / 24 six bases, blue with cyan, magenta under red / 25 nine chains, six bases / 26 five bases / 27 `col_green` weighted 4 times, six bases / 28 same, five bases / 29 weighted 10 times, six bases / 30 same, five bases / 31 groups chosen from 27 and 29 under one set of steps / 32 purple base `#C47BFA` / 33 purple base `#CA78F4` (the current candidate).
 
-## If this is implemented
+## Implementation (2026-10-17)
 
-Not decided and not started.
+Two files. `setup/colours.sh` holds the nine bases (`col_black`, `col_white`, `base_grey`, and six `base_*` colours written as `oklch L C h`), the rules table (`colour_rules`, one line per derived colour: name, base, modifier, step), the `_256` overrides and the helpers. `setup/colours.g.sh` holds the derived hexes, written by `setup/colours-derive` (read-only, with a do-not-edit banner); `colours-derive --check` fails if it is out of date, and `colours_check.sh` runs it. Consumers set `colours_dir` to the `setup` directory and source `colours.sh`, which sources `colours.g.sh` from there.
+
+Findings while implementing, which the sections above do not say:
+
+- The table's base hexes are the bases as drawn in sRGB. The invented bases are OKLCH colours whose chroma can be beyond sRGB (red 0.273, orange 0.197, and so on), and the hex is the same colour with its chroma reduced to fit. Rules in OKLCH (light, dark, soft, hard, warm, cool) work on the true base; rules in RGB (pale, shade, muted) work on the drawn hex. Starting from the hex alone gives visibly different results (red soft is `#B14540`, not `#C5292C`), so the bases are stored as OKLCH and were fitted until every derived colour came within 2 of the table (most within 1) per channel. The fitted bases are in `colours.sh`.
+- Warm and cool turn the hue by the full amount in the direction of 60 or 230 degrees, with no stop at the target (blue cool by 3 steps of 15 passes 230, to 212).
+- The `_256` overrides were extended for `col_violet` (97), `col_magenta` (162) and `col_lime` (76), whose derived hexes are no longer exact xterm entries, so nnn's output is byte-for-byte the same as before. `colour_256` for the TUI's greys and white is unchanged.
+- Visible changes: `col_green` is `#287D2D` (was `#2E7D32`), `col_dark` `#262626`, `col_dark2` `#2F2F2F`, `col_grey` `#444444`, `col_light` `#EAEAEA` (the blue tint of those four is gone), and the bigger shifts in the error table above.
+
+The earlier notes on implementation, which are done or no longer apply:
 
 - `colour_256` returns an exact xterm entry or a `NAME_256` override. Derived hexes would not be exact xterm entries, so any derived colour read through `colour_256` needs an override that keeps today's number. The colours that go through `colour_256` today (in `nnn-wrap.sh` and `monitor-tui-wrap.sh`) are `col_blue`, `col_bright_purple`, `col_bright_red`, `col_bright_yellow`, `col_cyan`, `col_emerald`, `col_green`, `col_light` and `col_yellow`, which already have `_256` overrides, and `col_violet` (97), `col_magenta` (162), `col_lime` (76), `col_grey_light` (247) and `col_white` (231), which have none because their hex is an exact xterm entry. If `col_violet`, `col_magenta` or `col_lime` become derived, each needs an override line (`col_violet_256=97` and so on) so nnn does not change. The two greys are outside this work.
 - Colour changes are visible by the error amounts above. `col_green` 12 and `col_bright_green` 16 should be near-invisible; red-group and green-group rows 42 to 46 will visibly shift.

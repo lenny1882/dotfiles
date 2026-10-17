@@ -7,7 +7,8 @@ export GIT_PS1_SHOWSTASHSTATE=1
 export GIT_PS1_SHOWUNTRACKEDFILES=1
 export GIT_PS1_SHOWUPSTREAM=1
 
-source "$(dirname "${BASH_SOURCE[0]}")/../setup/colours.sh"
+colours_dir="$(dirname "${BASH_SOURCE[0]}")/../setup"
+source "$colours_dir/colours.sh"
 
 # colourful man
 _man_blink=$'\e[38;2;'$(colour_rgb col_lime)'m'

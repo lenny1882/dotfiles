@@ -17,6 +17,7 @@ if [ ! -f "$tmpl" ]; then
 	exit 2
 fi
 
+colours_dir=$dir
 . "$dir/colours.sh"
 
 set --
