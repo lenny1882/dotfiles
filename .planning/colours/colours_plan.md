@@ -99,3 +99,5 @@ Not decided or not done (written down 2026-10-16 so they survive the session):
 Implemented 2026-10-17: see the Implementation section of `base_set.md`. `colours.rules.sh` holds the nine bases and the rules, `colours-derive` generates `colours.g.sh` (the hexes) from it, and `colours.sh` sources that and holds the helpers. The paragraph below is the background.
 
 Whether the 24 chromatic colours can be derived from a few base colours with named modifier chains (light, lighter, lightest and so on) was explored at length. The final candidate (tab 33: six invented bases, nine chains, one modifier per derived colour, worst error 46, mean about 25), the rules, the decisions and everything that was tried are in `base_set.md`. The nine greys were searched separately and a decision is recorded in its Greys section: three bases (`col_black` and `col_white` stay exact, plus a grey base `#AAAAAA`), worst error 18, with `col_grey` and `col_light` the visible shifts. 
+
+The search that found the six bases is kept in `search/` (see its README); the grey search and the other exploration scripts are not.
