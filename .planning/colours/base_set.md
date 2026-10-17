@@ -129,7 +129,7 @@ Weak points: `col_grey` (borders, bars, lemurs, prompt) and `col_light` (text ev
 
 ## Implementation (2026-10-17)
 
-Two files. `setup/colours.sh` holds the nine bases (`col_black`, `col_white`, `base_grey`, and six `base_*` colours written as `oklch L C h`), the rules table (`colour_rules`, one line per derived colour: name, base, modifier, step), the `_256` overrides and the helpers. `setup/colours.g.sh` holds the derived hexes, written by `setup/colours-derive` (read-only, with a do-not-edit banner); `colours-derive --check` fails if it is out of date, and `colours_check.sh` runs it. Consumers set `colours_dir` to the `setup` directory and source `colours.sh`, which sources `colours.g.sh` from there.
+Three files. `setup/colours.rules.sh` holds the nine bases (`base_black`, `base_white`, `base_grey` as hex, and `base_red`, `base_orange`, `base_yellow`, `base_green`, `base_blue`, `base_purple` written as `oklch L C h`) and the rules table (`colour_rules`, one line per colour: name, base, modifier, step; `col_black` and `col_white` use the modifier `same`). `setup/colours-derive` reads only that file and writes `setup/colours.g.sh` (every colour's hex; read-only, with a do-not-edit banner); `colours-derive --check` fails if it is out of date, and `colours_check.sh` runs it. `setup/colours.sh` holds the `_256` overrides and the helpers and sources `colours.g.sh`, which it requires; consumers set `colours_dir` to the `setup` directory first. Nothing reads the rules at run time.
 
 Findings while implementing, which the sections above do not say:
 
