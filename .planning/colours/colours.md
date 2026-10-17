@@ -92,7 +92,7 @@ All of these are unused, not hex, or intentionally left:
 
 ## 5. Near-duplicates, for the later consolidation
 
-The hexes in this section are the values at the time of each merge, before the colours became derived from the nine bases on 2026-10-17 (see `base_set.md`). Whether any further consolidation is still wanted is open.
+The hexes in this section are the values at the time of each merge, before the colours became derived from the nine bases on 2026-10-17 (see `base_set.md`). The consolidation is closed.
 
 - **Blues:** merged 2026-10-16: `col_chartblue` is gone and its uses (bottom RAM and receive, prompt git-branch segment) read `col_blue` `#2472C8`. Also merged 2026-10-16: `col_blue` into `col_blue` (wrapper border and the no-wallpaper background). Left: `col_blue` and `col_bright_blue` `#3B8EEA`.
 - **Greys:** merged 2026-10-16: `col_grey_dark` into `col_grey`; `col_grey_mid`, `tui_grey`, `tui_dimmed` and `nnn_details` into `col_grey_light` at `#9E9E9E` (xterm 247, so the monitor TUI art moved from 245 and its dimmed text from 248 to 247, bottom borders and the prompt success symbol got lighter). Left: `col_dark2`, `col_grey`, `col_grey_light`, `tui_white`, and the palette slots `col_white` and `col_bright_black`.
