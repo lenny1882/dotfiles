@@ -2,7 +2,7 @@
 
 Written 2026-10-16. Status: design exploration only. Nothing here is implemented in `setup/colours.sh`; the 33 colours there are unchanged by this work. This file records the question, the decisions, the final candidate (tab 33) and what was tried, so none of it has to be rediscovered.
 
-The interactive page with every attempt is an Artifact: https://claude.ai/artifact/H6fFomAmxEkJHAjhPAB4gV (tabs 1 to 33, click a base to see only its chain). Side-by-side of tabs 27 and 29: https://claude.ai/artifact/DaAJAhG6xehYumthdvfFbW. Purple options: https://claude.ai/artifact/KuMxsnwRtHxa8VdMT7688B. They are snapshots (hex values are embedded); they do not read `colours.sh`.
+The interactive page with every attempt is an Artifact: https://claude.ai/artifact/H6fFomAmxEkJHAjhPAB4gV (tabs 1 to 33, click a base to see only its chain). Side-by-side of tabs 27 and 29: https://claude.ai/artifact/DaAJAhG6xehYumthdvfFbW. Purple options: https://claude.ai/artifact/KuMxsnwRtHxa8VdMT7688B. They are snapshots (hex values are embedded); they do not read `colours.sh`. Tab 33 as swatches (real against rule result, grouped by base): https://claude.ai/artifact/FvZRtdMZXkAdehcSnL9Xna.
 
 ## The question
 
