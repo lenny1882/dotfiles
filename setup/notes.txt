@@ -1,27 +1,5 @@
-## ====
-## GRUB
-# reduce grub timeout
-sudo nano /etc/default/grub
-GRUB_TIMEOUT = 2
-sudo grub-mkconfig -o /boot/grub/grub.cfg
-
-# set grub resolution
-sudo nano /etc/default/grub
-GRUB_GFXMODE=1920x1080
-GRUB_GFXPAYLOAD_LINUX="keep"
-sudo grub-mkconfig -o /boot/grub/grub.cfg
-
 ## =======
 ## STARTUP
-
-# DOES NOT WORK - might not be possible, but at least this does proper checks
-# prevent fsck on startup disk _every_ boot
-	# find startup disk
-	# find max count between checks
-	# set max count to random (between 20-40), and max length between checks to 1 month
-sudo fdisk -l
-sudo dumpe2fs -h /dev/sda2 | grep 'mount count'
-sudo tune2fs -c random -i 1m /dev/sda2
 
 # numlock at startup
 yay -S numlockx
@@ -37,14 +15,6 @@ numlockx on # in some autostart script
 sudo ln -s "$PWD/symlinks/usr_share_xsessions_herbstluftwm.desktop" /usr/share/xsessions/herbstluftwm.desktop
 
 
-## =======
-## DESKTOP
-# fix against screen-tearing
-# add to ~/.config/compton.conf
-backed = "glx"
-vsync = "opengl-swc"
-
-
 ## ====
 ## SWAP
 # change swap
@@ -57,33 +27,25 @@ restart
 ## APPS
 # set apps as default
 # vivaldi-stable
-~/.config/mimeapps.list 
-	>	[Default Applications]                                                                                                     
-		application/json=sublime_text.desktop;                                                                                     
-		application/pdf=vivaldi-stable.desktop;                                                                                    
-		application/x-xpinstall=vivaldi-stable.desktop;                                                                            
-		application/xhtml+xml=vivaldi-stable.desktop;                                                                              
-		image/gif=org.gnome.gThumb.desktop;                                                                                        
-		image/jpeg=org.gnome.gThumb.desktop;                                                                                       
-		image/png=org.gnome.gThumb.desktop;                                                                                        
-		image/webp=org.gnome.gThumb.desktop;                                                                                       
-		text/html=vivaldi-stable.desktop;                                                                                          
-		text/markdown=sublime_text.desktop;                                                                                        
-		text/x-markdown=sublime_text.desktop;                                                                                      
-		text/xml=sublime_text.desktop;                                                                                             
-		x-scheme-handler/http=vivaldi-stable.desktop;                                                                              
-		x-scheme-handler/https=vivaldi-stable.desktop;                                                                             
-		x-scheme-handler/mailto=vivaldi-stable.desktop;                                                                            
-		inode/directory=xfe.desktop;                                                                                               
-		x-scheme-handler/postman=Postman.desktop;
-~/.profile > $BROWSER=/usr/bin/google-chrome-stable
+~/.config/mimeapps.list
+	>	[Default Applications]
+		text/html=vivaldi-stable.desktop
+		x-scheme-handler/http=vivaldi-stable.desktop
+		x-scheme-handler/https=vivaldi-stable.desktop
+		x-scheme-handler/about=vivaldi-stable.desktop
+		x-scheme-handler/unknown=vivaldi-stable.desktop
+		x-scheme-handler/rambox=rambox.desktop
+		x-scheme-handler/claude-cli=claude-code-url-handler.desktop
+	>	[Added Associations]  # empty
+# everything else (inode/directory=nnn.desktop, images, video, text) comes from the .desktop files themselves
+# $BROWSER=vivaldi-stable is set in shellrc/.shellrc_env
 
 > may need to: rm ~/.local/share/applications/mimeapps.list && ln -s ~/.config/mimeapps.list ~/.local/share/applications/mimeapps.list
 	> .local copy is legacy, should now be in .config -- if .local version contains things, copy it
 > if making changes, add to two sections: [Default Applications], [Added Associations]
 
 $ xdg-mime query default application/pdf
-$ xdg-mime default google-chrome.desktop application/pdf
+$ xdg-mime default vivaldi-stable.desktop application/pdf
 
 
 ## ======
