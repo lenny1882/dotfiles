@@ -105,3 +105,38 @@ Current state:
 Not decided or checked:
 - whether to build the list from the live bindings (`herbstclient list_keybinds`) or from the autostart files; the files carry comments, the live list does not
 - whether the nnn and micro bindings are included, or only herbstluftwm
+
+## Lock screen look
+
+physlock is a bare lock screen. The aim is to improve how it looks, ideally so login (lemurs) and unlock share one look; at the least, the lock screen looks better. Whether physlock itself can be extended, or something else would have to replace it, is not known.
+
+Constraints from the user:
+- physlock replaces the wm view on a console instead of drawing a program over it, and blocks switching to another tty; programs that draw above the wm/de can show rendering problems or be bypassed.
+- Whatever is used must keep that: no bypass through another tty, no rendering problems.
+
+Current state (checked):
+- physlock 13-5, installed setuid root (`/usr/bin/physlock`). Run as `physlock -dsm` from `Super-l` (`shortcuts.autostart`) and from a polybar click (`polybar/polybar.ini`); it is in the quickstart packages. The usage line lists `-dhLlmsv` and `-p MSG`.
+- Its PAM service (`/etc/pam.d/physlock`) is plain `pam_unix.so` for auth, account, password and session.
+- lemurs runs on tty 2 with its own PAM service (`pam_service = "lemurs"` in the generated `etc_lemurs_config.toml`; `/etc/pam.d/lemurs` exists). Its colours come from the colours templates.
+- `xss-lock` (idle locking) is an optional dependency of physlock and is not installed; idle lock was ruled out.
+
+Not checked (from memory, to confirm):
+- what the flags mean (`-d` detach, `-s` disable SysRq, `-m` mute kernel messages, `-p` prompt message) and whether `-p` gives any control over the look
+- whether lemurs can be run as a locker at all, or is only a login screen that starts a session; if it only starts sessions, unlocking would mean ending the session
+- whether physlock's source has hooks or options for how the prompt is drawn
+- alternatives that also take over a console, if any exist
+
+## Polybar update counter resets to `? | ?`
+
+When polybar restarts, the update counter (`ups`) shows `? | ?` and stays that way. It happens on locking and unlocking with physlock (polybar visibly refreshes itself) and on reloading herbstluftwm. No polling wanted: the count queries aur (`yay -Qua`) as well as `checkupdates`, which is an unnecessary load. The aim is to find why the update does not run after a restart.
+
+Found (read from the config, not run):
+- `ups` is a `custom/ipc` module (`polybar.ini`) with `initial = 2`, so it starts on `hook-1` (`? | ?`) and only changes when something sends `polybar-msg action ups hook 0` (`hook-0` runs `checkupdates | wc -l` and `yay -Qua | wc -l`).
+- Senders of that message:
+  - right-click on the `upl` icon
+  - the pacman hook `package-changes.hook`, which emits herbstluftwm hook `ipc`, handled in `scripts/rule_hook.sh`
+  - `scripts/panel.sh`, once at the end
+- In `panel.sh` that last send is guarded by `hc silent new_attr bool my_not_first_autostart_panel`, which succeeds only the first time the attribute is created in a herbstluftwm session. Every later run of `panel.sh` (it kills and restarts polybar) skips the send. That fits the symptom: any restart after the first leaves `? | ?`. Not confirmed by running it.
+- `panel.sh` is run from `startup.autostart` and from `rule_hook.sh` (line 47). Which hook triggers it on lock/unlock is not known; it may be a monitor event (`monitors_changed` runs `monitor_reconcile.sh`), not checked.
+
+Not decided: how to show a count after a restart without polling aur. Ideas to consider are caching the last result in a file and showing it on restart, or sending the hook only when the cache is missing or old.
