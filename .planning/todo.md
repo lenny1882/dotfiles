@@ -41,6 +41,7 @@ herbstluftwm starts picom with the old compton config (`startup.autostart` line 
 `setup/config_links.sh` links every entry in `symlinks/` except names containing `.bak`. The nvidia conf (`etc_X11_mhwd.d_nvidia.conf`) is still linked on this amd machine.
 - Prefix: extend the `.bak` rule so a prefix marks a file as ignored.
 - Selection: the quickstart lists the symlink entries and lets you pick which to install, like the package selection. Asks every run; choices are not remembered.
+- The shellrc files already use a prefix to opt out of loading (`shell_loader.sh` sources only `.shellrc*`, so renaming a file to `_.shellrc_*` disables it). The same prefix could be used to ignore symlinks, so there is one convention for both.
 
 ## Quickstart steps for makepkg and the power group
 
@@ -140,3 +141,37 @@ Found (read from the config, not run):
 - `panel.sh` is run from `startup.autostart` and from `rule_hook.sh` (line 47). Which hook triggers it on lock/unlock is not known; it may be a monitor event (`monitors_changed` runs `monitor_reconcile.sh`), not checked.
 
 Not decided: how to show a count after a restart without polling aur. Ideas to consider are caching the last result in a file and showing it on restart, or sending the hook only when the cache is missing or old.
+
+## Repo cleanup
+
+Findings from a read-only pass over the tracked files. "Referenced" means the file name appears in another tracked file outside `.planning/` and the backups; nothing was run. Git history keeps anything deleted.
+
+### herbstluftwm folder (`symlinks/home_@user@_.config_herbstluftwm`)
+- Backups with no references: `autostart.bak`, `autostart.bak.bak`, `autostart.orig-bak`, `autostart-3monitors` (about 1,000 lines in total).
+- Other files with no references: `12palette`, `scripts/supplemental.kmap` (a console keymap), and the polybar scripts `0` (empty), `colors_nord`, `info-hlwm-workspaces.sh`, `pipewire.sh`.
+- `[module/dsp]` in `polybar/polybar.ini` is defined but not listed in any `modules-` line.
+- `autostart` ends with about 20 blank lines.
+
+### `setup/quickstart_arch.sh`
+- About 50 commented-out lines at the end (easystroke, sublime, unifi), and the commented `yay -Rdd ttf-harmonyos-sans` at line 377. `easystroke` and `sublime-text-4` are installed, so those blocks look like leftovers.
+
+### Root
+- `screenshot.png` (2.6M) is at the repo root and nothing references it.
+
+### `setup/disable_ipv6.sh`
+- Nothing calls it, and ipv6 is currently on (`/proc/sys/net/ipv6/conf/all/disable_ipv6` is 0). Either wire it into the quickstart or delete it.
+
+### nnn
+- `symlinks/home_@user@_.config_nnn_plugins` holds 60 files, but `NNN_PLUG` in `scripts/nnn-wrap.sh` binds only three (`fzopen`, `dragdrop`, `xdgdefault`). The rest look like the upstream plugin set, including `*-mac` ones and ones for programs that may not be installed (`kdeconnect`, `mocq`, `cmusq`). Plugins can be run other ways, so unused is not certain. They could be fetched at install time with the `getplugs` plugin instead of tracked.
+- `symlinks/home_@user@_.config_nnn_sessions_startup` is a binary nnn session file holding machine paths: state, not config.
+
+### Smaller items
+- Two nano configs, `root_.nanorc` and `home_@user@_.config_nano_nanorc`, alongside micro. Which editors are in use was not checked.
+- `etc_pacman.d_hooks_expressvpn.hook` has the header comment `# /etc/pacman.d/hooks/clean-cache.hook`; a copy-paste slip, the hook itself is fine.
+
+### Simplify (judgment calls, not read in depth)
+- `setup/notes.txt`: the numlock, xsession and swap sections are now done by `startup.autostart`, `config_links.sh` and the swappiness symlink, so they could go.
+- Colours files: `colours.sh`, `colours.g.sh`, `colours.rules.sh`, `colours-derive`, `colours-gen`. Recent work; their contents were not looked at.
+- `.planning/monitor_changes/monitor_tui_check.py` (76K) and `monitor_check.sh` (28K): test scaffolding for work that may be finished.
+
+Not covered: the large scripts (`monitor_tui.py`, `monitor_reconcile.sh`, the rest of `quickstart_arch.sh`) were not read for internal simplification.
