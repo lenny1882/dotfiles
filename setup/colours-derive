@@ -64,10 +64,11 @@ function from_oklab(L, a, b,   l, m, s) {
 }
 
 function in_gamut() {
-	return LR >= -0.00001 && LR <= 1.00001 && LG >= -0.00001 && LG <= 1.00001 && LB >= -0.00001 && LB <= 1.00001
+	return LR >= -0.001 && LR <= 1.001 && LG >= -0.001 && LG <= 1.001 && LB >= -0.001 && LB <= 1.001
 }
+function clamp255(v) { return v < 0 ? 0 : v > 255 ? 255 : v }
 
-# lightness, chroma and hue in degrees to sRGB bytes in R, G, B; chroma is multiplied by 0.93 until the colour fits sRGB
+# lightness, chroma and hue in degrees to sRGB in R, G, B (0 to 255, not rounded); chroma is multiplied by 0.93 until the colour fits sRGB
 function from_lch(L, C, h,   hr) {
 	hr = h * PI / 180
 	for (;;) {
@@ -75,7 +76,7 @@ function from_lch(L, C, h,   hr) {
 		if (in_gamut() || C < 0.0001) break
 		C *= 0.93
 	}
-	R = byte(255 * enc(LR < 0 ? 0 : LR)); G = byte(255 * enc(LG < 0 ? 0 : LG)); B = byte(255 * enc(LB < 0 ? 0 : LB))
+	R = clamp255(255 * enc(LR < 0 ? 0 : LR)); G = clamp255(255 * enc(LG < 0 ? 0 : LG)); B = clamp255(255 * enc(LB < 0 ? 0 : LB))
 }
 
 # the hue turned by amount degrees in the direction of target, the shorter way round
@@ -117,11 +118,11 @@ BEGIN {
 	seen[name] = 1
 	t = level * step
 	if (chain == "same") { }
-	else if (chain == "pale") { R = byte(R + (255 - R) * t); G = byte(G + (255 - G) * t); B = byte(B + (255 - B) * t) }
-	else if (chain == "shade") { R = byte(R * (1 - t)); G = byte(G * (1 - t)); B = byte(B * (1 - t)) }
+	else if (chain == "pale") { R += (255 - R) * t; G += (255 - G) * t; B += (255 - B) * t }
+	else if (chain == "shade") { R *= 1 - t; G *= 1 - t; B *= 1 - t }
 	else if (chain == "muted") {
 		y = 0.2126 * R + 0.7152 * G + 0.0722 * B
-		R = byte(R + (y - R) * t); G = byte(G + (y - G) * t); B = byte(B + (y - B) * t)
+		R += (y - R) * t; G += (y - G) * t; B += (y - B) * t
 	} else {
 		if (chain == "light") L = L + (1 - L) * t
 		else if (chain == "dark") L = L * (1 - t)
@@ -131,7 +132,7 @@ BEGIN {
 		else if (chain == "cool") h = toward(h, 230, t)
 		from_lch(L, C, h)
 	}
-	printf "%s=#%02X%02X%02X\n", name, R, G, B
+	printf "%s=#%02X%02X%02X\n", name, byte(R), byte(G), byte(B)
 }
 ') || exit 1
 

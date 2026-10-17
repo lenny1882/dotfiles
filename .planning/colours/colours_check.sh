@@ -48,7 +48,7 @@ check 256_col_violet "97" "$(colour_256 col_violet)"
 check 256_grey_light "247" "$(colour_256 col_grey_light)"
 check 256_col_magenta "162" "$(colour_256 col_magenta)"
 check 256_col_lime "76" "$(colour_256 col_lime)"
-check rgb_lime "120;203;2" "$(colour_rgb col_lime)"
+check rgb_lime "120;203;3" "$(colour_rgb col_lime)"
 check alpha_almost_black "#12121277" "$(colour_alpha col_almost_black 77)"
 check alpha_light "#EAEAEA77" "$(colour_alpha col_light 77)"
 i=0

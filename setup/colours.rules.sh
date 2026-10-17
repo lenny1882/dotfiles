@@ -9,12 +9,12 @@ base_white=#FFFFFF
 base_grey=#AAAAAA
 # the chromatic bases are invented, not colours that appear on screen: "oklch lightness chroma hue"
 # a chroma beyond sRGB is allowed; a base as drawn has its chroma reduced until it fits (about the hex in each comment)
-base_red="oklch 0.5374 0.273 25.8"	# about #CA1C25
-base_orange="oklch 0.7633 0.197 80.6"	# about #E2A628
-base_yellow="oklch 0.8947 0.187 109.5"	# about #E6E527
-base_green="oklch 0.7591 0.213 144.0"	# about #42D14B
-base_blue="oklch 0.7188 0.161 257.2"	# about #69A5FA
-base_purple="oklch 0.7092 0.189 313.0"	# about #CA78F4
+base_red="oklch 0.53728 0.27305 25.78633"	# about #C91C25
+base_orange="oklch 0.76337 0.1837 80.63769"	# about #E2A627
+base_yellow="oklch 0.89321 0.18686 109.37962"	# about #E6E526
+base_green="oklch 0.75781 0.21236 144.00512"	# about #42D14B
+base_blue="oklch 0.71825 0.16085 257.17296"	# about #69A5FA
+base_purple="oklch 0.70966 0.1898 313.04886"	# about #CA78F4
 
 # rules: one line per colour, "name base modifier step"
 # a modifier is a chain word, with er or est added for level 2 or 3 (light, lighter, lightest); t = level * step
@@ -34,22 +34,22 @@ col_nord12		base_red	paler		0.20
 col_magenta		base_red	coolest		11.25
 col_orange		base_orange	warm		15
 col_nord13		base_orange	palest		0.15
-col_yellow		base_yellow	harder		0.19
+col_yellow		base_yellow	harder		0.1875
 col_bright_yellow	base_yellow	lightest	0.15
 col_green		base_green	shader		0.20
-col_bright_green	base_green	muteder		0.19
-col_nord14		base_green	softest		0.22
+col_bright_green	base_green	muteder		0.1875
+col_nord14		base_green	softest		0.225
 col_emerald		base_green	cool		11.25
 col_lime		base_green	warm		11.25
 col_blue		base_blue	darker		0.12
 col_bright_blue		base_blue	dark		0.12
 col_nord10		base_blue	shader		0.12
-col_nord9		base_blue	mutedest	0.19
+col_nord9		base_blue	mutedest	0.1875
 col_cyan		base_blue	coolest		15
 col_bright_cyan		base_blue	coolest		11.25
 col_purple		base_purple	darkest		0.12
 col_violet		base_purple	shader		0.14
-col_nord15		base_purple	mutedest	0.22
+col_nord15		base_purple	mutedest	0.21875
 col_bright_purple	base_purple	warm		15
 col_black		base_black	same		0
 col_white		base_white	same		0
