@@ -1,6 +1,6 @@
 # Colours
 
-Refreshed 2026-10-16, after the migration, from a scan of tracked files on the `colours` branch. Every colour that something uses is defined once, in `setup/colours.sh` (since 2026-10-17 the hexes are generated into `setup/colours.g.sh` by `setup/colours-derive` from the nine bases and rules in `setup/colours.rules.sh`, so the hex values in the tables below are from that file and consumers set `colours_dir` before sourcing `colours.sh`); the plan and its decisions are in `colours_plan.md`. This file lists how each program gets its colours, what uses each colour, and what is still defined elsewhere.
+Refreshed 2026-10-16 from a scan of tracked files on the `colours` branch; the hex values in sections 2 and 3 were updated 2026-10-17 to the derived colours. Every colour that something uses is defined once, in `setup/colours.sh` (since 2026-10-17 the hexes are generated into `setup/colours.g.sh` by `setup/colours-derive` from the nine bases and rules in `setup/colours.rules.sh`, so the hex values in the tables below are from that file and consumers set `colours_dir` before sourcing `colours.sh`); the plan and its decisions are in `colours_plan.md`. This file lists how each program gets its colours, what uses each colour, and what is still defined elsewhere.
 
 Scope of the scan: tracked files, minus `symlinks/home_@user@_.config_nnn_plugins/` (third-party plugins), the `*.bak` and `*.orig-bak` autostart copies, and images. The untracked dotfiles in the repo root (`.bashrc`, `.zshrc` and the rest) were not readable, so they are not covered.
 
@@ -35,24 +35,24 @@ Rows follow the order in `colours.sh`. "Alpha" means the colour is used with an 
 
 | Name | Hex | Used by |
 |---|---|---|
-| `col_dark` | `#252526` | urxvt, nnn, bottom and wrapper window backgrounds (`[80]` and `[95]` opacity); rofi window background; polybar `bg_dark` (alpha `CC`) |
-| `col_dark2` | `#2D2D30` | rofi element background |
-| `col_light` | `#ECEFF4` | terminal foreground and cursor, palette slot 15; bottom text and titles; rofi text; herbstluftwm window title; polybar `fg_white` and, with alpha `33`, `fg_disabled` and `fg_monitor_empty`; prompt text; polybar label text (alpha `77`); bottom CPU core colour; palette slots 7 and 15 |
-| `col_grey` | `#3E3E42` | herbstluftwm borders, backgrounds and titles (alpha `FF`/`cc`/`dd`); rofi input bar; polybar `bg_light` (alpha `CC`) and the bar background (alpha `55`); lemurs unfocused text and borders; prompt grey segments |
+| `col_dark` | `#262626` | urxvt, nnn, bottom and wrapper window backgrounds (`[80]` and `[95]` opacity); rofi window background; polybar `bg_dark` (alpha `CC`) |
+| `col_dark2` | `#2F2F2F` | rofi element background |
+| `col_light` | `#EAEAEA` | terminal foreground and cursor, palette slot 15; bottom text and titles; rofi text; herbstluftwm window title; polybar `fg_white` and, with alpha `33`, `fg_disabled` and `fg_monitor_empty`; prompt text; polybar label text (alpha `77`); bottom CPU core colour; palette slots 7 and 15 |
+| `col_grey` | `#444444` | herbstluftwm borders, backgrounds and titles (alpha `FF`/`cc`/`dd`); rofi input bar; polybar `bg_light` (alpha `CC`) and the bar background (alpha `55`); lemurs unfocused text and borders; prompt grey segments |
 | `col_grey_light` | `#9E9E9E` | bottom borders; prompt success-symbol text; nnn missing files and file details (`F7`); monitor TUI art and dimmed text (256-colour 247, exact) |
-| `col_green` | `#2E7D32` | herbstluftwm active window and frame (`col_active`, alpha `dd`); polybar active workspace and power-lock button; bottom selected rows and borders; rofi prompt and selected row; lemurs focused borders; monitor TUI selected panel (RGB and its 256 fallback, 28); prompt directory segment |
-| `col_purple` | `#7B1FA2` | herbstluftwm urgent (alpha `dd`/`ff`); polybar urgent workspace; lemurs login background; rofi urgent; prompt clock; palette slot 5 |
-| `col_red` | `#D32F2F` | polybar power-off button, error and low-battery text; bottom average CPU, swap and transmit; prompt failed-command symbol and man-page underline; palette slot 1 |
-| `col_orange` | `#FF9800` | polybar power-reboot button |
-| `col_almost_black` | `#111111` | herbstluftwm active frame background (alpha `77`) |
-| `col_nord9`–`col_nord15` | `#81A1C1` `#5E81AC` `#BF616A` `#D08770` `#EBCB8B` `#A3BE8C` `#B48EAD` | bottom CPU core colours (nord9, nord10, nord11, nord12, nord13, nord14, nord15) |
+| `col_green` | `#287D2D` | herbstluftwm active window and frame (`col_active`, alpha `dd`); polybar active workspace and power-lock button; bottom selected rows and borders; rofi prompt and selected row; lemurs focused borders; monitor TUI selected panel (RGB and its 256 fallback, 28); prompt directory segment |
+| `col_purple` | `#7A259F` | herbstluftwm urgent (alpha `dd`/`ff`); polybar urgent workspace; lemurs login background; rofi urgent; prompt clock; palette slot 5 |
+| `col_red` | `#C5292C` | polybar power-off button, error and low-battery text; bottom average CPU, swap and transmit; prompt failed-command symbol and man-page underline; palette slot 1 |
+| `col_orange` | `#FA9800` | polybar power-reboot button |
+| `col_almost_black` | `#121212` | herbstluftwm active frame background (alpha `77`) |
+| `col_nord9`–`col_nord15` | `#87A1C6` `#507EBE` `#DA6067` `#DF777C` `#EFCE88` `#96BC95` `#A689B4` | bottom CPU core colours (nord9, nord10, nord11, nord12, nord13, nord14, nord15) |
 | `col_white` | `#FFFFFF` | monitor TUI highlighted-selection foreground (231, exact); was `tui_white` |
-| `col_violet` | `#875FAF` | nnn symlinks (`61`); was `nnn_symlink` |
-| `col_magenta` | `#D70087` | nnn context 1 (`a2`); was `nnn_context1` |
-| `col_lime` | `#5FD700` | nnn context 3 (`4c`) and the man-page blink; was `nnn_context3`. Context 2 is palette slot 6 and context 4 is slot 7 |
+| `col_violet` | `#9156B0` | nnn symlinks (`61`); was `nnn_symlink` |
+| `col_magenta` | `#C2077B` | nnn context 1 (`a2`); was `nnn_context1` |
+| `col_lime` | `#78CB03` | nnn context 3 (`4c`) and the man-page blink; was `nnn_context3`. Context 2 is palette slot 6 and context 4 is slot 7 |
 | `col_black` | `#000000` | palette slot 0; polybar transparent (alpha `00`) |
 
-The 256-colour override `col_green_256=28` (the TUI's fallback) is the only override on a project colour that is not a palette slot. `col_red_256=1` and `col_purple_256=5` carry the palette slot numbers of the two project colours that are also slots. `colours.sh` also holds the `col_*_256` slot numbers of the other palette colours (section 3).
+The 256-colour overrides on project colours that are not palette slots are `col_green_256=28` (the TUI's fallback), `col_lime_256=76`, `col_violet_256=97` and `col_magenta_256=162` (nnn); the derived hexes are not exact xterm entries, so each keeps today's number. `col_red_256=1` and `col_purple_256=5` carry the palette slot numbers of the two project colours that are also slots. `colours.sh` also holds the `col_*_256` slot numbers of the other palette colours (section 3).
 
 ## 3. Terminal palette (ANSI slots 0–15)
 
@@ -60,22 +60,22 @@ Live in `Xresources` as `*.color0`–`*.color15`, written as the `col_*` names. 
 
 | Slot | Name | Hex | Note |
 |---|---|---|---|
-| 0 | `col_black` | `#000000` | VS Code Dark+ |
-| 1 | `col_red` | `#D32F2F` | the project red (`col_red`); `col_red_256=1` |
-| 2 | `col_emerald` | `#0DBC79` | VS Code Dark+; nnn executables |
-| 3 | `col_yellow` | `#E5E510` | VS Code Dark+; nnn fifos |
-| 4 | `col_blue` | `#2472C8` | VS Code Dark+; nnn directories; bottom RAM and receive; prompt git-branch segment; urxvt wrapper window border; wallpaper on a monitor with none |
-| 5 | `col_purple` | `#7B1FA2` | the project purple (`col_purple`); `col_purple_256=5` |
-| 6 | `col_cyan` | `#11A8CD` | VS Code Dark+; nnn hard links; nnn context 2; man-page reverse video |
-| 7 | `col_light` | `#ECEFF4` | same colour as slot 15; nnn block devices, regular files and context 4 read `col_light` (its slot number is 15) |
-| 8 | `col_bright_black` | `#666666` | VS Code Dark+ |
-| 9 | `col_bright_red` | `#EF5350` | nnn orphaned symlinks |
-| 10 | `col_bright_green` | `#66BB6A` | bottom table headers; prompt nested-nnn level |
-| 11 | `col_bright_yellow` | `#F5F543` | nnn character devices |
-| 12 | `col_bright_blue` | `#3B8EEA` | VS Code Dark+ |
-| 13 | `col_bright_purple` | `#D670D6` | nnn sockets |
-| 14 | `col_bright_cyan` | `#29B8DB` | VS Code Dark+ |
-| 15 | `col_light` | `#ECEFF4` | `col_light_256=15`; terminal foreground and cursor |
+| 0 | `col_black` | `#000000` | |
+| 1 | `col_red` | `#C5292C` | the project red (`col_red`); `col_red_256=1` |
+| 2 | `col_emerald` | `#12D17B` | nnn executables |
+| 3 | `col_yellow` | `#E6E510` | nnn fifos |
+| 4 | `col_blue` | `#286ECC` | nnn directories; bottom RAM and receive; prompt git-branch segment; urxvt wrapper window border; wallpaper on a monitor with none |
+| 5 | `col_purple` | `#7A259F` | the project purple (`col_purple`); `col_purple_256=5` |
+| 6 | `col_cyan` | `#1FB7D0` | nnn hard links; nnn context 2; man-page reverse video |
+| 7 | `col_light` | `#EAEAEA` | same colour as slot 15; nnn block devices, regular files and context 4 read `col_light` (its slot number is 15) |
+| 8 | `col_bright_black` | `#666666` | |
+| 9 | `col_bright_red` | `#FC5550` | nnn orphaned symlinks |
+| 10 | `col_bright_green` | `#69C26F` | bottom table headers; prompt nested-nnn level |
+| 11 | `col_bright_yellow` | `#F5F541` | nnn character devices |
+| 12 | `col_bright_blue` | `#4489E9` | |
+| 13 | `col_bright_purple` | `#DE70DC` | nnn sockets |
+| 14 | `col_bright_cyan` | `#1DB5DF` | |
+| 15 | `col_light` | `#EAEAEA` | `col_light_256=15`; terminal foreground and cursor |
 
 Each carries its slot number as a `_256` override (`col_blue_256=4`), which `nnn-wrap.sh` uses. The terminal background (`col_dark`) differs from slot 0.
 
@@ -91,6 +91,8 @@ All of these are unused, not hex, or intentionally left:
 - **Legacy files:** `hlwm/autostart-3monitors` (an old autostart with its own colour table), `hlwm/autostart.bak*` and `autostart.orig-bak`, the polybar files `colors` and `colors_nord` (not included by `polybar.ini`), and `hlwm/12palette`, an unrelated chart stylesheet.
 
 ## 5. Near-duplicates, for the later consolidation
+
+The hexes in this section are the values at the time of each merge, before the colours became derived from the nine bases on 2026-10-17 (see `base_set.md`). Whether any further consolidation is still wanted is open.
 
 - **Blues:** merged 2026-10-16: `col_chartblue` is gone and its uses (bottom RAM and receive, prompt git-branch segment) read `col_blue` `#2472C8`. Also merged 2026-10-16: `col_blue` into `col_blue` (wrapper border and the no-wallpaper background). Left: `col_blue` and `col_bright_blue` `#3B8EEA`.
 - **Greys:** merged 2026-10-16: `col_grey_dark` into `col_grey`; `col_grey_mid`, `tui_grey`, `tui_dimmed` and `nnn_details` into `col_grey_light` at `#9E9E9E` (xterm 247, so the monitor TUI art moved from 245 and its dimmed text from 248 to 247, bottom borders and the prompt success symbol got lighter). Left: `col_dark2`, `col_grey`, `col_grey_light`, `tui_white`, and the palette slots `col_white` and `col_bright_black`.
