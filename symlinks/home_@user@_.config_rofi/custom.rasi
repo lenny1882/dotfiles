@@ -7,15 +7,6 @@
 * {
     font:   "DejaVu Sans Mono 11";
 
-    col-dark1: #252526;
-    col-dark2: #2D2D30;
-    col-grey: #3E3E42;
-    col-light: #ECEFF4;
-
-    col-green: #2E7D32;
-    col-light-green: #87D75F;
-    col-purple: #7B1FA2;
-
     background-color: transparent;
     text-color: @col-light;
 

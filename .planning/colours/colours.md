@@ -1,265 +1,102 @@
 # Colours
 
-Every colour in the repo, what uses it, and where it is defined. Written 2026-10-14 from a scan of tracked files.
+Refreshed 2026-10-16 from a scan of tracked files on the `colours` branch; the hex values in sections 2 and 3 were updated 2026-10-17 to the derived colours. Every colour that something uses is defined once, in `setup/colours.sh` (since 2026-10-17 the hexes are generated into `setup/colours.g.sh` by `setup/colours-derive` from the nine bases and rules in `setup/colours.rules.sh`, so the hex values in the tables below are from that file and consumers set `colours_dir` before sourcing `colours.sh`); the plan and its decisions are in `colours_plan.md`. This file lists how each program gets its colours, what uses each colour, and what is still defined elsewhere.
 
-## Colour by location
-
-A ✓ means the colour is defined in that location, whatever the format (hex, `r;g;b`, 256-colour number, `0x` tuple, or with an alpha prefix or suffix). Rows are exact colours, so the same colour spelled two ways is one row. Only colours that something actually uses are listed: colours that exist only in commented-out palettes, unused polybar colour files or old autostart copies are left out (they are in the sections below). A definition nothing references still gets a ✓ if the colour is used elsewhere, for example the nord defines at `Xresources:1-16`. Sorted greys first (dark to light), then by hue.
-
-| Column | Location |
-|---|---|
-| Xres | `symlinks/home_@user@_.Xresources` live lines: the `#define`s (`:1-22`) and the palette (`:75-90`) |
-| hlwm vars | `hlwm/variables.autostart` |
-| hlwm theme | `hlwm/theme.autostart` (literal values only; the rest comes from hlwm vars) |
-| polybar | `hlwm/polybar/scripts/colors_vscode_dark` |
-| rofi | `cfg/rofi/custom.rasi` |
-| bottom | the six `cfg/bottom_bottom*.toml` files |
-| lemurs | `symlinks/etc_lemurs_config.toml` |
-| prompt | `shellrc/.shellrc_custom` (bash prompt and coloured man pages) |
-| monitor TUI | `hlwm/scripts/monitor_tui.py` (includes the 256-colour numbers 28, 231, 245, 248, shown as their hex) |
-| nnn | `hlwm/scripts/nnn-wrap.sh` (the 256-colour codes `61`, `F7`, `a2`, `1f`, `4c`, shown as their hex; the palette-slot entries are not definitions) |
-
-Notes: `#000000` in polybar is the fully transparent `#00000000`. Polybar and herbstluftwm often define the colour with an alpha value, which this table ignores; the sections below list the alphas.
-
-| Colour | Name | Xres | hlwm vars | hlwm theme | polybar | rofi | bottom | lemurs | prompt | monitor TUI | nnn |
-|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| `#000000` |  | ✓ |  |  | ✓ |  |  |  |  |  |  |
-| `#111111` |  |  |  | ✓ |  |  |  |  |  |  |  |
-| `#252526` | col_dark | ✓ | ✓ |  | ✓ | ✓ |  |  |  |  |  |
-| `#2d2d30` | dark2 |  |  |  | ✓ | ✓ |  |  |  |  |  |
-| `#333333` |  |  |  |  |  |  |  |  | ✓ |  |  |
-| `#3e3e42` | col_grey |  | ✓ |  | ✓ | ✓ |  | ✓ |  |  |  |
-| `#666666` |  | ✓ |  |  |  |  |  |  |  |  |  |
-| `#777777` |  |  |  |  |  |  | ✓ |  |  |  |  |
-| `#8a8a8a` |  |  |  |  |  |  |  |  |  | ✓ |  |
-| `#999999` |  |  |  |  |  |  |  |  | ✓ |  |  |
-| `#9e9e9e` |  |  |  |  |  |  |  |  |  |  | ✓ |
-| `#a8a8a8` |  |  |  |  |  |  |  |  |  | ✓ |  |
-| `#e5e5e5` |  | ✓ |  |  |  |  |  |  |  |  |  |
-| `#ffffff` |  |  |  |  |  |  |  |  |  | ✓ |  |
-| `#d32f2f` | red | ✓ |  |  | ✓ |  | ✓ |  | ✓ |  |  |
-| `#ef5350` |  | ✓ |  |  |  |  |  |  |  |  |  |
-| `#d08770` | nord12 | ✓ |  |  |  |  | ✓ |  |  |  |  |
-| `#ff9800` | orange |  |  |  | ✓ |  |  |  |  |  |  |
-| `#ebcb8b` | nord13 | ✓ |  |  |  |  | ✓ |  |  |  |  |
-| `#e5e510` |  | ✓ |  |  |  |  |  |  |  |  |  |
-| `#f5f543` |  | ✓ |  |  |  |  |  |  |  |  |  |
-| `#a3be8c` | nord14 | ✓ |  |  |  |  | ✓ |  |  |  |  |
-| `#5fd700` |  |  |  |  |  |  |  |  |  |  | ✓ |
-| `#87d75f` | light green |  |  |  |  | ✓ | ✓ |  |  |  |  |
-| `#008700` |  |  |  |  |  |  |  |  |  | ✓ |  |
-| `#00ff00` |  |  |  |  |  |  |  |  | ✓ |  |  |
-| `#66bb6a` |  | ✓ |  |  |  |  |  |  |  |  |  |
-| `#3ca341` | sea green |  |  |  |  |  | ✓ |  | ✓ |  |  |
-| `#2e7d32` | col_green | ✓ | ✓ |  |  | ✓ | ✓ | ✓ | ✓ | ✓ |  |
-| `#0dbc79` |  | ✓ |  |  |  |  |  |  |  |  |  |
-| `#29b8db` |  | ✓ |  |  |  |  |  |  |  |  |  |
-| `#11a8cd` |  | ✓ |  |  |  |  |  |  |  |  |  |
-| `#1f88a2` | cyan |  |  |  |  |  |  |  | ✓ |  |  |
-| `#0087af` |  |  |  |  |  |  |  |  |  |  | ✓ |
-| `#81a1c1` | nord9 | ✓ |  |  |  |  | ✓ |  |  |  |  |
-| `#2472c8` |  | ✓ |  |  |  |  |  |  |  |  |  |
-| `#3b8eea` |  | ✓ |  |  |  |  |  |  |  |  |  |
-| `#1565c0` | col_blue | ✓ | ✓ |  |  |  |  |  |  |  |  |
-| `#2d77ce` | chart blue |  |  |  |  |  | ✓ |  | ✓ |  |  |
-| `#5e81ac` | nord10 | ✓ |  |  |  |  | ✓ |  |  |  |  |
-| `#eceff4` | col_light / nord6 | ✓ | ✓ |  | ✓ | ✓ | ✓ |  | ✓ |  |  |
-| `#d8dee9` | nord4 | ✓ |  |  | ✓ |  | ✓ |  |  |  |  |
-| `#875faf` |  |  |  |  |  |  |  |  |  |  | ✓ |
-| `#7b1fa2` | col_purple | ✓ | ✓ |  |  | ✓ |  | ✓ | ✓ |  |  |
-| `#d670d6` |  | ✓ |  |  |  |  |  |  |  |  |  |
-| `#b48ead` | nord15 | ✓ |  |  |  |  | ✓ |  |  |  |  |
-| `#af0087` |  |  |  |  |  |  |  |  |  |  | ✓ |
-| `#bf616a` | nord11 | ✓ |  |  |  |  | ✓ |  |  |  |  |
-
-
-Scope of the scan: tracked files, minus `symlinks/home_@user@_.config_nnn_plugins/` (third-party plugins), the `*.bak` and `*.orig-bak` autostart copies, and images. The untracked dotfiles in the repo root (`.bashrc`, `.zshrc` and the rest) were not readable, so they are not covered. Colours that terminal programs get from the ANSI palette (eza, bluetui, git, ls) have no config of their own and are listed under the palette.
+Scope of the scan: tracked files, minus `symlinks/home_@user@_.config_nnn_plugins/` (third-party plugins), the `*.bak` and `*.orig-bak` autostart copies, and images. The untracked dotfiles in the repo root (`.bashrc`, `.zshrc` and the rest) were not readable, so they are not covered.
 
 Path prefixes used below:
 
 | Short | Full |
 |---|---|
 | `hlwm/` | `symlinks/home_@user@_.config_herbstluftwm/` |
-| `cfg/` | `symlinks/home_@user@_.config_` (so `cfg/bottom_bottom.toml` is `symlinks/home_@user@_.config_bottom_bottom.toml`) |
 | `Xresources` | `symlinks/home_@user@_.Xresources` |
-| `lemurs` | `symlinks/etc_lemurs_config.toml` |
-| `shellrc` | `shellrc/.shellrc_custom` |
+| `templates/` | `setup/templates/` |
 
-A line number in *italics* is commented out, so it does not take effect.
+## 1. How each program gets its colours
 
-## 1. Where colours are defined
-
-There is no single source. Each of these is its own definition site, and most repeat the same handful of colours:
-
-| Definition site | Format | Feeds |
+| Program | Files | Mechanism |
 |---|---|---|
-| `Xresources:18-22` (`#define col_*`) | `#RRGGBB` | urxvt background and cursor, urxvt border colour |
-| `Xresources:75-90` (`*.color0-15`) | `#rrggbb` | the 16-colour terminal palette, for every program in urxvt |
-| `hlwm/variables.autostart:10-16` | bash variables, `#RRGGBB` | herbstluftwm window and frame colours, polybar active/urgent colours, background fallback |
-| `hlwm/polybar/scripts/colors_vscode_dark` | polybar `#AARRGGBB` | polybar |
-| `cfg/rofi/custom.rasi:10-17` | rasi variables, `#RRGGBB` | rofi |
-| `cfg/bottom_bottom*.toml` (6 files) | `"#rrggbb"` | bottom (btm) |
-| `lemurs:92-295` | `"#RRGGBB"` and named colours | lemurs login screen |
-| `shellrc:52-73` | truecolor escape codes `r;g;b` | bash prompt |
-| `hlwm/scripts/monitor_tui.py:2040-2084` | 256-colour numbers, one `(0x2E,0x7D,0x32)` tuple | the monitor and layout TUI |
-| `hlwm/scripts/nnn-wrap.sh:12-17` | palette slots and 256-colour numbers | nnn |
-| `cfg/nano_nanorc:213-217`, `cfg/compton.conf:15-17`, `lemurs` named colours | named or ANSI colours | nano, compton, lemurs (see section 5) |
+| bash prompt, coloured man pages | `shellrc/.shellrc_custom` | sources `colours.sh`, builds truecolor escapes with `colour_rgb`, then `colours_unload` removes everything it defined from the shell |
+| herbstluftwm | `hlwm/variables.autostart`, `hlwm/theme.autostart` | `variables.autostart` sources `colours.sh` (13 scripts source `variables.autostart`); `theme.autostart` uses the names, with alpha as string suffixes (`${col_grey}cc`) |
+| polybar | `hlwm/scripts/panel.sh`, `hlwm/polybar/scripts/colors_vscode_dark` | `panel.sh` exports 12 `COLOUR_*` variables (alpha forms through `colour_argb`); the colour file reads them with `${env:…}`; active and urgent still arrive as arguments |
+| bottom (btm) | `templates/bottom*.tmpl`, `hlwm/scripts/bottom-wrap.sh` | the wrapper renders a template to a temp file with `colours-gen` and runs `btm -C` on it; the Ctrl-Alt-Delete binding and the polybar clicks (through `pty_inset.py`) and the `btm` alias call the wrapper |
+| lemurs | `templates/lemurs.tmpl` | generated by the lemurs install (`step_display_manager`) into `symlinks/etc_lemurs_config.toml`, which is gitignored |
+| urxvt and everything that draws in it | `Xresources`, `hlwm/scripts/xrdb-wrap.sh` | `xrdb -D name=#hex` for every colour; the file uses the names |
+| rofi | `hlwm/scripts/rofi-wrap.sh`, `symlinks/home_@user@_.config_rofi/custom.rasi` | the wrapper passes a `-theme-str`; `custom.rasi` defines no colours |
+| nnn | `hlwm/scripts/nnn-wrap.sh` | `NNN_FCOLORS` and `NNN_COLORS` built with `colour_256` |
+| monitor TUI | `hlwm/scripts/monitor-tui-wrap.sh`, `hlwm/scripts/monitor_tui.py` | five `TUI_COLOUR_*` environment variables, read with defaults |
+| eza, bluetui, git, ls | none | the terminal's ANSI palette (section 3) |
+| picom | `symlinks/home_@user@_.config_compton.conf` | shadow colour `0.0 0.0 0.0` (black), left as is |
+| bat, micro | none | bat uses a built-in theme name, micro has no colour scheme |
 
-## 2. Project colours
+## 2. Colours and what uses them
 
-These are the colours chosen for the setup (VS Code dark and Material palettes, per the comment in `hlwm/variables.autostart:8-9`). Hex is shown as it is written; polybar alpha prefixes are noted.
+Rows follow the order in `colours.sh`. "Alpha" means the colour is used with an alpha suffix or prefix.
 
-### `#252526` dark background (`col_dark`)
-- **Used by:** the urxvt, nnn, bottom and wrapper window backgrounds (at 80% and 95% opacity via `[80]` / `[95]`); rofi window background; polybar `bg_dark` (the date, battery, bluetooth, volume and updates modules, and the power-logout button) at alpha `CC`.
-- **Defined in:** `Xresources:18`, *`Xresources:41`* (old nnn-based palette); `hlwm/variables.autostart:10`; `cfg/rofi/custom.rasi:10` (`col-dark1`); `hlwm/polybar/scripts/colors_vscode_dark:6` (alpha `CC`).
-- The herbstluftwm `col_dark` variable is defined but no live file references it.
+| Name | Hex | Used by |
+|---|---|---|
+| `col_dark` | `#262626` | urxvt, nnn, bottom and wrapper window backgrounds (`[80]` and `[95]` opacity); rofi window background; polybar `bg_dark` (alpha `CC`) |
+| `col_dark2` | `#2F2F2F` | rofi element background |
+| `col_light` | `#EAEAEA` | terminal foreground and cursor, palette slot 15; bottom text and titles; rofi text; herbstluftwm window title; polybar `fg_white` and, with alpha `33`, `fg_disabled` and `fg_monitor_empty`; prompt text; polybar label text (alpha `77`); bottom CPU core colour; palette slots 7 and 15 |
+| `col_grey` | `#444444` | herbstluftwm borders, backgrounds and titles (alpha `FF`/`cc`/`dd`); rofi input bar; polybar `bg_light` (alpha `CC`) and the bar background (alpha `55`); lemurs unfocused text and borders; prompt grey segments |
+| `col_grey_light` | `#9E9E9E` | bottom borders; prompt success-symbol text; nnn missing files and file details (`F7`); monitor TUI art and dimmed text (256-colour 247, exact) |
+| `col_green` | `#287D2D` | herbstluftwm active window and frame (`col_active`, alpha `dd`); polybar active workspace and power-lock button; bottom selected rows and borders; rofi prompt and selected row; lemurs focused borders; monitor TUI selected panel (RGB and its 256 fallback, 28); prompt directory segment |
+| `col_purple` | `#7A259F` | herbstluftwm urgent (alpha `dd`/`ff`); polybar urgent workspace; lemurs login background; rofi urgent; prompt clock; palette slot 5 |
+| `col_red` | `#C5292C` | polybar power-off button, error and low-battery text; bottom average CPU, swap and transmit; prompt failed-command symbol and man-page underline; palette slot 1 |
+| `col_orange` | `#FA9800` | polybar power-reboot button |
+| `col_almost_black` | `#121212` | herbstluftwm active frame background (alpha `77`) |
+| `col_nord9`–`col_nord15` | `#87A1C6` `#507EBE` `#DA6067` `#DF777C` `#EFCE88` `#96BC95` `#A689B4` | bottom CPU core colours (nord9, nord10, nord11, nord12, nord13, nord14, nord15) |
+| `col_white` | `#FFFFFF` | monitor TUI highlighted-selection foreground (231, exact); was `tui_white` |
+| `col_violet` | `#9156B0` | nnn symlinks (`61`); was `nnn_symlink` |
+| `col_magenta` | `#C2077B` | nnn context 1 (`a2`); was `nnn_context1` |
+| `col_lime` | `#78CB03` | nnn context 3 (`4c`) and the man-page blink; was `nnn_context3`. Context 2 is palette slot 6 and context 4 is slot 7 |
+| `col_black` | `#000000` | palette slot 0; polybar transparent (alpha `00`) |
 
-### `#ECEFF4` light text (`col_light`, nord6)
-- **Used by:** terminal foreground and cursor (`Xresources:92,94`); palette slot 15; herbstluftwm window title colour (`hlwm/theme.autostart:49`); rofi text; bottom text, titles, graph and selected text; polybar `fg_white`, plus `fg_disabled` and `fg_monitor_empty` at alpha `33`; bash prompt foreground.
-- **Defined in:** `Xresources:7` (`nord6`), `Xresources:19` (`col_light`), *`Xresources:56`*, `Xresources:90` (palette slot 15); `hlwm/variables.autostart:11`; `cfg/rofi/custom.rasi:13`; `hlwm/polybar/scripts/colors_vscode_dark:16,19,21`; every bottom file: `cfg/bottom_bottom.toml:22,25,26,28,30`, `cfg/bottom_bottom-cpu.toml:4,7,8,10,12`, `cfg/bottom_bottom-memory.toml:7,10,11,13`, `cfg/bottom_bottom-network.toml:4,7,8,10`, `cfg/bottom_bottom-processes.toml:7,10,11,13`; `shellrc:66` (as `236;239;244`).
+The 256-colour overrides on project colours that are not palette slots are `col_green_256=28` (the TUI's fallback), `col_lime_256=76`, `col_violet_256=97` and `col_magenta_256=162` (nnn); the derived hexes are not exact xterm entries, so each keeps today's number. `col_red_256=1` and `col_purple_256=5` carry the palette slot numbers of the two project colours that are also slots. `colours.sh` also holds the `col_*_256` slot numbers of the other palette colours (section 3).
 
-### `#3E3E42` grey (`col_grey`)
-- **Used by:** herbstluftwm frame and window borders, window backgrounds and title backgrounds (`hlwm/theme.autostart:38-48`); the solid background shown on an unknown monitor set (`hlwm/scripts/background.sh:39`); rofi input bar; polybar `bg_light` (cpu, memory, network, keyboard and workspace modules) at alpha `CC`, and `bg_dark_translucent` (the bar itself) at alpha `55`; lemurs unfocused text and borders.
-- **Defined in:** `hlwm/variables.autostart:12`; `cfg/rofi/custom.rasi:12` (`col-grey`); `hlwm/polybar/scripts/colors_vscode_dark:7` (alpha `CC`), `:10` (alpha `55`); `lemurs:105,121,166,181,215,250,251,260,283,284,293`.
+## 3. Terminal palette (ANSI slots 0–15)
 
-### `#2E7D32` green (`col_green`, also `col_active`)
-- **Used by:** the active window and frame colour in herbstluftwm (`col_active`, `hlwm/theme.autostart:41,42`); polybar active workspace and the power-lock button; selected rows and highlighted borders in bottom; rofi prompt and selected row; focused borders in lemurs; the selection colour in the monitor TUI; the directory segment of the bash prompt.
-- **Defined in:** `Xresources:21`; `hlwm/variables.autostart:14` (and `:16`, `col_active=$col_green`); `cfg/rofi/custom.rasi:15`; `lemurs:262,295`; bottom, `highlighted_border_color` and `selected_bg_color` in each file: `cfg/bottom_bottom.toml:24,27`, `cfg/bottom_bottom-cpu.toml:6,9`, `cfg/bottom_bottom-memory.toml:9,12`, `cfg/bottom_bottom-network.toml:6,9`, `cfg/bottom_bottom-processes.toml:9,12`; `hlwm/scripts/monitor_tui.py:2042` (as `0x2E, 0x7D, 0x32`); `shellrc:55,67` (as `46;125;50`); *`Xresources:43`* (old palette slot 2).
-- Passed at runtime: `hlwm/startup.autostart:35` calls `panel.sh $col_active $col_purple`, `hlwm/scripts/panel.sh:71-72` exports them as `COLOUR_ACTIVE` and `COLOUR_URGENT`, and polybar reads them with `${env:COLOUR_ACTIVE}` (`colors_vscode_dark:4,11,14,22`). `hlwm/scripts/rule_hook.sh:43` does the same when panels restart.
+Live in `Xresources` as `*.color0`–`*.color15`, written as the `col_*` names. Everything that draws with ANSI colours in urxvt reads these: eza, bluetui, git, ls and nnn's palette-slot entries. Nano and a Linux console are not covered (see section 4).
 
-### `#7B1FA2` purple (`col_purple`)
-- **Used by:** herbstluftwm urgent window colour (`hlwm/theme.autostart:50,51`); polybar urgent workspace (`COLOUR_URGENT`); lemurs login background; rofi urgent text and urgent selected row; the clock segment of the bash prompt; **terminal palette slot 5** (so anything that asks for ANSI magenta/purple).
-- **Defined in:** `Xresources:20`, `Xresources:80` (palette slot 5), *`Xresources:46`*; `hlwm/variables.autostart:13`; `cfg/rofi/custom.rasi:17`; `lemurs:92`; `shellrc:60,72` (as `123;31;162`).
-
-### `#1565C0` blue (`col_blue`)
-- **Used by:** the border of the floating `wrapper` urxvt windows (nnn, bottom, monitor TUI) at `Xresources:132`.
-- **Defined in:** `Xresources:22`; `hlwm/variables.autostart:15` (defined there, not referenced).
-
-### `#D32F2F` red
-- **Used by:** the power-off button, low-battery text and the `bg_red`/`line_red` colours in polybar; bottom's average CPU, swap and transmit colours; error segment of the bash prompt; **terminal palette slot 1**.
-- **Defined in:** `hlwm/polybar/scripts/colors_vscode_dark:13,17,24`; `cfg/bottom_bottom.toml:31,35,38`, `cfg/bottom_bottom-cpu.toml:13`, `cfg/bottom_bottom-memory.toml:16`, `cfg/bottom_bottom-network.toml:13`; `Xresources:76` (slot 1), *`Xresources:42`*; `shellrc:15,61,73` (as `211;47;47`; line 15 is the man-page underline colour).
-
-### `#2D77CE` blue (the "chart blue")
-- **Used by:** bottom's RAM and receive colours; the git-branch segment of the bash prompt.
-- **Defined in:** `cfg/bottom_bottom.toml:34,37`, `cfg/bottom_bottom-memory.toml:15`, `cfg/bottom_bottom-network.toml:12`; `shellrc:53,64` (as `45;119;206`); *`Xresources:45`* (old palette slot 4); the `#2d77ce` shown in the old nnn colour table is gone from `hlwm/scripts/nnn-wrap.sh`.
-- This is **not** the live ANSI blue (see section 3).
-
-### `#1F88A2` cyan
-- **Used by:** the reverse-video highlight in coloured man pages; the prompt's cyan variables (`_bgcyan`, `_fgcyan`), which no prompt segment uses.
-- **Defined in:** `shellrc:14,52,63` (as `31;136;162`); *`Xresources:47`*.
-
-### `#3CA341` sea green
-- **Used by:** bottom's table headers in the combined layout; the `N<level>` (nested nnn) segment of the bash prompt.
-- **Defined in:** `cfg/bottom_bottom.toml:21`; `shellrc:56,68` (as `60;163;65`).
-
-### `#87D75F` light green
-- **Used by:** table headers in the separate bottom widgets (cpu, memory, network, processes).
-- **Defined in:** `cfg/bottom_bottom-cpu.toml:3`, `cfg/bottom_bottom-memory.toml:6`, `cfg/bottom_bottom-network.toml:3`, `cfg/bottom_bottom-processes.toml:6`; `cfg/rofi/custom.rasi:16` (`col-light-green`, never used in the theme).
-
-### `#FF9800` orange
-- **Used by:** the power-reboot button and `line_yellow` in polybar.
-- **Defined in:** `hlwm/polybar/scripts/colors_vscode_dark:12,23`.
-
-### `#2D2D30` dark grey
-- **Used by:** a rofi element background (`cfg/rofi/custom.rasi:99`); polybar `bg_med` (not referenced in `polybar.ini`).
-- **Defined in:** `cfg/rofi/custom.rasi:11` (`col-dark2`); `hlwm/polybar/scripts/colors_vscode_dark:8` (alpha `CC`).
-
-### `#333333`, `#777777`, `#999999` neutral greys
-- `#333333`: bash prompt grey segment (`shellrc:57,69` as `51;51;51`). Also the legacy polybar `colors:5` (alpha `CC`).
-- `#777777`: bottom's border colour in every bottom file (`cfg/bottom_bottom.toml:23`, `cfg/bottom_bottom-cpu.toml:5`, `cfg/bottom_bottom-memory.toml:8`, `cfg/bottom_bottom-network.toml:5`, `cfg/bottom_bottom-processes.toml:8`).
-- `#999999`: bash prompt light-grey text (`shellrc:58,71` as `153;153;153`); *`Xresources:48`* (old palette slot 7).
-
-### Transparent and alpha-only values
-- `#00000000` is used for transparent backgrounds and foregrounds in polybar (`colors_vscode_dark:9,20`: `bg_transparent`, `fg_transparent`).
-- `#11111177` (`RRGGBBAA`) is the active frame background in herbstluftwm: `hlwm/theme.autostart:37`.
-- herbstluftwm builds its other values by appending alpha to a variable, for example `${col_grey}cc`, `${col_active}dd`, `${col_purple}ff` (`hlwm/theme.autostart:38-51`).
-- Polybar's other values are `#CC3e3e42`, `#CC2d2d30`, `#CC252526`, `#553e3e42` (bar background), `#33ECEFF4` and `#77D8DEE9` (disabled and label text); the last pair is `#ECEFF4` / `#D8DEE9` at partial alpha. All in `hlwm/polybar/scripts/colors_vscode_dark:6-10,16-21`.
-
-## 3. Terminal palette (ANSI slots 0-15)
-
-Live in `Xresources:75-90`. Everything that draws with ANSI colours in urxvt (eza, bluetui, git, ls, nnn, nano, bat when not truecolor) reads these.
-
-| Slot | Role | Hex | Taken from |
+| Slot | Name | Hex | Note |
 |---|---|---|---|
-| 0 | black | `#000000` | VS Code Dark+ |
-| 1 | red | `#d32f2f` | project (`#D32F2F`) |
-| 2 | green | `#0dbc79` | VS Code Dark+ |
-| 3 | yellow | `#e5e510` | VS Code Dark+ |
-| 4 | blue | `#2472c8` | VS Code Dark+ |
-| 5 | purple | `#7b1fa2` | project (`#7B1FA2`) |
-| 6 | cyan | `#11a8cd` | VS Code Dark+ |
-| 7 | white | `#e5e5e5` | VS Code Dark+ |
-| 8 | bright black | `#666666` | VS Code Dark+ |
-| 9 | bright red | `#ef5350` | lightened from `#d32f2f` |
-| 10 | bright green | `#66bb6a` | lightened from `#2E7D32` |
-| 11 | bright yellow | `#f5f543` | VS Code Dark+ |
-| 12 | bright blue | `#3b8eea` | VS Code Dark+ |
-| 13 | bright purple | `#d670d6` | VS Code Dark+ |
-| 14 | bright cyan | `#29b8db` | VS Code Dark+ |
-| 15 | bright white | `#eceff4` | project (`col_light`) |
+| 0 | `col_black` | `#000000` | |
+| 1 | `col_red` | `#C5292C` | the project red (`col_red`); `col_red_256=1` |
+| 2 | `col_emerald` | `#12D17B` | nnn executables |
+| 3 | `col_yellow` | `#E6E510` | nnn fifos |
+| 4 | `col_blue` | `#286ECC` | nnn directories; bottom RAM and receive; prompt git-branch segment; urxvt wrapper window border; wallpaper on a monitor with none |
+| 5 | `col_purple` | `#7A259F` | the project purple (`col_purple`); `col_purple_256=5` |
+| 6 | `col_cyan` | `#1FB7D0` | nnn hard links; nnn context 2; man-page reverse video |
+| 7 | `col_light` | `#EAEAEA` | same colour as slot 15; nnn block devices, regular files and context 4 read `col_light` (its slot number is 15) |
+| 8 | `col_bright_black` | `#666666` | |
+| 9 | `col_bright_red` | `#FC5550` | nnn orphaned symlinks |
+| 10 | `col_bright_green` | `#69C26F` | bottom table headers; prompt nested-nnn level |
+| 11 | `col_bright_yellow` | `#F5F541` | nnn character devices |
+| 12 | `col_bright_blue` | `#4489E9` | |
+| 13 | `col_bright_purple` | `#DE70DC` | nnn sockets |
+| 14 | `col_bright_cyan` | `#1DB5DF` | |
+| 15 | `col_light` | `#EAEAEA` | `col_light_256=15`; terminal foreground and cursor |
 
-Alternatives kept as comments: the nord set (`Xresources:24-39`, built from the `nord0`-`nord15` defines at `:1-16`), the project-only set (`Xresources:41-56`) and full VS Code Dark+ (`Xresources:58-73`). The same VS Code values are also the reference for VS Code's own terminal.
+Each carries its slot number as a `_256` override (`col_blue_256=4`), which `nnn-wrap.sh` uses. The terminal background (`col_dark`) differs from slot 0.
 
-## 4. nnn
+## 4. Defined outside `colours.sh`
 
-`hlwm/scripts/nnn-wrap.sh:12-17`. Entries are palette slots unless marked.
+All of these are unused, not hex, or intentionally left:
 
-| File type | Value | Colour |
-|---|---|---|
-| directory | `04` | slot 4, `#2472c8` |
-| executable | `02` | slot 2, `#0dbc79` |
-| regular file | `07` | slot 7, `#e5e5e5` |
-| hard link | `06` | slot 6, `#11a8cd` |
-| symlink | `61` (256-colour) | `#875faf` |
-| missing / file details | `F7` (256-colour) | `#9e9e9e` |
-| block device | `07` | slot 7 |
-| char device | `0b` | slot 11, `#f5f543` |
-| orphaned symlink | `09` | slot 9, `#ef5350` |
-| fifo | `03` | slot 3, `#e5e510` |
-| socket | `0D` | slot 13, `#d670d6` |
-| unknown | `00` | no colour (terminal default text) |
-| contexts 1-4 (`NNN_COLORS="#a21f4c07"`, line 17) | `a2` `1f` `4c` `07` | 256-colour `#af0087`, `#0087af`, `#5fd700`; slot 7 |
+- **polybar:** `bg_med`, `line_yellow` and `line_red` in `hlwm/polybar/scripts/colors_vscode_dark` (unused; `line_red` is only in a commented-out line).
+- **Xresources:** the `nord0`–`nord15` defines and three commented-out palettes (nord, a project-only set and full VS Code Dark+).
+- **lemurs:** the named colours `white`, `red`, `gray` and `dark gray`, plus `#87CEEB` in a comment. They resolve through the Linux console palette, which neither `colours.sh` nor Xresources controls.
+- **picom:** the black shadow colour in `compton.conf`.
+- **nano:** `cfg/nano_nanorc` and `symlinks/root_.nanorc` use named colours; real nano is not used, so they are not migrated.
+- **Legacy files:** `hlwm/autostart-3monitors` (an old autostart with its own colour table), `hlwm/autostart.bak*` and `autostart.orig-bak`, the polybar files `colors` and `colors_nord` (not included by `polybar.ini`), and `hlwm/12palette`, an unrelated chart stylesheet.
 
-nnn's own background is `nnn*background: [95]col_dark` (`Xresources:125`).
+## 5. Near-duplicates, for the later consolidation
 
-## 5. Per-program map
+The hexes in this section are the values at the time of each merge, before the colours became derived from the nine bases on 2026-10-17 (see `base_set.md`). The consolidation is closed.
 
-| Program | Config | Where its colours come from |
-|---|---|---|
-| urxvt | `Xresources` | slots 0-15 (`:75-90`), foreground/background/cursor (`:92-94`), per-window backgrounds (`:105,125,128,131`), wrapper border (`:132`) |
-| herbstluftwm | `hlwm/theme.autostart:37-51` | `hlwm/variables.autostart:10-16`; literal `#11111177` at `theme.autostart:37` |
-| polybar | `hlwm/polybar/polybar.ini` | `include-file = scripts/colors_vscode_dark` (`polybar.ini:1`); active/urgent from env set in `hlwm/scripts/panel.sh:71-72` |
-| background (feh) | `hlwm/scripts/background.sh:39` | `col_blue` on a monitor that is not the panel and not listed in `MONITORS` (the wrapper border blue); the others use the wallpaper |
-| rofi | `cfg/rofi/custom.rasi` | its own variables (`:10-17`); `config.rasi:1` selects the theme |
-| bottom (btm) | `cfg/bottom_bottom.toml` and four widget files | hex in each file; `cfg/bottom_bottom-defaults.toml` is all comments |
-| lemurs | `lemurs` | hex plus the named colours `white`, `red`, `gray`, `dark gray` (`:95,185,204,208,219,230,235,254,255,287,288`) |
-| bash prompt, coloured man pages | `shellrc:52-73` (prompt), `:12-15` (man) | truecolor escapes; `:12` uses ANSI bold red (slot 1) |
-| monitor TUI | `hlwm/scripts/monitor_tui.py:2040-2084` | exact green via a redefined colour slot 200 (`SELECT_RGB`, falls back to 256-colour 28), grey 245, dimmed text 248, highlight foreground 231 |
-| nano | `cfg/nano_nanorc:213-217` | named colours `lightwhite`, `grey`, `white`, `red`, `black`, `lightyellow`, `magenta` |
-| bat | `shellrc/.shellrc_aliases:45` | theme name `Monokai Extended Origin` (built-in, not in the repo) |
-| compton / picom | `cfg/compton.conf:15-17` | shadow colour `0.0 0.0 0.0` (black) |
-| eza, bluetui, git, ls | none | terminal palette (section 3) |
-| micro | `cfg/micro_config.json` | no colourscheme set; micro's default |
-
-## 6. Other colour values
-
-- **Nord palette, kept for reference:** `#2E3440 #3B4252 #434C5E #4C566A #D8DEE9 #E5E9F0 #ECEFF4 #8FBCBB #88C0D0 #81A1C1 #5E81AC #BF616A #D08770 #EBCB8B #A3BE8C #B48EAD`. Defined as `nord0`-`nord15` at `Xresources:1-16` and used in comments at `Xresources:24-39`. Eight of them are also bottom's CPU core colours (`#5e81ac #81a1c1 #d8dee9 #b48ead #a3be8c #ebcb8b #d08770 #bf616a`): `cfg/bottom_bottom.toml:32`, `cfg/bottom_bottom-cpu.toml:14`.
-- **Bottom's own colour comment:** `cfg/bottom_bottom.toml:5-16` lists a reference table (cyan, blue, green, sea green, grey, purple, magenta, orange, red, yellow `FFFF5F`, black, white). It is documentation only.
-- **Lemurs example:** `lemurs:22` mentions `#87CEEB` in a comment.
-
-## 7. Where the same colour is defined in several places
-
-- **Green `#2E7D32`:** 8 hex definition sites (Xresources, herbstluftwm variables, rofi, lemurs, six bottom files), plus two other spellings of the same colour (`46;125;50` in the prompt, `0x2E, 0x7D, 0x32` in the monitor TUI).
-- **Light text `#ECEFF4`:** repeated in every bottom file (about 22 lines), polybar, rofi, herbstluftwm and Xresources.
-- **Grey `#3E3E42`:** lemurs repeats it 11 times; also in herbstluftwm, rofi and polybar.
-- **Blues:** four blues are in use for similar jobs: `#1565C0` (wrapper border), `#2D77CE` (bottom, prompt), `#2472c8` (terminal slot 4, so nnn directories, eza directories, bluetui), `#3b8eea` (slot 12).
-- **Greys:** `#3E3E42`, `#333333` (prompt), `#777777` (bottom borders), `#999999` (prompt text), `#666666` (palette slot 8).
-- **Greens:** `#2E7D32` (UI), `#0dbc79` (slot 2, so nnn executables), `#3CA341`, `#87D75F` (bottom headers), `#66bb6a` (slot 10).
-- **Dark background `#252526`** is the terminal background but terminal slot 0 is `#000000`, so ANSI black and the background differ.
-- **Defined but not referenced by any live file:** herbstluftwm `col_dark` and `col_blue`; rofi `col-light-green`; polybar `bg_med`; the whole `nord0`-`nord15` block.
-
-## 8. Legacy and unused files
-
-- `hlwm/polybar/scripts/colors` and `colors_nord`: polybar colour files not included by `polybar.ini` (only `colors_vscode_dark` is). `colors_nord` is the nord set at alpha `CC`; `colors` is a grey/orange/red set.
-- `hlwm/autostart-3monitors`, `hlwm/autostart.bak*`, `hlwm/autostart.orig-bak`: old herbstluftwm autostart variants with their own colour tables (`col_dark4`-`col_purple` at `autostart-3monitors:27-51`, `#11111177` at `:197`).
-- `hlwm/12palette`: a stylesheet of unrelated chart colours (`.generation`, `.coal`, `.solar`...). It is not referenced anywhere and does not look like part of this setup.
+- **Blues:** merged 2026-10-16: `col_chartblue` is gone and its uses (bottom RAM and receive, prompt git-branch segment) read `col_blue` `#2472C8`. Also merged 2026-10-16: `col_blue` into `col_blue` (wrapper border and the no-wallpaper background). Left: `col_blue` and `col_bright_blue` `#3B8EEA`.
+- **Greys:** merged 2026-10-16: `col_grey_dark` into `col_grey`; `col_grey_mid`, `tui_grey`, `tui_dimmed` and `nnn_details` into `col_grey_light` at `#9E9E9E` (xterm 247, so the monitor TUI art moved from 245 and its dimmed text from 248 to 247, bottom borders and the prompt success symbol got lighter). Left: `col_dark2`, `col_grey`, `col_grey_light`, `tui_white`, and the palette slots `col_white` and `col_bright_black`.
+- **Greens:** merged 2026-10-16: `col_seagreen` and `col_lightgreen` are gone and their uses (bottom table headers, prompt nested-nnn level) read `col_bright_green` `#66BB6A`. Left: `col_green` `#2E7D32` (project green) and `col_emerald` `#0DBC79` (slot 2), the latter for the palette work.
+- **Whites:** merged 2026-10-16: `col_nord4` into `col_light` `#ECEFF4`. The palette's slot 7 and slot 15 whites (`ansi_white`, `ansi_bright_white`) were first made references to `col_light`, then folded into it (`col_light_256=15`; slots 7 and 15 are the same hex). The TUI's `tui_white` `#FFFFFF` (exact 231) was renamed `col_white`, the freed name.
+- **Cyans:** merged 2026-10-16: the old project `col_cyan` (`#1F88A2`) and `nnn_context2` (`#0087AF`) into the palette cyan, now `col_cyan` `#11A8CD`. nnn context 2 uses palette slot 6 instead of 256-colour 31. Left: `col_bright_cyan` `#29B8DB`.
+- **Lime:** merged 2026-10-16: the old `col_lime` (`#00FF00`) into `nnn_context3` `#5FD700` (xterm 76), which was then renamed `col_lime`; the man-page blink is softer than before. `nnn_symlink` became `col_violet` and `nnn_context1` `col_magenta` in the same rename, so every colour now has a `col_` name.

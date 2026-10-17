@@ -1,0 +1,152 @@
+#!/bin/sh
+
+# usage: colours-derive [--check]
+# computes every derived colour from the bases and rules in colours.rules.sh and writes colours.g.sh next to it
+# --check writes nothing and exits 1 if colours.g.sh is not what the bases and rules give
+
+dir=$(cd "$(dirname "$0")" && pwd)
+out="$dir/colours.g.sh"
+
+check=
+case ${1-} in
+	'') ;;
+	--check) check=1 ;;
+	*) echo "usage: colours-derive [--check]" >&2; exit 2 ;;
+esac
+
+. "$dir/colours.rules.sh"
+
+input=
+while read -r name base modifier step; do
+	[ -n "$name" ] || continue
+	case $base in
+		''|*[!A-Za-z0-9_]*) echo "colours-derive: bad base name '$base' for $name" >&2; exit 1 ;;
+	esac
+	eval "value=\${$base-}"
+	if [ -z "$value" ]; then
+		echo "colours-derive: $name uses unknown base '$base'" >&2
+		exit 1
+	fi
+	input="$input$name $value $modifier $step
+"
+done <<EOT
+$colour_rules
+EOT
+
+body=$(printf '%s' "$input" | awk '
+function hex2(s) { return (index("0123456789abcdef", tolower(substr(s, 1, 1))) - 1) * 16 + index("0123456789abcdef", tolower(substr(s, 2, 1))) - 1 }
+function lin(c) { return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ^ 2.4 }
+function enc(c) { return c <= 0.0031308 ? c * 12.92 : 1.055 * (c ^ (1 / 2.4)) - 0.055 }
+function cbrt(x) { return x < 0 ? -((-x) ^ (1 / 3)) : x ^ (1 / 3) }
+function byte(v) { v = int(v + 0.5); return v < 0 ? 0 : v > 255 ? 255 : v }
+function fail(msg) { print "colours-derive: " msg > "/dev/stderr"; failed = 1; exit 1 }
+
+# OKLab (Ottosson): sRGB bytes to OL, OA, OB
+function to_oklab(r, g, b,   l, m, s) {
+	r = lin(r / 255); g = lin(g / 255); b = lin(b / 255)
+	l = cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
+	m = cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
+	s = cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
+	OL = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s
+	OA = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s
+	OB = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
+}
+
+# OKLab to linear sRGB in LR, LG, LB
+function from_oklab(L, a, b,   l, m, s) {
+	l = L + 0.3963377774 * a + 0.2158037573 * b
+	m = L - 0.1055613458 * a - 0.0638541728 * b
+	s = L - 0.0894841775 * a - 1.2914855480 * b
+	l = l * l * l; m = m * m * m; s = s * s * s
+	LR = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s
+	LG = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s
+	LB = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+}
+
+function in_gamut() {
+	return LR >= -0.001 && LR <= 1.001 && LG >= -0.001 && LG <= 1.001 && LB >= -0.001 && LB <= 1.001
+}
+function clamp255(v) { return v < 0 ? 0 : v > 255 ? 255 : v }
+
+# lightness, chroma and hue in degrees to sRGB in R, G, B (0 to 255, not rounded); chroma is multiplied by 0.93 until the colour fits sRGB
+function from_lch(L, C, h,   hr) {
+	hr = h * PI / 180
+	for (;;) {
+		from_oklab(L, C * cos(hr), C * sin(hr))
+		if (in_gamut() || C < 0.0001) break
+		C *= 0.93
+	}
+	R = clamp255(255 * enc(LR < 0 ? 0 : LR)); G = clamp255(255 * enc(LG < 0 ? 0 : LG)); B = clamp255(255 * enc(LB < 0 ? 0 : LB))
+}
+
+# the hue turned by amount degrees in the direction of target, the shorter way round
+function toward(h, target, amount,   d) {
+	d = target - h
+	while (d > 180) d -= 360
+	while (d < -180) d += 360
+	return d < 0 ? h - amount : h + amount
+}
+
+BEGIN {
+	PI = atan2(0, -1)
+	n = split("light dark soft hard pale shade muted warm cool", chains, " ")
+}
+
+{
+	name = $1
+	if (substr($2, 1, 1) == "#") {
+		bh = substr($2, 2)
+		R = hex2(substr(bh, 1, 2)); G = hex2(substr(bh, 3, 2)); B = hex2(substr(bh, 5, 2))
+		to_oklab(R, G, B); L = OL; C = sqrt(OA * OA + OB * OB); h = atan2(OB, OA) * 180 / PI
+		mod = $3; step = $4
+	} else if ($2 == "oklch") {
+		L = $3; C = $4; h = $5
+		from_lch(L, C, h)
+		mod = $6; step = $7
+	} else fail(name ": unreadable base \"" $2 "\"")
+	if (step !~ /^[0-9.]+$/) fail(name ": bad step \"" step "\"")
+	chain = ""; level = 0
+	for (i = 1; i <= n; i++) {
+		c = chains[i]; e = c ~ /e$/
+		if (mod == c) { chain = c; level = 1 }
+		else if (mod == c (e ? "r" : "er")) { chain = c; level = 2 }
+		else if (mod == c (e ? "st" : "est")) { chain = c; level = 3 }
+	}
+	if (mod == "same") { chain = "same"; level = 1 }
+	if (chain == "") fail(name ": unknown modifier \"" mod "\"")
+	if (name in seen) fail(name ": defined by two rules")
+	seen[name] = 1
+	t = level * step
+	if (chain == "same") { }
+	else if (chain == "pale") { R += (255 - R) * t; G += (255 - G) * t; B += (255 - B) * t }
+	else if (chain == "shade") { R *= 1 - t; G *= 1 - t; B *= 1 - t }
+	else if (chain == "muted") {
+		y = 0.2126 * R + 0.7152 * G + 0.0722 * B
+		R += (y - R) * t; G += (y - G) * t; B += (y - B) * t
+	} else {
+		if (chain == "light") L = L + (1 - L) * t
+		else if (chain == "dark") L = L * (1 - t)
+		else if (chain == "soft") C = C * (1 - t)
+		else if (chain == "hard") C = C * (1 + t)
+		else if (chain == "warm") h = toward(h, 60, t)
+		else if (chain == "cool") h = toward(h, 230, t)
+		from_lch(L, C, h)
+	}
+	printf "%s=#%02X%02X%02X\n", name, byte(R), byte(G), byte(B)
+}
+') || exit 1
+
+new="# GENERATED by setup/colours-derive from the bases and rules in colours.rules.sh. DO NOT EDIT: changes are overwritten.
+# Regenerate with setup/colours-derive; setup/colours-derive --check fails if this file is out of date.
+$body"
+
+if [ -n "$check" ]; then
+	if [ "$(cat "$out" 2>/dev/null)" != "$new" ]; then
+		echo "colours-derive: $out is out of date, run setup/colours-derive" >&2
+		exit 1
+	fi
+	exit 0
+fi
+
+rm -f "$out"
+printf '%s\n' "$new" > "$out" && chmod a-w "$out"

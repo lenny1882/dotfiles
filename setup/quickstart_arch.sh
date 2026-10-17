@@ -345,7 +345,14 @@ step_display_manager() {
 		*) return ;;
 	esac
 	beginOutput
-	{ installer "$svc"; systemctl enable "$svc.service"; } 2>&1 | pinnedOutput "$C_DIM"
+	{
+		installer "$svc"
+		if [[ $svc == lemurs ]]; then
+			local out="$SCRIPT_DIR/../symlinks/etc_lemurs_config.toml"
+			"$SCRIPT_DIR/colours-gen" lemurs > "$out.new" && mv "$out.new" "$out" || rm -f "$out.new"
+		fi
+		systemctl enable "$svc.service"
+	} 2>&1 | pinnedOutput "$C_DIM"
 }
 
 step_firewall() {
