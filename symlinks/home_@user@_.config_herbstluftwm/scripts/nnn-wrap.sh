@@ -31,5 +31,14 @@ export VISUAL=micro
 stty start undef
 stty stop under
 
+# a folder passed in (from the desktop entry) opens in the first inactive context, beside the session's:
+# a session load ignores the path argument, so a startup plugin (-P) writes it to nnn's plugin pipe
+startup_plugin=
+if [ -n "$1" ]; then
+    export NNN_OPEN_DIR=$(realpath -- "$1")
+    export NNN_PLUG="$NNN_PLUG"';o:!printf "+c%s" "$NNN_OPEN_DIR" > "$NNN_PIPE"*'
+    startup_plugin="-P o"
+fi
+
 # nnn -deioQRUx -F 0 $*
-"$(dirname "$0")/pty_inset.py" nnn -deiHoQRUx -F 0 -s startup $*
+"$(dirname "$0")/pty_inset.py" nnn -deiHoQRUx -F 0 -s startup $startup_plugin

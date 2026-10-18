@@ -90,16 +90,17 @@ Not covered: the large scripts (`monitor_tui.py`, `monitor_reconcile.sh`, the re
 
 Weighting: effort 3, blast radius 2, improvement 2, priority 0.40.
 
-Every program that opens a file explorer currently uses its own. Find how to make nnn the default for everything.
+Folders opened from GUI programs now go to nnn. File open and save dialogs do not, and are what is left.
 
-Current state:
-- `inode/directory` already resolves to `nnn.desktop` (checked with `xdg-mime query default`), and `~/.config/mimeapps.list` has no directory entry, so the default comes from the `.desktop` files.
-- Which programs still open their own explorer has not been checked.
+Done:
+- No other file manager is installed, so `inode/directory` resolves to `nnn.desktop` only. The package's entry ran plain `nnn`, and `xdg-open` ignores `Terminal=true`, so a GUI program's "open folder" ran nnn with no terminal (`xdg-open /tmp` printed `0 entries` and opened nothing).
+- `symlinks/home_@user@_.local_share_applications_nnn.desktop` overrides it: `Exec=urxvt -name wrapper -e …/nnn-wrap.sh %f`, `Terminal=false`. Checked live: `xdg-open /tmp` opens a styled nnn window. The path is hardcoded to `/home/lenny`, as `home_@user@_.fehbg` is.
+- A session load ignores the `PATH` argument, so `nnn-wrap.sh`, given a folder, starts nnn with `-s startup -P o`, where `o` is an inline `NNN_PLUG` command writing `+c<folder>` to nnn's plugin pipe (`+` is the first inactive context after the current one). Checked live: the folder opens in context 5 and nnn switches to it. Contexts 1 to 4 still hold the session. The plugins folder must be a working link (`~/.config/nnn/plugins` to `/usr/share/nnn/plugins`, see the "nnn plugins" quickstart step); a dangling link made the plugin fail with "no such file or directory".
 
-Places to look (not checked):
-- programs that ignore the mime default and run their own explorer or call one directly
-- file open/save dialogs in GTK and Qt programs, which are not file-explorer launches and may need separate handling
-- how nnn is launched from a gui program, since it is a terminal program and `nnn.desktop` would need a terminal
+Left, the file open and save dialogs:
+- VS Code's "Open Folder" is a `GtkFileChooserDialog` served by `xdg-desktop-portal-gtk` (window class `xdg-desktop-portal-gtk`), so replacing it means replacing the portal's FileChooser backend, not a launcher. No new package wanted.
+- nnn documents only `-p` (picker option) and browser recipes, nothing for portals: a user-written `kdialog` stand-in for Chromium (`XDG_CURRENT_DESKTOP=KDE`), and a pointer to the third-party `xdg-desktop-portal-termfilechooser` for Firefox. Its `contrib/nnn-wrapper.sh` shows the mechanics: open file `nnn -p OUT START`; open folder via `NNN_TMPFILE` (go into the folder, quit; nnn writes `cd '/path'`); save via a placeholder file you rename in nnn.
+- Options: a `kdialog` stand-in for Vivaldi only (no new package, does not cover VS Code, which uses the GTK portal; that last part is unverified); a small own portal backend (D-Bus service implementing the FileChooser interface, Python with the installed `gi`/`dbus`; folder and save mechanics as above); or leave the dialogs as GTK. Not decided.
 
 ## Remove unused network managers
 
