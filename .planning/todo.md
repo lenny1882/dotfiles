@@ -18,16 +18,15 @@ Each section carries a `Weighting:` line under its heading with the same numbers
 |---|------|--------|-------|-------------|----------|
 | 1 | Backups | 4 | 1 | 5 | 1.00 |
 | 2 | Automount removable drives on plug-in | 3 | 2 | 4 | 0.80 |
-| 3 | Keybinding cheat-sheet | 2 | 1 | 2 | 0.67 |
-| 4 | Clipboard history | 2 | 1 | 2 | 0.67 |
-| 5 | Repo cleanup | 2 | 2 | 2 | 0.50 |
-| 6 | Quickstart steps for makepkg and the power group | 2 | 2 | 2 | 0.50 |
-| 7 | Skip machine-specific symlinks | 3 | 3 | 3 | 0.50 |
-| 8 | nnn as the default file explorer | 3 | 2 | 2 | 0.40 |
-| 9 | Remove unused network managers | 1 | 2 | 1 | 0.33 |
-| 10 | System theme changer in the tui | 5 | 4 | 3 | 0.33 |
-| 11 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
-| 12 | Lock screen look | 4 | 3 | 2 | 0.29 |
+| 3 | Clipboard history | 2 | 1 | 2 | 0.67 |
+| 4 | Repo cleanup | 2 | 2 | 2 | 0.50 |
+| 5 | Quickstart steps for makepkg and the power group | 2 | 2 | 2 | 0.50 |
+| 6 | Skip machine-specific symlinks | 3 | 3 | 3 | 0.50 |
+| 7 | nnn as the default file explorer | 3 | 2 | 2 | 0.40 |
+| 8 | Remove unused network managers | 1 | 2 | 1 | 0.33 |
+| 9 | System theme changer in the tui | 5 | 4 | 3 | 0.33 |
+| 10 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
+| 11 | Lock screen look | 4 | 3 | 2 | 0.29 |
 
 ## Backups
 
@@ -67,21 +66,6 @@ Options:
 - Custom udev rule plus a systemd mount unit: the most manual, and the most control over where and how drives mount.
 
 To decide: where drives should mount (`/run/media/$USER` is the udisks2 default), whether phones (mtp) are included, and whether a notification is wanted on mount.
-
-## Keybinding cheat-sheet
-
-Weighting: effort 2, blast radius 1, improvement 2, priority 0.67.
-
-A popup that lists the herbstluftwm keybinds so one can be looked up without opening the files.
-
-Current state:
-- Binds are defined in `keybindings.autostart` (36 `keybind` lines) and `shortcuts.autostart` (19). Counts are of lines containing `keybind`, not checked for comments or duplicates.
-- No existing cheat-sheet or bind-listing script was found in `scripts/`.
-- `rofi` is installed and configured (`config.rasi`, `custom.rasi`), with a `scripts/rofi-wrap.sh` wrapper.
-
-Not decided or checked:
-- whether to build the list from the live bindings (`herbstclient list_keybinds`) or from the autostart files; the files carry comments, the live list does not
-- whether the nnn and micro bindings are included, or only herbstluftwm
 
 ## Clipboard history
 

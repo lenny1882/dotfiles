@@ -14,6 +14,9 @@ hc keybind $ModSup-Control-space spawn $SCRIPTS_DIR/rofi-wrap.sh -show run -modi
 hc keybind $ModSup-Tab spawn $SCRIPTS_DIR/rofi-wrap.sh -show window -modi drun,run,window,calc -show-icons -sidebar-mode
 hc keybind $ModSup-c spawn $SCRIPTS_DIR/rofi-wrap.sh -show calc -modi drun,run,window,calc -show-icons -sidebar-mode
 
+# keybinds
+hc keybind $ModPri-Shift-slash spawn $SCRIPTS_DIR/keybinds.sh
+
 # screenshots
 hc keybind $ModSup-s spawn $SCRIPTS_DIR/screenshot.sh select-clip
 hc keybind $ModSup-Shift-s spawn $SCRIPTS_DIR/screenshot.sh select
