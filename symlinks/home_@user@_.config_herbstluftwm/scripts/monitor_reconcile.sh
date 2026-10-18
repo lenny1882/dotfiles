@@ -289,7 +289,7 @@ run() {
 stored_layout() {
     [[ -n $DRY_RUN ]] && return 0
     hc attr "$ATTR" >/dev/null 2>&1 || hc new_attr string "$ATTR" >/dev/null 2>&1
-    hc get "$ATTR" 2>/dev/null
+    hc get_attr "$ATTR" 2>/dev/null
 }
 
 reconcile() {

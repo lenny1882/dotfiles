@@ -16,37 +16,19 @@ Each section carries a `Weighting:` line under its heading with the same numbers
 
 | # | Item | Effort | Blast | Improvement | Priority |
 |---|------|--------|-------|-------------|----------|
-| 1 | Polybar update counter resets to `? \| ?` | 2 | 1 | 3 | 1.00 |
-| 2 | Backups | 4 | 1 | 5 | 1.00 |
-| 3 | Automount removable drives on plug-in | 3 | 2 | 4 | 0.80 |
-| 4 | Picom config | 2 | 2 | 3 | 0.75 |
-| 5 | Keybinding cheat-sheet | 2 | 1 | 2 | 0.67 |
-| 6 | Clipboard history | 2 | 1 | 2 | 0.67 |
-| 7 | Repo cleanup | 2 | 2 | 2 | 0.50 |
-| 8 | Quickstart steps for makepkg and the power group | 2 | 2 | 2 | 0.50 |
-| 9 | Skip machine-specific symlinks | 3 | 3 | 3 | 0.50 |
-| 10 | nnn as the default file explorer | 3 | 2 | 2 | 0.40 |
-| 11 | Remove unused network managers | 1 | 2 | 1 | 0.33 |
-| 12 | System theme changer in the tui | 5 | 4 | 3 | 0.33 |
-| 13 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
-| 14 | Lock screen look | 4 | 3 | 2 | 0.29 |
-
-## Polybar update counter resets to `? | ?`
-
-Weighting: effort 2, blast radius 1, improvement 3, priority 1.00.
-
-When polybar restarts, the update counter (`ups`) shows `? | ?` and stays that way. It happens on locking and unlocking with physlock (polybar visibly refreshes itself) and on reloading herbstluftwm. No polling wanted: the count queries aur (`yay -Qua`) as well as `checkupdates`, which is an unnecessary load. The aim is to find why the update does not run after a restart.
-
-Found (read from the config, not run):
-- `ups` is a `custom/ipc` module (`polybar.ini`) with `initial = 2`, so it starts on `hook-1` (`? | ?`) and only changes when something sends `polybar-msg action ups hook 0` (`hook-0` runs `checkupdates | wc -l` and `yay -Qua | wc -l`).
-- Senders of that message:
-  - right-click on the `upl` icon
-  - the pacman hook `package-changes.hook`, which emits herbstluftwm hook `ipc`, handled in `scripts/rule_hook.sh`
-  - `scripts/panel.sh`, once at the end
-- In `panel.sh` that last send is guarded by `hc silent new_attr bool my_not_first_autostart_panel`, which succeeds only the first time the attribute is created in a herbstluftwm session. Every later run of `panel.sh` (it kills and restarts polybar) skips the send. That fits the symptom: any restart after the first leaves `? | ?`. Not confirmed by running it.
-- `panel.sh` is run from `startup.autostart` and from `rule_hook.sh` (line 47). Which hook triggers it on lock/unlock is not known; it may be a monitor event (`monitors_changed` runs `monitor_reconcile.sh`), not checked.
-
-Not decided: how to show a count after a restart without polling aur. Ideas to consider are caching the last result in a file and showing it on restart, or sending the hook only when the cache is missing or old.
+| 1 | Backups | 4 | 1 | 5 | 1.00 |
+| 2 | Automount removable drives on plug-in | 3 | 2 | 4 | 0.80 |
+| 3 | Picom config | 2 | 2 | 3 | 0.75 |
+| 4 | Keybinding cheat-sheet | 2 | 1 | 2 | 0.67 |
+| 5 | Clipboard history | 2 | 1 | 2 | 0.67 |
+| 6 | Repo cleanup | 2 | 2 | 2 | 0.50 |
+| 7 | Quickstart steps for makepkg and the power group | 2 | 2 | 2 | 0.50 |
+| 8 | Skip machine-specific symlinks | 3 | 3 | 3 | 0.50 |
+| 9 | nnn as the default file explorer | 3 | 2 | 2 | 0.40 |
+| 10 | Remove unused network managers | 1 | 2 | 1 | 0.33 |
+| 11 | System theme changer in the tui | 5 | 4 | 3 | 0.33 |
+| 12 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
+| 13 | Lock screen look | 4 | 3 | 2 | 0.29 |
 
 ## Backups
 
@@ -144,6 +126,8 @@ Findings from a read-only pass over the tracked files. "Referenced" means the fi
 ### Smaller items
 - Two nano configs, `root_.nanorc` and `home_@user@_.config_nano_nanorc`, alongside micro. Which editors are in use was not checked.
 - `etc_pacman.d_hooks_expressvpn.hook` has the header comment `# /etc/pacman.d/hooks/clean-cache.hook`; a copy-paste slip, the hook itself is fine.
+- `monitor_check.sh` has one failing check, "background: the solid image" (it fails the same way without the reconcile fix); likely a stale expected colour after the Colours renames. Not looked into.
+- Polybar `ups` still shows `? | ?` after any restart of the panel that is not a lock: a real monitor layout change, a herbstluftwm reload, or a `polybar.ini` save (polybar's own `--reload`). `panel.sh` skips the `hook 0` send after its first run (`my_not_first_autostart_panel`), and a polybar reload never runs `panel.sh`. Lock/unlock no longer restarts it since the `get_attr` fix in `monitor_reconcile.sh`. Left as is: these restarts are rare and a count refresh means querying aur.
 
 ### Simplify (judgment calls, not read in depth)
 - `setup/notes.txt`: the numlock, xsession and swap sections are now done by `startup.autostart`, `config_links.sh` and the swappiness symlink, so they could go.
