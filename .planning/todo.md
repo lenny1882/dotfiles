@@ -79,21 +79,11 @@ Weighting: effort 2, blast radius 2, improvement 2, priority 0.50.
 
 Findings from a read-only pass over the tracked files. "Referenced" means the file name appears in another tracked file outside `.planning/` and the backups; nothing was run. Git history keeps anything deleted.
 
-### `setup/disable_ipv6.sh`
-- Nothing calls it, and ipv6 is currently on (`/proc/sys/net/ipv6/conf/all/disable_ipv6` is 0). Either wire it into the quickstart or delete it.
-
-### nnn
-- `symlinks/home_@user@_.config_nnn_plugins` holds 55 files, but `NNN_PLUG` in `scripts/nnn-wrap.sh` binds only three (`fzopen`, `dragdrop`, `xdgdefault`). The rest look like the upstream plugin set, including `*-mac` ones and ones for programs that may not be installed (`kdeconnect`, `mocq`, `cmusq`). Plugins can be run other ways, so unused is not certain. They could be fetched at install time with the `getplugs` plugin instead of tracked.
-- `symlinks/home_@user@_.config_nnn_sessions_startup` is a binary nnn session file holding machine paths: state, not config.
-
 ### Smaller items
-- Two nano configs, `root_.nanorc` and `home_@user@_.config_nano_nanorc`, alongside micro. Which editors are in use was not checked.
-- `symlinks/home_@user@_.config_herbstluftwm/scripts/supplemental.kmap` is a console keymap with nothing referencing it; it is loaded by hand with `loadkeys`, so unused is not certain.
 - `monitor_check.sh` has one failing check, "background: the solid image" (it fails the same way without the reconcile fix); likely a stale expected colour after the Colours renames. Not looked into.
 - Polybar `ups` still shows `? | ?` after any restart of the panel that is not a lock: a real monitor layout change, a herbstluftwm reload, or a `polybar.ini` save (polybar's own `--reload`). `panel.sh` skips the `hook 0` send after its first run (`my_not_first_autostart_panel`), and a polybar reload never runs `panel.sh`. Lock/unlock no longer restarts it since the `get_attr` fix in `monitor_reconcile.sh`. Left as is: these restarts are rare and a count refresh means querying aur.
 
 ### Simplify (judgment calls, not read in depth)
-- `setup/notes.txt`: the numlock, xsession and swap sections are now done by `startup.autostart`, `config_links.sh` and the swappiness symlink, so they could go.
 - Colours files: `colours.sh`, `colours.g.sh`, `colours.rules.sh`, `colours-derive`, `colours-gen`. Recent work; their contents were not looked at.
 - `.planning/monitor_changes/monitor_tui_check.py` (76K) and `monitor_check.sh` (28K): test scaffolding for work that may be finished.
 
@@ -159,7 +149,7 @@ Weighting: effort 5, blast radius 5, improvement 3, priority 0.30.
 Go through all of the scripts: simplify them, make them consistent with each other, and look at improvements, including shared helpers and utils. Nothing decided; the notes below come from a quick survey of the tracked scripts (headers, indentation and helper names only; the bodies were not read).
 
 Scripts, by area (approximate lines):
-- `setup/`: `quickstart_arch.sh` (1,141), `add_drive_fstab.sh` (227), `colours-derive` (152), `colours.sh` (145), `config_links.sh` (80), `colours.rules.sh` (63), `shell_loader.sh` (42), `colours-gen` (38), `symlinks.sh` (24), `disable_ipv6.sh`.
+- `setup/`: `quickstart_arch.sh` (1,141), `add_drive_fstab.sh` (227), `colours-derive` (152), `colours.sh` (145), `config_links.sh` (80), `colours.rules.sh` (63), `shell_loader.sh` (42), `colours-gen` (38), `symlinks.sh` (24).
 - herbstluftwm `*.autostart` files (11 to 77 lines each) and `scripts/`: `monitor_tui.py` (2,515), `monitor_reconcile.sh` (392), `pty_inset.py` (163), `panel.sh` (93), `tag_layouts.sh` (80), `tag_windows.sh`, `background.sh`, `tags.sh`, `rule_hook.sh`, `monitor_changes.sh`, `brightness.sh`, `volume.sh`, `tag_programs.sh`, `screenshot.sh`, plus the small wrappers `nnn-wrap.sh`, `bottom-wrap.sh`, `monitor-tui-wrap.sh`, `rofi-wrap.sh`, `xrdb-wrap.sh`.
 - `polybar/scripts/`: `network-interfaces.sh` and the unreferenced ones listed under Repo cleanup.
 

@@ -1,28 +1,3 @@
-## =======
-## STARTUP
-
-# numlock at startup
-yay -S numlockx
-numlockx on # in some autostart script
-
-
-## ==============
-## WINDOW MANAGER
-# herbstluftwm
-# do we need to do this?
-# ly uses it to know what to start, but do other login managers need it?
-# run from the repo root
-sudo ln -s "$PWD/symlinks/usr_share_xsessions_herbstluftwm.desktop" /usr/share/xsessions/herbstluftwm.desktop
-
-
-## ====
-## SWAP
-# change swap
-cat /proc/sys/vm/swappiness # if >=60
-sudo nano /etc/sysctl.d/99-swappiness.conf > vm.swappiness=10
-restart
-
-
 ## ====
 ## APPS
 # set apps as default

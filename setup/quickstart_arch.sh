@@ -511,6 +511,24 @@ step_packages() {
 		yaycache-hook
 }
 
+# nnn only reads plugins from ~/.config/nnn/plugins; the nnn package ships its own
+# set in /usr/share/nnn/plugins, so link to that instead of tracking a copy
+step_nnn_plugins() {
+	{
+		local plugins=/usr/share/nnn/plugins target=~/.config/nnn/plugins
+		if [[ ! -d $plugins ]]; then
+			echo "$plugins not found - install nnn first (Packages)"
+		elif [[ -L $target && $(readlink "$target") == "$plugins" ]]; then
+			echo "ok     $target"
+		elif [[ -e $target && ! -L $target ]]; then
+			echo "skip   $target (exists and is not a link)"
+		else
+			mkdir -p ~/.config/nnn
+			ln -sfn "$plugins" "$target" && echo "link   $target -> $plugins"
+		fi
+	} 2>&1 | pinnedOutput
+}
+
 # individual app install routines - each has its own post-install steps
 # (service enablement, gpg key import, ...) so they can't be reduced to a
 # plain package name for selectAndInstall; step_apps lists them the same
@@ -579,6 +597,7 @@ STEP_NAMES=(
 	"Printers (CUPS)"
 	"Bluetooth"
 	"Packages"
+	"nnn plugins"
 	"Apps"
 )
 STEP_FUNCS=(
@@ -598,13 +617,14 @@ STEP_FUNCS=(
 	step_printers
 	step_bluetooth
 	step_packages
+	step_nnn_plugins
 	step_apps
 )
 
 # groups: name + how many of the STEP_NAMES entries (taken in order,
 # starting where the previous group left off) belong to it
 GROUP_NAMES=("System" "User setup" "Desktop" "Software")
-GROUP_SIZES=(5 4 6 2)
+GROUP_SIZES=(5 4 6 3)
 
 # STEP_NAMES/STEP_FUNCS are index-paired, and GROUP_SIZES assumes STEP_NAMES
 # is laid out as contiguous runs matching GROUP_NAMES in order - none of that
