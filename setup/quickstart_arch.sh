@@ -410,6 +410,38 @@ step_ssd_trim() {
 	} 2>&1 | pinnedOutput
 }
 
+# makepkg builds a -debug package for everything by default
+step_makepkg() {
+	{
+		local conf=/etc/makepkg.conf
+		if grep -Eq '^OPTIONS=.*[( ]!debug[ )]' "$conf"; then
+			echo "ok     $conf already has !debug"
+		elif grep -Eq '^OPTIONS=.*[( ]debug[ )]' "$conf"; then
+			sudo sed -i -E '/^OPTIONS=\(/ s/([( ])debug([ )])/\1!debug\2/' "$conf" && echo "set    !debug in the OPTIONS line of $conf"
+		else
+			echo "skip   no debug entry in the OPTIONS line of $conf"
+		fi
+	} 2>&1 | pinnedOutput
+}
+
+# the polkit rule from config_links (50-power.rules) lets this group power off and
+# reboot without a password; the polybar buttons run /sbin/poweroff and /sbin/reboot
+step_power_group() {
+	{
+		local group=npwpower user=${SUDO_USER:-$(id -un)}
+		if getent group "$group" >/dev/null; then
+			echo "ok     group $group exists"
+		else
+			sudo groupadd "$group" && echo "added  group $group"
+		fi
+		if id -nG "$user" | tr ' ' '\n' | grep -qx "$group"; then
+			echo "ok     $user is in $group"
+		else
+			sudo usermod -aG "$group" "$user" && echo "added  $user to $group (takes effect at the next login)"
+		fi
+	} 2>&1 | pinnedOutput
+}
+
 step_terminal() {
 	echo -n "Which terminal emulator do you want to install:"
 	local choice
@@ -586,6 +618,8 @@ STEP_NAMES=(
 	"Nvidia drivers"
 	"SSD trim"
 	"Reload udev rules (boot)"
+	"Makepkg (no debug packages)"
+	"Power group (power off without a password)"
 	"Symlink user directories"
 	"Link config files"
 	"SSH agent (autostart)"
@@ -606,6 +640,8 @@ STEP_FUNCS=(
 	step_nvidia
 	step_ssd_trim
 	step_udev_reload
+	step_makepkg
+	step_power_group
 	step_symlinks
 	step_config_links
 	step_ssh_agent
@@ -624,7 +660,7 @@ STEP_FUNCS=(
 # groups: name + how many of the STEP_NAMES entries (taken in order,
 # starting where the previous group left off) belong to it
 GROUP_NAMES=("System" "User setup" "Desktop" "Software")
-GROUP_SIZES=(5 4 6 3)
+GROUP_SIZES=(7 4 6 3)
 
 # STEP_NAMES/STEP_FUNCS are index-paired, and GROUP_SIZES assumes STEP_NAMES
 # is laid out as contiguous runs matching GROUP_NAMES in order - none of that

@@ -21,22 +21,3 @@
 
 $ xdg-mime query default application/pdf
 $ xdg-mime default vivaldi-stable.desktop application/pdf
-
-
-## ======
-## PACMAN
-# turn off default packages
-sudo nano /etc/makepkg.conf
-# find OPTIONS=(... line
-debug --> !debug
-
-
-## =============
-## POWER OPTIONS
-# allow user to trigger poweroptions without needing to enter a password
-sudo groupadd npwpower
-sudo usermod $(id -nu 1000) -aG !$
-
-sudo visudo
-# add the line, where the sbin commands are what we want to use to shutdown/reboot/{poweroption}
-npwpower ALL=(ALL) NOPASSWD: /sbin/poweroff, /sbin/reboot

@@ -20,13 +20,12 @@ Each section carries a `Weighting:` line under its heading with the same numbers
 | 2 | Automount removable drives on plug-in | 3 | 2 | 4 | 0.80 |
 | 3 | Clipboard history | 2 | 1 | 2 | 0.67 |
 | 4 | Repo cleanup | 2 | 2 | 2 | 0.50 |
-| 5 | Quickstart steps for makepkg and the power group | 2 | 2 | 2 | 0.50 |
-| 6 | Skip machine-specific symlinks | 3 | 3 | 3 | 0.50 |
-| 7 | nnn as the default file explorer | 3 | 2 | 2 | 0.40 |
-| 8 | Remove unused network managers | 1 | 2 | 1 | 0.33 |
-| 9 | System theme changer in the tui | 5 | 4 | 3 | 0.33 |
-| 10 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
-| 11 | Lock screen look | 4 | 3 | 2 | 0.29 |
+| 5 | Skip machine-specific symlinks | 3 | 3 | 3 | 0.50 |
+| 6 | nnn as the default file explorer | 3 | 2 | 2 | 0.40 |
+| 7 | Remove unused network managers | 1 | 2 | 1 | 0.33 |
+| 8 | System theme changer in the tui | 5 | 4 | 3 | 0.33 |
+| 9 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
+| 10 | Lock screen look | 4 | 3 | 2 | 0.29 |
 
 ## Backups
 
@@ -87,14 +86,6 @@ Findings from a read-only pass over the tracked files. "Referenced" means the fi
 - `.planning/monitor_changes/monitor_tui_check.py` (76K) and `monitor_check.sh` (28K): test scaffolding for work that may be finished.
 
 Not covered: the large scripts (`monitor_tui.py`, `monitor_reconcile.sh`, the rest of `quickstart_arch.sh`) were not read for internal simplification.
-
-## Quickstart steps for makepkg and the power group
-
-Weighting: effort 2, blast radius 2, improvement 2, priority 0.50.
-
-Two manual steps from `setup/notes.txt` that `quickstart_arch.sh` does not script yet.
-- Makepkg: turn `debug` into `!debug` in the `OPTIONS=` line of `/etc/makepkg.conf`. Already set on this machine; the step must be safe to rerun.
-- Power group: create the `npwpower` group if missing and add the user to it. The polkit rule that gives the group its rights already comes from `config_links.sh`. The old `visudo` line in the notes looks replaced by that rule; not confirmed.
 
 ## Skip machine-specific symlinks
 
