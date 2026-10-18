@@ -16,12 +16,12 @@ Each section carries a `Weighting:` line under its heading with the same numbers
 
 | # | Item | Effort | Blast | Improvement | Priority |
 |---|------|--------|-------|-------------|----------|
-| 1 | Clipboard screenshots need xclip | 1 | 1 | 3 | 1.50 |
-| 2 | Polybar update counter resets to `? \| ?` | 2 | 1 | 3 | 1.00 |
-| 3 | Backups | 4 | 1 | 5 | 1.00 |
-| 4 | Automount removable drives on plug-in | 3 | 2 | 4 | 0.80 |
-| 5 | Picom config | 2 | 2 | 3 | 0.75 |
-| 6 | Keybinding cheat-sheet | 2 | 1 | 2 | 0.67 |
+| 1 | Polybar update counter resets to `? \| ?` | 2 | 1 | 3 | 1.00 |
+| 2 | Backups | 4 | 1 | 5 | 1.00 |
+| 3 | Automount removable drives on plug-in | 3 | 2 | 4 | 0.80 |
+| 4 | Picom config | 2 | 2 | 3 | 0.75 |
+| 5 | Keybinding cheat-sheet | 2 | 1 | 2 | 0.67 |
+| 6 | Clipboard history | 2 | 1 | 2 | 0.67 |
 | 7 | Repo cleanup | 2 | 2 | 2 | 0.50 |
 | 8 | Quickstart steps for makepkg and the power group | 2 | 2 | 2 | 0.50 |
 | 9 | Skip machine-specific symlinks | 3 | 3 | 3 | 0.50 |
@@ -31,17 +31,6 @@ Each section carries a `Weighting:` line under its heading with the same numbers
 | 13 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
 | 14 | Lock screen look | 4 | 3 | 2 | 0.29 |
 
-## Clipboard screenshots need xclip
-
-Weighting: effort 1, blast radius 1, improvement 3, priority 1.50.
-
-`scripts/screenshot.sh` (bound in `shortcuts.autostart`) pipes `scrot` into `xclip` for the two copy modes: `Super-s` (select region) and `Super-Ctrl-s` (focused window). `xclip` is not installed (`pacman -Q xclip` and `which xclip` both fail) and is not in `quickstart_arch.sh`, so those two binds most likely fail. Not run to confirm.
-- Install `xclip` and add it to the quickstart packages.
-- The two save modes (`Super-Shift-s`, `Super-Shift-Ctrl-s`) write to `~/Pictures/screenshots` and do not use `xclip`.
-
-### Optional: clipboard history
-
-No clipboard manager is installed (nothing found for `xclip`, `xsel`, `clipmenu`, `greenclip`, `copyq`). The only clipboard tools seen are the nnn plugins `cbcopy-mac` and `cbpaste-mac`. Options such as `clipmenu` (rofi-compatible; `rofi` is installed), `greenclip` and `copyq` were not checked against this setup. Not decided; the work is optional.
 ## Polybar update counter resets to `? | ?`
 
 Weighting: effort 2, blast radius 1, improvement 3, priority 1.00.
@@ -120,6 +109,12 @@ Current state:
 Not decided or checked:
 - whether to build the list from the live bindings (`herbstclient list_keybinds`) or from the autostart files; the files carry comments, the live list does not
 - whether the nnn and micro bindings are included, or only herbstluftwm
+
+## Clipboard history
+
+Weighting: effort 2, blast radius 1, improvement 2, priority 0.67.
+
+No clipboard manager is installed (nothing found for `xclip`, `xsel`, `clipmenu`, `greenclip`, `copyq`). The only clipboard tools seen are the nnn plugins `cbcopy-mac` and `cbpaste-mac`. Options such as `clipmenu` (rofi-compatible; `rofi` is installed), `greenclip` and `copyq` were not checked against this setup. Not decided; the work is optional.
 
 ## Repo cleanup
 
