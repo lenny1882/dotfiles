@@ -20,12 +20,11 @@ Each section carries a `Weighting:` line under its heading with the same numbers
 | 2 | Automount removable drives on plug-in | 3 | 2 | 4 | 0.80 |
 | 3 | Clipboard history | 2 | 1 | 2 | 0.67 |
 | 4 | Repo cleanup | 2 | 2 | 2 | 0.50 |
-| 5 | Skip machine-specific symlinks | 3 | 3 | 3 | 0.50 |
-| 6 | nnn as the default file explorer | 3 | 2 | 2 | 0.40 |
-| 7 | Remove unused network managers | 1 | 2 | 1 | 0.33 |
-| 8 | System theme changer in the tui | 5 | 4 | 3 | 0.33 |
-| 9 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
-| 10 | Lock screen look | 4 | 3 | 2 | 0.29 |
+| 5 | nnn as the default file explorer | 3 | 2 | 2 | 0.40 |
+| 6 | Remove unused network managers | 1 | 2 | 1 | 0.33 |
+| 7 | System theme changer in the tui | 5 | 4 | 3 | 0.33 |
+| 8 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
+| 9 | Lock screen look | 4 | 3 | 2 | 0.29 |
 
 ## Backups
 
@@ -86,15 +85,6 @@ Findings from a read-only pass over the tracked files. "Referenced" means the fi
 - `.planning/monitor_changes/monitor_tui_check.py` (76K) and `monitor_check.sh` (28K): test scaffolding for work that may be finished.
 
 Not covered: the large scripts (`monitor_tui.py`, `monitor_reconcile.sh`, the rest of `quickstart_arch.sh`) were not read for internal simplification.
-
-## Skip machine-specific symlinks
-
-Weighting: effort 3, blast radius 3, improvement 3, priority 0.50.
-
-`setup/config_links.sh` links every entry in `symlinks/` except names containing `.bak`. The nvidia conf (`etc_X11_mhwd.d_nvidia.conf`) is still linked on this amd machine.
-- Prefix: extend the `.bak` rule so a prefix marks a file as ignored.
-- Selection: the quickstart lists the symlink entries and lets you pick which to install, like the package selection. Asks every run; choices are not remembered.
-- The shellrc files already use a prefix to opt out of loading (`shell_loader.sh` sources only `.shellrc*`, so renaming a file to `_.shellrc_*` disables it). The same prefix could be used to ignore symlinks, so there is one convention for both.
 
 ## nnn as the default file explorer
 

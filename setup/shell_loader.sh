@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# only .shellrc* files are injected, so a file renamed to skip.shellrc_* (the same
+# "skip." prefix symlinks/ uses) is left out
 function loader() {
 	local endString="# END: INJECTED BASHRC FILES"
 	local path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../shellrc" && pwd)"

@@ -292,8 +292,22 @@ step_symlinks() {
 	{ "$SCRIPT_DIR/symlinks.sh"; } 2>&1 | pinnedOutput
 }
 
+# the entries to link are picked each run, nothing is remembered
 step_config_links() {
-	{ "$SCRIPT_DIR/config_links.sh"; } 2>&1 | pinnedOutput
+	local -a entries=() keepIdx=() chosen=()
+	local i
+	mapfile -t entries < <("$SCRIPT_DIR/config_links.sh" --list)
+	echo -n "Which config files do you want to link:"
+	promptSelection keepIdx "${entries[@]}"
+	for i in "${keepIdx[@]}"; do
+		chosen+=("${entries[i-1]}")
+	done
+	if [[ ${#chosen[@]} -eq 0 ]]; then
+		echo "Nothing selected."
+		return
+	fi
+	beginOutput
+	{ "$SCRIPT_DIR/config_links.sh" "${chosen[@]}"; } 2>&1 | pinnedOutput
 }
 
 # enables the openssh package's socket-activated ssh-agent user unit (listens on

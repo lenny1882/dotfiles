@@ -9,9 +9,14 @@
 #   etc_modprobe.d_audio\_power\_save.conf  ->  /etc/modprobe.d/audio_power_save.conf
 # entries are linked as-is (a folder is linked as a folder, never drilled into)
 #
-# usage: config_links.sh [-n|--dry-run] [-f|--force]
+# an entry is ignored when its name starts with "skip." or contains ".bak"; the
+# shellrc files use the same "skip." prefix (see shell_loader.sh)
+#
+# usage: config_links.sh [-n|--dry-run] [-f|--force] [-l|--list] [NAME...]
 #   -n  print what would be linked without changing anything
 #   -f  replace targets that already exist (default: skip them with a warning)
+#   -l  print the entries that would be linked, one per line, and exit
+#   NAME...  link only these entries (default: all of them)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="$(cd "$SCRIPT_DIR/../symlinks" && pwd)"
@@ -19,11 +24,15 @@ SOURCE_DIR="$(cd "$SCRIPT_DIR/../symlinks" && pwd)"
 link_user=${SUDO_USER:-$(id -un)}
 dry_run=false
 force=false
+list=false
+only=()
 for arg in "$@"; do
 	case $arg in
 		-n|--dry-run) dry_run=true ;;
 		-f|--force)   force=true ;;
-		*) echo "unknown option: $arg" >&2; exit 1 ;;
+		-l|--list)    list=true ;;
+		-*) echo "unknown option: $arg" >&2; exit 1 ;;
+		*)  only+=("$arg") ;;
 	esac
 done
 
@@ -40,14 +49,28 @@ asNeeded() {
 linker() {
 	local src name target
 	shopt -s nullglob dotglob
+	for name in "${only[@]}"; do
+		[[ -e $SOURCE_DIR/$name ]] || echo "skip   $name (not in $SOURCE_DIR)"
+	done
 	for src in "$SOURCE_DIR"/*; do
 		name=${src##*/}
+		if ((${#only[@]})) && [[ ! " ${only[*]} " == *" $name "* ]]; then
+			continue
+		fi
+		if [[ $name == skip.* ]]; then
+			$list || echo "skip   $name (ignored: skip. prefix)"
+			continue
+		fi
 		if [[ $name == *.bak* ]]; then
-			echo "skip   $name (backup file)"
+			$list || echo "skip   $name (backup file)"
 			continue
 		fi
 		if [[ $name != *_* ]]; then
-			echo "skip   $name (no _ in name, can't derive a target)"
+			$list || echo "skip   $name (no _ in name, can't derive a target)"
+			continue
+		fi
+		if $list; then
+			echo "$name"
 			continue
 		fi
 		target="${name//\\_/$'\x01'}"
