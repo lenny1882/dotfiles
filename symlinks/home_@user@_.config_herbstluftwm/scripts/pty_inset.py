@@ -54,7 +54,7 @@ def fix_out(m):
             return f"\x1b[{M + 1}G".encode()
         if text == b"\x1bE":
             return f"\x1bD\x1b[{M + 1}G".encode()
-        return text + region(child_rows + 2 * M)
+        return text + b"\x1b7" + region(child_rows + 2 * M) + b"\x1b8"     # setting the region homes the cursor
     parts = m.group(1).decode().split(";")
     final = m.group(2).decode()
     if final in "Hf":
@@ -127,6 +127,7 @@ def main():
     signal.signal(signal.SIGWINCH, on_winch)
     saved = termios.tcgetattr(0)
     tty.setraw(0)
+    started = False
     try:
         while True:
             if resized:
@@ -134,7 +135,11 @@ def main():
                 rows, cols = term_size()
                 child_rows = rows - 2 * M
                 set_size(fd, child_rows, cols - 2 * M)
-                write_all(1, region(rows) + f"\x1b[{M + 1};{M + 1}H".encode())
+                if started:
+                    write_all(1, b"\x1b7" + region(rows) + b"\x1b8")      # a later resize leaves the cursor where it is
+                else:
+                    write_all(1, region(rows) + f"\x1b[{M + 1};{M + 1}H".encode())
+                    started = True
             try:
                 ready = select.select([0, fd], [], [], 0.2)[0]
             except InterruptedError:
