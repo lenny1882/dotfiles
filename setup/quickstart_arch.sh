@@ -307,7 +307,12 @@ step_config_links() {
 		return
 	fi
 	beginOutput
-	{ "$SCRIPT_DIR/config_links.sh" "${chosen[@]}"; } 2>&1 | pinnedOutput
+	{
+		"$SCRIPT_DIR/config_links.sh" "${chosen[@]}"
+		# GLib (so the portal) only finds a user-level desktop entry for a mime type through
+		# this cache; without it "open folder" from VS Code offers an empty "Open With" chooser
+		command -v update-desktop-database >/dev/null && update-desktop-database ~/.local/share/applications
+	} 2>&1 | pinnedOutput
 }
 
 # enables the openssh package's socket-activated ssh-agent user unit (listens on

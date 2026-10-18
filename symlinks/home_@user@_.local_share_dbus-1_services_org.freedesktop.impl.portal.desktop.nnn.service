@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=org.freedesktop.impl.portal.desktop.nnn
+Exec=/home/lenny/.config/herbstluftwm/scripts/nnn-portal.py

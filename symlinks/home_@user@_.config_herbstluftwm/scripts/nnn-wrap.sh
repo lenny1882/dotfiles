@@ -29,7 +29,22 @@ export VISUAL=micro
 
 # Unmask ^Q (if required, see `stty -a`) to Quit nnn
 stty start undef
-stty stop under
+stty stop undef
+
+# picker mode, for nnn-portal.py: nnn-wrap.sh --pick file|dir|save OUTFILE START [NAME]
+# the startup session is loaded and START opens in the first inactive context, as for a folder below;
+# the chosen path goes to OUTFILE, which is gone or empty if nothing is chosen: Enter picks a file
+# (or the selection), ;p picks the folder shown, ;s asks for a file name in the folder shown
+if [ "$1" = "--pick" ]; then
+    export NNN_PICK_OUT=$3 NNN_SAVE_NAME=$5 NNN_OPEN_DIR=${4:-$HOME}
+    open='o:!printf "+c%s" "$NNN_OPEN_DIR" > "$NNN_PIPE"*'
+    case $2 in
+        dir)  export NNN_PLUG="$open"';p:!printf %s "$PWD" > "$NNN_PICK_OUT" && printf 0p > "$NNN_PIPE"*' ;;
+        save) export NNN_PLUG="$open;s:!$(dirname "$0")/nnn-pick-save.sh*" ;;
+        *)    export NNN_PLUG=$open ;;
+    esac
+    exec "$(dirname "$0")/pty_inset.py" nnn -deiHoQRUx -F 0 -s startup -P o -p "$3"
+fi
 
 # a folder passed in (from the desktop entry) opens in the first inactive context, beside the session's:
 # a session load ignores the path argument, so a startup plugin (-P) writes it to nnn's plugin pipe
