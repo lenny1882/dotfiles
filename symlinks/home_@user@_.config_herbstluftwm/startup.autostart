@@ -2,6 +2,12 @@
 source ~/.config/herbstluftwm/variables.autostart
 
 # --------------------------------
+# environment for everything herbstluftwm starts - the shellrc files are not read by this session
+# GTK and Qt file dialogs go through the portal, whose FileChooser is nnn (scripts/nnn-portal.py)
+hc export GTK_USE_PORTAL=1
+hc export QT_QPA_PLATFORMTHEME=xdgdesktopportal
+
+# --------------------------------
 # commands
 
 # autostart - but only if custom var has not been created

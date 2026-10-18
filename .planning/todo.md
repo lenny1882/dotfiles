@@ -18,13 +18,14 @@ Each section carries a `Weighting:` line under its heading with the same numbers
 |---|------|--------|-------|-------------|----------|
 | 1 | Backups | 4 | 1 | 5 | 1.00 |
 | 2 | Automount removable drives on plug-in | 3 | 2 | 4 | 0.80 |
-| 3 | Clipboard history | 2 | 1 | 2 | 0.67 |
-| 4 | Repo cleanup | 2 | 2 | 2 | 0.50 |
-| 5 | nnn as the default file explorer | 3 | 2 | 2 | 0.40 |
-| 6 | Remove unused network managers | 1 | 2 | 1 | 0.33 |
-| 7 | System theme changer in the tui | 5 | 4 | 3 | 0.33 |
-| 8 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
-| 9 | Lock screen look | 4 | 3 | 2 | 0.29 |
+| 3 | GUI session environment lacks the shellrc exports | 2 | 2 | 3 | 0.75 |
+| 4 | Clipboard history | 2 | 1 | 2 | 0.67 |
+| 5 | Repo cleanup | 2 | 2 | 2 | 0.50 |
+| 6 | nnn as the default file explorer | 3 | 2 | 2 | 0.40 |
+| 7 | Remove unused network managers | 1 | 2 | 1 | 0.33 |
+| 8 | System theme changer in the tui | 5 | 4 | 3 | 0.33 |
+| 9 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
+| 10 | Lock screen look | 4 | 3 | 2 | 0.29 |
 
 ## Backups
 
@@ -65,6 +66,15 @@ Options:
 
 To decide: where drives should mount (`/run/media/$USER` is the udisks2 default), whether phones (mtp) are included, and whether a notification is wanted on mount.
 
+## GUI session environment lacks the shellrc exports
+
+Weighting: effort 2, blast radius 2, improvement 3, priority 0.75.
+
+The session never reads the shellrc files. lemurs starts it through a non-interactive login shell (`shell_login_flag = "short"`), which reads `~/.bash_profile`, which sources `~/.bashrc`, which returns at line 6 (`[[ $- != *i* ]] && return`) before the injected block that sources `shellrc/`. Checked: `BROWSER`, `EDITOR` and `SSH_AUTH_SOCK`, exported in `shellrc/.shellrc_env`, are not in herbstluftwm's environment, so they only reach apps started from a terminal.
+- `SSH_AUTH_SOCK` may matter for GUI apps that use ssh (git in an editor, for example). Not checked.
+- The portal variables for the file dialogs are already set with `hc export` in `startup.autostart`, for this reason.
+- Options: more `hc export` lines in `startup.autostart` (instant, tracked), or exports in the lemurs session script `etc_lemurs_wms_herbstluftwm` (needs a re-login and the `/etc` link). Not decided which of the shellrc exports belong in the session.
+
 ## Clipboard history
 
 Weighting: effort 2, blast radius 1, improvement 2, priority 0.67.
@@ -103,7 +113,11 @@ File open and save dialogs: built as our own portal backend, no new package. VS 
 - Keys in picker mode: Enter picks a file or the selection, `;p` (or Alt+p) picks the folder shown (dir dialogs), `;s` (Alt+s) asks for a file name, prefilled, in the folder shown (`scripts/nnn-pick-save.sh`, which ends the pick with the plugin pipe's `0p`).
 - Registration, linked from `symlinks/`: the D-Bus activation file, `/usr/share/xdg-desktop-portal/portals/nnn.portal`, and `~/.config/xdg-desktop-portal/portals.conf` (FileChooser prefers `nnn;gtk`). The portal does not fall back to gtk when the backend fails at runtime.
 - Checked live: VS Code's File > Open Folder works, with contexts 1 to 4 populated, and cancelling no longer hangs VS Code (a cleanup crash on a missing output file was not sending the reply).
-- Not checked: Open File, Save As (`;s`), other applications (Vivaldi and so on). `SaveFiles` (several files at once) is not implemented.
+- Checked live since: Open File, Open Folder and Save As (`;s`) all work. Vivaldi and Rambox open the right folder from the downloads list, and Vivaldi's Open File uses nnn. `SaveFiles` (several files at once) is not implemented: nothing known calls it (`libportal` is not installed), held off.
+- Which apps reach it depends on the app. `startup.autostart` exports `GTK_USE_PORTAL=1` and `QT_QPA_PLATFORMTHEME=xdgdesktopportal` (`hc export`, so everything herbstluftwm starts has them), which sends GTK native choosers and Qt native dialogs through the portal. Checked with xprop and by trying each app, with the variables confirmed in the running processes:
+  - nnn: VS Code, Vivaldi, Rambox (portal); Orca Slicer, Sublime Text (GTK native chooser); FreeCAD (Qt native dialog).
+  - Own dialog, the variables do not help: Inkscape (plain `GtkFileChooserDialog`; known to ignore `GTK_USE_PORTAL`, see upstream issue inkscape/inbox 783), Bambu Studio (statically linked wxWidgets references only `gtk_file_chooser_dialog_new`, where Orca's references `gtk_file_chooser_native_new`), Blender (draws its own file browser), Krita (Qt's own widget dialog).
+  - Krita has a setting, not yet tried: Settings > Configure Krita > General > Miscellaneous > "Enable native file dialogs" (`DontUseNativeFileDialog` in `kritarc`; greyed out in AppImage builds, this is the Arch package). From forum threads, not verified here.
 - Fresh install: after "Link config files" the D-Bus services folder did not exist when the session bus started, so the bus config needs a reload (`busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus ReloadConfig`) and the portal a restart (`systemctl --user restart xdg-desktop-portal`) once. No quickstart step does that yet.
 ## Remove unused network managers
 
