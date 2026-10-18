@@ -1,69 +1,67 @@
 # Todo
 
-## System theme changer in the tui
+Ordered from the cheapest win (1) to the least worthwhile (last). A new item gets a table row and a section; place both by its priority.
 
-Switch the whole system between dark, light, etc. from the tui, setting every place that needs it.
+## How items are weighted and ordered
 
-Places known so far:
-- `gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'` (needed for vivaldi to use its dark theme)
-- GTK theme
-- Qt theme
+Each item is scored 1 to 5 on three things. The scores are judgments from the notes in the section, not measurements; revisit them when the notes change.
 
-Not needed: terminal, editor and wallpaper, which are set by hand.
+- Effort: how much work it is. 1 is a few minutes or one small edit, 3 is a script or a few files plus checking, 5 is a large piece of design and build.
+- Blast radius: how much existing setup a change can break, or how hard it is to undo. 1 is additive or isolated, 3 touches shared setup scripts or system files, 5 touches most of the repo.
+- Improvement: how much better things are afterwards. 1 is cosmetic or tidying, 3 is a clear everyday gain or a fix for something broken, 5 protects against data loss or removes a major pain.
 
-When building: survey the installed programs and the ui framework each is built with, so each can be made to read the system theme.
+Priority = improvement / (effort + blast radius), to two decimals. Higher is a better win and goes nearer the top. Ties: the lower-effort item goes first.
 
-## nnn as the default file explorer
+Each section carries a `Weighting:` line under its heading with the same numbers. When adding an item, score it, compute the priority, insert its row in the table and its section in the same position, and renumber.
 
-Every program that opens a file explorer currently uses its own. Find how to make nnn the default for everything.
+| # | Item | Effort | Blast | Improvement | Priority |
+|---|------|--------|-------|-------------|----------|
+| 1 | Clipboard screenshots need xclip | 1 | 1 | 3 | 1.50 |
+| 2 | Polybar update counter resets to `? \| ?` | 2 | 1 | 3 | 1.00 |
+| 3 | Backups | 4 | 1 | 5 | 1.00 |
+| 4 | Automount removable drives on plug-in | 3 | 2 | 4 | 0.80 |
+| 5 | Picom config | 2 | 2 | 3 | 0.75 |
+| 6 | Keybinding cheat-sheet | 2 | 1 | 2 | 0.67 |
+| 7 | Repo cleanup | 2 | 2 | 2 | 0.50 |
+| 8 | Quickstart steps for makepkg and the power group | 2 | 2 | 2 | 0.50 |
+| 9 | Skip machine-specific symlinks | 3 | 3 | 3 | 0.50 |
+| 10 | nnn as the default file explorer | 3 | 2 | 2 | 0.40 |
+| 11 | Remove unused network managers | 1 | 2 | 1 | 0.33 |
+| 12 | System theme changer in the tui | 5 | 4 | 3 | 0.33 |
+| 13 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
+| 14 | Lock screen look | 4 | 3 | 2 | 0.29 |
 
-Current state:
-- `inode/directory` already resolves to `nnn.desktop` (checked with `xdg-mime query default`), and `~/.config/mimeapps.list` has no directory entry, so the default comes from the `.desktop` files.
-- Which programs still open their own explorer has not been checked.
+## Clipboard screenshots need xclip
 
-Places to look (not checked):
-- programs that ignore the mime default and run their own explorer or call one directly
-- file open/save dialogs in GTK and Qt programs, which are not file-explorer launches and may need separate handling
-- how nnn is launched from a gui program, since it is a terminal program and `nnn.desktop` would need a terminal
+Weighting: effort 1, blast radius 1, improvement 3, priority 1.50.
 
-## Remove unused network managers
+`scripts/screenshot.sh` (bound in `shortcuts.autostart`) pipes `scrot` into `xclip` for the two copy modes: `Super-s` (select region) and `Super-Ctrl-s` (focused window). `xclip` is not installed (`pacman -Q xclip` and `which xclip` both fail) and is not in `quickstart_arch.sh`, so those two binds most likely fail. Not run to confirm.
+- Install `xclip` and add it to the quickstart packages.
+- The two save modes (`Super-Shift-s`, `Super-Shift-Ctrl-s`) write to `~/Pictures/screenshots` and do not use `xclip`.
 
-NetworkManager is the one in use (enabled, default wpa_supplicant backend). `iwd` and `netctl` are explicitly installed but not enabled or configured, and nothing requires them. Remove both.
+### Optional: clipboard history
 
-## Picom config
+No clipboard manager is installed (nothing found for `xclip`, `xsel`, `clipmenu`, `greenclip`, `copyq`). The only clipboard tools seen are the nnn plugins `cbcopy-mac` and `cbpaste-mac`. Options such as `clipmenu` (rofi-compatible; `rofi` is installed), `greenclip` and `copyq` were not checked against this setup. Not decided; the work is optional.
+## Polybar update counter resets to `? | ?`
 
-herbstluftwm starts picom with the old compton config (`startup.autostart` line 10: `picom --config ~/.config/compton.conf`).
-- Rename the config to `picom.conf`, updating the flag, the symlink and `setup/notes.txt`.
-- `compton.conf` sets `backend` twice (`"glx"` on line 3, `"xrender"` on line 33). The later one probably wins, so the glx/vsync tearing fix is likely not in effect. Not confirmed; check which backend picom loads, then remove the duplicate.
+Weighting: effort 2, blast radius 1, improvement 3, priority 1.00.
 
-## Skip machine-specific symlinks
+When polybar restarts, the update counter (`ups`) shows `? | ?` and stays that way. It happens on locking and unlocking with physlock (polybar visibly refreshes itself) and on reloading herbstluftwm. No polling wanted: the count queries aur (`yay -Qua`) as well as `checkupdates`, which is an unnecessary load. The aim is to find why the update does not run after a restart.
 
-`setup/config_links.sh` links every entry in `symlinks/` except names containing `.bak`. The nvidia conf (`etc_X11_mhwd.d_nvidia.conf`) is still linked on this amd machine.
-- Prefix: extend the `.bak` rule so a prefix marks a file as ignored.
-- Selection: the quickstart lists the symlink entries and lets you pick which to install, like the package selection. Asks every run; choices are not remembered.
-- The shellrc files already use a prefix to opt out of loading (`shell_loader.sh` sources only `.shellrc*`, so renaming a file to `_.shellrc_*` disables it). The same prefix could be used to ignore symlinks, so there is one convention for both.
+Found (read from the config, not run):
+- `ups` is a `custom/ipc` module (`polybar.ini`) with `initial = 2`, so it starts on `hook-1` (`? | ?`) and only changes when something sends `polybar-msg action ups hook 0` (`hook-0` runs `checkupdates | wc -l` and `yay -Qua | wc -l`).
+- Senders of that message:
+  - right-click on the `upl` icon
+  - the pacman hook `package-changes.hook`, which emits herbstluftwm hook `ipc`, handled in `scripts/rule_hook.sh`
+  - `scripts/panel.sh`, once at the end
+- In `panel.sh` that last send is guarded by `hc silent new_attr bool my_not_first_autostart_panel`, which succeeds only the first time the attribute is created in a herbstluftwm session. Every later run of `panel.sh` (it kills and restarts polybar) skips the send. That fits the symptom: any restart after the first leaves `? | ?`. Not confirmed by running it.
+- `panel.sh` is run from `startup.autostart` and from `rule_hook.sh` (line 47). Which hook triggers it on lock/unlock is not known; it may be a monitor event (`monitors_changed` runs `monitor_reconcile.sh`), not checked.
 
-## Quickstart steps for makepkg and the power group
-
-Two manual steps from `setup/notes.txt` that `quickstart_arch.sh` does not script yet.
-- Makepkg: turn `debug` into `!debug` in the `OPTIONS=` line of `/etc/makepkg.conf`. Already set on this machine; the step must be safe to rerun.
-- Power group: create the `npwpower` group if missing and add the user to it. The polkit rule that gives the group its rights already comes from `config_links.sh`. The old `visudo` line in the notes looks replaced by that rule; not confirmed.
-
-## Automount removable drives on plug-in
-
-Nothing mounts a drive when it is plugged in; mounting is manual through the nnn plugins (`nmount`, `umounttree`, `mtpmount`; not read, inferred from their names). Mechanism not decided.
-
-Installed: `udisks2`, `gvfs`. Not installed: `udiskie`.
-
-Options:
-- `udiskie`: small daemon (optional tray icon) that automounts through `udisks2`, no file manager needed. Needs installing and starting from the herbstluftwm autostart.
-- `gvfs`: already installed; can automount through its udisks2 volume monitor. Not checked here whether it runs outside a gnome-style session.
-- `x-systemd.automount` fstab entries: only for known, fixed drives, not arbitrary pen drives; `setup/add_drive_fstab.sh` could add the option.
-- Custom udev rule plus a systemd mount unit: the most manual, and the most control over where and how drives mount.
-
-To decide: where drives should mount (`/run/media/$USER` is the udisks2 default), whether phones (mtp) are included, and whether a notification is wanted on mount.
+Not decided: how to show a count after a restart without polling aur. Ideas to consider are caching the last result in a file and showing it on restart, or sending the hook only when the cache is missing or old.
 
 ## Backups
+
+Weighting: effort 4, blast radius 1, improvement 5, priority 1.00.
 
 Likely file backups only, not system backups: the os is ephemeral because the dotfiles are versioned and the quickstart scripts rebuild it. Mechanism, target and scope not decided.
 
@@ -84,17 +82,33 @@ To decide:
 - where it goes: an external drive, a second machine or remote over ssh, cloud storage
 - how often, and whether it runs from a systemd timer (as `fstrim.timer` does) or by hand
 
-## Clipboard screenshots need xclip
+## Automount removable drives on plug-in
 
-`scripts/screenshot.sh` (bound in `shortcuts.autostart`) pipes `scrot` into `xclip` for the two copy modes: `Super-s` (select region) and `Super-Ctrl-s` (focused window). `xclip` is not installed (`pacman -Q xclip` and `which xclip` both fail) and is not in `quickstart_arch.sh`, so those two binds most likely fail. Not run to confirm.
-- Install `xclip` and add it to the quickstart packages.
-- The two save modes (`Super-Shift-s`, `Super-Shift-Ctrl-s`) write to `~/Pictures/screenshots` and do not use `xclip`.
+Weighting: effort 3, blast radius 2, improvement 4, priority 0.80.
 
-### Optional: clipboard history
+Nothing mounts a drive when it is plugged in; mounting is manual through the nnn plugins (`nmount`, `umounttree`, `mtpmount`; not read, inferred from their names). Mechanism not decided.
 
-No clipboard manager is installed (nothing found for `xclip`, `xsel`, `clipmenu`, `greenclip`, `copyq`). The only clipboard tools seen are the nnn plugins `cbcopy-mac` and `cbpaste-mac`. Options such as `clipmenu` (rofi-compatible; `rofi` is installed), `greenclip` and `copyq` were not checked against this setup. Not decided; the work is optional.
+Installed: `udisks2`, `gvfs`. Not installed: `udiskie`.
+
+Options:
+- `udiskie`: small daemon (optional tray icon) that automounts through `udisks2`, no file manager needed. Needs installing and starting from the herbstluftwm autostart.
+- `gvfs`: already installed; can automount through its udisks2 volume monitor. Not checked here whether it runs outside a gnome-style session.
+- `x-systemd.automount` fstab entries: only for known, fixed drives, not arbitrary pen drives; `setup/add_drive_fstab.sh` could add the option.
+- Custom udev rule plus a systemd mount unit: the most manual, and the most control over where and how drives mount.
+
+To decide: where drives should mount (`/run/media/$USER` is the udisks2 default), whether phones (mtp) are included, and whether a notification is wanted on mount.
+
+## Picom config
+
+Weighting: effort 2, blast radius 2, improvement 3, priority 0.75.
+
+herbstluftwm starts picom with the old compton config (`startup.autostart` line 10: `picom --config ~/.config/compton.conf`).
+- Rename the config to `picom.conf`, updating the flag, the symlink and `setup/notes.txt`.
+- `compton.conf` sets `backend` twice (`"glx"` on line 3, `"xrender"` on line 33). The later one probably wins, so the glx/vsync tearing fix is likely not in effect. Not confirmed; check which backend picom loads, then remove the duplicate.
 
 ## Keybinding cheat-sheet
+
+Weighting: effort 2, blast radius 1, improvement 2, priority 0.67.
 
 A popup that lists the herbstluftwm keybinds so one can be looked up without opening the files.
 
@@ -107,42 +121,9 @@ Not decided or checked:
 - whether to build the list from the live bindings (`herbstclient list_keybinds`) or from the autostart files; the files carry comments, the live list does not
 - whether the nnn and micro bindings are included, or only herbstluftwm
 
-## Lock screen look
-
-physlock is a bare lock screen. The aim is to improve how it looks, ideally so login (lemurs) and unlock share one look; at the least, the lock screen looks better. Whether physlock itself can be extended, or something else would have to replace it, is not known.
-
-Constraints from the user:
-- physlock replaces the wm view on a console instead of drawing a program over it, and blocks switching to another tty; programs that draw above the wm/de can show rendering problems or be bypassed.
-- Whatever is used must keep that: no bypass through another tty, no rendering problems.
-
-Current state (checked):
-- physlock 13-5, installed setuid root (`/usr/bin/physlock`). Run as `physlock -dsm` from `Super-l` (`shortcuts.autostart`) and from a polybar click (`polybar/polybar.ini`); it is in the quickstart packages. The usage line lists `-dhLlmsv` and `-p MSG`.
-- Its PAM service (`/etc/pam.d/physlock`) is plain `pam_unix.so` for auth, account, password and session.
-- lemurs runs on tty 2 with its own PAM service (`pam_service = "lemurs"` in the generated `etc_lemurs_config.toml`; `/etc/pam.d/lemurs` exists). Its colours come from the colours templates.
-- `xss-lock` (idle locking) is an optional dependency of physlock and is not installed; idle lock was ruled out.
-
-Not checked (from memory, to confirm):
-- what the flags mean (`-d` detach, `-s` disable SysRq, `-m` mute kernel messages, `-p` prompt message) and whether `-p` gives any control over the look
-- whether lemurs can be run as a locker at all, or is only a login screen that starts a session; if it only starts sessions, unlocking would mean ending the session
-- whether physlock's source has hooks or options for how the prompt is drawn
-- alternatives that also take over a console, if any exist
-
-## Polybar update counter resets to `? | ?`
-
-When polybar restarts, the update counter (`ups`) shows `? | ?` and stays that way. It happens on locking and unlocking with physlock (polybar visibly refreshes itself) and on reloading herbstluftwm. No polling wanted: the count queries aur (`yay -Qua`) as well as `checkupdates`, which is an unnecessary load. The aim is to find why the update does not run after a restart.
-
-Found (read from the config, not run):
-- `ups` is a `custom/ipc` module (`polybar.ini`) with `initial = 2`, so it starts on `hook-1` (`? | ?`) and only changes when something sends `polybar-msg action ups hook 0` (`hook-0` runs `checkupdates | wc -l` and `yay -Qua | wc -l`).
-- Senders of that message:
-  - right-click on the `upl` icon
-  - the pacman hook `package-changes.hook`, which emits herbstluftwm hook `ipc`, handled in `scripts/rule_hook.sh`
-  - `scripts/panel.sh`, once at the end
-- In `panel.sh` that last send is guarded by `hc silent new_attr bool my_not_first_autostart_panel`, which succeeds only the first time the attribute is created in a herbstluftwm session. Every later run of `panel.sh` (it kills and restarts polybar) skips the send. That fits the symptom: any restart after the first leaves `? | ?`. Not confirmed by running it.
-- `panel.sh` is run from `startup.autostart` and from `rule_hook.sh` (line 47). Which hook triggers it on lock/unlock is not known; it may be a monitor event (`monitors_changed` runs `monitor_reconcile.sh`), not checked.
-
-Not decided: how to show a count after a restart without polling aur. Ideas to consider are caching the last result in a file and showing it on restart, or sending the hook only when the cache is missing or old.
-
 ## Repo cleanup
+
+Weighting: effort 2, blast radius 2, improvement 2, priority 0.50.
 
 Findings from a read-only pass over the tracked files. "Referenced" means the file name appears in another tracked file outside `.planning/` and the backups; nothing was run. Git history keeps anything deleted.
 
@@ -176,7 +157,62 @@ Findings from a read-only pass over the tracked files. "Referenced" means the fi
 
 Not covered: the large scripts (`monitor_tui.py`, `monitor_reconcile.sh`, the rest of `quickstart_arch.sh`) were not read for internal simplification.
 
+## Quickstart steps for makepkg and the power group
+
+Weighting: effort 2, blast radius 2, improvement 2, priority 0.50.
+
+Two manual steps from `setup/notes.txt` that `quickstart_arch.sh` does not script yet.
+- Makepkg: turn `debug` into `!debug` in the `OPTIONS=` line of `/etc/makepkg.conf`. Already set on this machine; the step must be safe to rerun.
+- Power group: create the `npwpower` group if missing and add the user to it. The polkit rule that gives the group its rights already comes from `config_links.sh`. The old `visudo` line in the notes looks replaced by that rule; not confirmed.
+
+## Skip machine-specific symlinks
+
+Weighting: effort 3, blast radius 3, improvement 3, priority 0.50.
+
+`setup/config_links.sh` links every entry in `symlinks/` except names containing `.bak`. The nvidia conf (`etc_X11_mhwd.d_nvidia.conf`) is still linked on this amd machine.
+- Prefix: extend the `.bak` rule so a prefix marks a file as ignored.
+- Selection: the quickstart lists the symlink entries and lets you pick which to install, like the package selection. Asks every run; choices are not remembered.
+- The shellrc files already use a prefix to opt out of loading (`shell_loader.sh` sources only `.shellrc*`, so renaming a file to `_.shellrc_*` disables it). The same prefix could be used to ignore symlinks, so there is one convention for both.
+
+## nnn as the default file explorer
+
+Weighting: effort 3, blast radius 2, improvement 2, priority 0.40.
+
+Every program that opens a file explorer currently uses its own. Find how to make nnn the default for everything.
+
+Current state:
+- `inode/directory` already resolves to `nnn.desktop` (checked with `xdg-mime query default`), and `~/.config/mimeapps.list` has no directory entry, so the default comes from the `.desktop` files.
+- Which programs still open their own explorer has not been checked.
+
+Places to look (not checked):
+- programs that ignore the mime default and run their own explorer or call one directly
+- file open/save dialogs in GTK and Qt programs, which are not file-explorer launches and may need separate handling
+- how nnn is launched from a gui program, since it is a terminal program and `nnn.desktop` would need a terminal
+
+## Remove unused network managers
+
+Weighting: effort 1, blast radius 2, improvement 1, priority 0.33.
+
+NetworkManager is the one in use (enabled, default wpa_supplicant backend). `iwd` and `netctl` are explicitly installed but not enabled or configured, and nothing requires them. Remove both.
+
+## System theme changer in the tui
+
+Weighting: effort 5, blast radius 4, improvement 3, priority 0.33.
+
+Switch the whole system between dark, light, etc. from the tui, setting every place that needs it.
+
+Places known so far:
+- `gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'` (needed for vivaldi to use its dark theme)
+- GTK theme
+- Qt theme
+
+Not needed: terminal, editor and wallpaper, which are set by hand.
+
+When building: survey the installed programs and the ui framework each is built with, so each can be made to read the system theme.
+
 ## Script consistency and shared helpers
+
+Weighting: effort 5, blast radius 5, improvement 3, priority 0.30.
 
 Go through all of the scripts: simplify them, make them consistent with each other, and look at improvements, including shared helpers and utils. Nothing decided; the notes below come from a quick survey of the tracked scripts (headers, indentation and helper names only; the bodies were not read).
 
@@ -192,3 +228,24 @@ Inconsistencies seen:
 - `nnn-wrap.sh`, `monitor-tui-wrap.sh`, `rofi-wrap.sh`, `xrdb-wrap.sh`, `panel.sh` and `variables.autostart` all reference the colours code (`colours.sh` / `colour_hex`); whether they share a pattern was not checked.
 
 Not decided: a shared helpers file (for `hc` and the colours lookup, for example), one indentation style, and one shebang convention. Also the repo's existing preference for bash over adding a new language (`monitor_tui.py` and `pty_inset.py` are already python).
+## Lock screen look
+
+Weighting: effort 4, blast radius 3, improvement 2, priority 0.29.
+
+physlock is a bare lock screen. The aim is to improve how it looks, ideally so login (lemurs) and unlock share one look; at the least, the lock screen looks better. Whether physlock itself can be extended, or something else would have to replace it, is not known.
+
+Constraints from the user:
+- physlock replaces the wm view on a console instead of drawing a program over it, and blocks switching to another tty; programs that draw above the wm/de can show rendering problems or be bypassed.
+- Whatever is used must keep that: no bypass through another tty, no rendering problems.
+
+Current state (checked):
+- physlock 13-5, installed setuid root (`/usr/bin/physlock`). Run as `physlock -dsm` from `Super-l` (`shortcuts.autostart`) and from a polybar click (`polybar/polybar.ini`); it is in the quickstart packages. The usage line lists `-dhLlmsv` and `-p MSG`.
+- Its PAM service (`/etc/pam.d/physlock`) is plain `pam_unix.so` for auth, account, password and session.
+- lemurs runs on tty 2 with its own PAM service (`pam_service = "lemurs"` in the generated `etc_lemurs_config.toml`; `/etc/pam.d/lemurs` exists). Its colours come from the colours templates.
+- `xss-lock` (idle locking) is an optional dependency of physlock and is not installed; idle lock was ruled out.
+
+Not checked (from memory, to confirm):
+- what the flags mean (`-d` detach, `-s` disable SysRq, `-m` mute kernel messages, `-p` prompt message) and whether `-p` gives any control over the look
+- whether lemurs can be run as a locker at all, or is only a login screen that starts a session; if it only starts sessions, unlocking would mean ending the session
+- whether physlock's source has hooks or options for how the prompt is drawn
+- alternatives that also take over a console, if any exist
