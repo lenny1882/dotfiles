@@ -7,7 +7,7 @@ source ~/.config/herbstluftwm/variables.autostart
 # autostart - but only if custom var has not been created
 if hc silent new_attr bool my_not_first_autostart ; then 
     hc spawn $SCRIPTS_DIR/xrdb-wrap.sh ~/.Xresources
-    hc spawn picom --config ~/.config/compton.conf &
+    hc spawn picom --config ~/.config/picom.conf &
     hc spawn numlockx on &
     hc spawn $SCRIPTS_DIR/background.sh &
 

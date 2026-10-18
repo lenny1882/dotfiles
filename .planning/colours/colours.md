@@ -26,7 +26,7 @@ Path prefixes used below:
 | nnn | `hlwm/scripts/nnn-wrap.sh` | `NNN_FCOLORS` and `NNN_COLORS` built with `colour_256` |
 | monitor TUI | `hlwm/scripts/monitor-tui-wrap.sh`, `hlwm/scripts/monitor_tui.py` | five `TUI_COLOUR_*` environment variables, read with defaults |
 | eza, bluetui, git, ls | none | the terminal's ANSI palette (section 3) |
-| picom | `symlinks/home_@user@_.config_compton.conf` | shadow colour `0.0 0.0 0.0` (black), left as is |
+| picom | `symlinks/home_@user@_.config_picom.conf` | shadow colour `0.0 0.0 0.0` (black), left as is |
 | bat, micro | none | bat uses a built-in theme name, micro has no colour scheme |
 
 ## 2. Colours and what uses them
@@ -86,7 +86,7 @@ All of these are unused, not hex, or intentionally left:
 - **polybar:** `bg_med`, `line_yellow` and `line_red` in `hlwm/polybar/scripts/colors_vscode_dark` (unused; `line_red` is only in a commented-out line).
 - **Xresources:** the `nord0`–`nord15` defines and three commented-out palettes (nord, a project-only set and full VS Code Dark+).
 - **lemurs:** the named colours `white`, `red`, `gray` and `dark gray`, plus `#87CEEB` in a comment. They resolve through the Linux console palette, which neither `colours.sh` nor Xresources controls.
-- **picom:** the black shadow colour in `compton.conf`.
+- **picom:** the black shadow colour in `picom.conf`.
 - **nano:** `cfg/nano_nanorc` and `symlinks/root_.nanorc` use named colours; real nano is not used, so they are not migrated.
 - **Legacy files:** `hlwm/autostart-3monitors` (an old autostart with its own colour table), `hlwm/autostart.bak*` and `autostart.orig-bak`, the polybar files `colors` and `colors_nord` (not included by `polybar.ini`), and `hlwm/12palette`, an unrelated chart stylesheet.
 

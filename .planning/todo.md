@@ -18,17 +18,16 @@ Each section carries a `Weighting:` line under its heading with the same numbers
 |---|------|--------|-------|-------------|----------|
 | 1 | Backups | 4 | 1 | 5 | 1.00 |
 | 2 | Automount removable drives on plug-in | 3 | 2 | 4 | 0.80 |
-| 3 | Picom config | 2 | 2 | 3 | 0.75 |
-| 4 | Keybinding cheat-sheet | 2 | 1 | 2 | 0.67 |
-| 5 | Clipboard history | 2 | 1 | 2 | 0.67 |
-| 6 | Repo cleanup | 2 | 2 | 2 | 0.50 |
-| 7 | Quickstart steps for makepkg and the power group | 2 | 2 | 2 | 0.50 |
-| 8 | Skip machine-specific symlinks | 3 | 3 | 3 | 0.50 |
-| 9 | nnn as the default file explorer | 3 | 2 | 2 | 0.40 |
-| 10 | Remove unused network managers | 1 | 2 | 1 | 0.33 |
-| 11 | System theme changer in the tui | 5 | 4 | 3 | 0.33 |
-| 12 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
-| 13 | Lock screen look | 4 | 3 | 2 | 0.29 |
+| 3 | Keybinding cheat-sheet | 2 | 1 | 2 | 0.67 |
+| 4 | Clipboard history | 2 | 1 | 2 | 0.67 |
+| 5 | Repo cleanup | 2 | 2 | 2 | 0.50 |
+| 6 | Quickstart steps for makepkg and the power group | 2 | 2 | 2 | 0.50 |
+| 7 | Skip machine-specific symlinks | 3 | 3 | 3 | 0.50 |
+| 8 | nnn as the default file explorer | 3 | 2 | 2 | 0.40 |
+| 9 | Remove unused network managers | 1 | 2 | 1 | 0.33 |
+| 10 | System theme changer in the tui | 5 | 4 | 3 | 0.33 |
+| 11 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
+| 12 | Lock screen look | 4 | 3 | 2 | 0.29 |
 
 ## Backups
 
@@ -68,14 +67,6 @@ Options:
 - Custom udev rule plus a systemd mount unit: the most manual, and the most control over where and how drives mount.
 
 To decide: where drives should mount (`/run/media/$USER` is the udisks2 default), whether phones (mtp) are included, and whether a notification is wanted on mount.
-
-## Picom config
-
-Weighting: effort 2, blast radius 2, improvement 3, priority 0.75.
-
-herbstluftwm starts picom with the old compton config (`startup.autostart` line 10: `picom --config ~/.config/compton.conf`).
-- Rename the config to `picom.conf`, updating the flag, the symlink and `setup/notes.txt`.
-- `compton.conf` sets `backend` twice (`"glx"` on line 3, `"xrender"` on line 33). The later one probably wins, so the glx/vsync tearing fix is likely not in effect. Not confirmed; check which backend picom loads, then remove the duplicate.
 
 ## Keybinding cheat-sheet
 
