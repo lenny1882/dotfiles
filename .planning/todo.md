@@ -79,28 +79,16 @@ Weighting: effort 2, blast radius 2, improvement 2, priority 0.50.
 
 Findings from a read-only pass over the tracked files. "Referenced" means the file name appears in another tracked file outside `.planning/` and the backups; nothing was run. Git history keeps anything deleted.
 
-### herbstluftwm folder (`symlinks/home_@user@_.config_herbstluftwm`)
-- Backups with no references: `autostart.bak`, `autostart.bak.bak`, `autostart.orig-bak`, `autostart-3monitors` (about 1,000 lines in total).
-- Other files with no references: `12palette`, `scripts/supplemental.kmap` (a console keymap), and the polybar scripts `0` (empty), `colors_nord`, `info-hlwm-workspaces.sh`, `pipewire.sh`.
-- `[module/dsp]` in `polybar/polybar.ini` is defined but not listed in any `modules-` line.
-- `autostart` ends with about 20 blank lines.
-
-### `setup/quickstart_arch.sh`
-- About 50 commented-out lines at the end (easystroke, sublime, unifi), and the commented `yay -Rdd ttf-harmonyos-sans` at line 377. `easystroke` and `sublime-text-4` are installed, so those blocks look like leftovers.
-
-### Root
-- `screenshot.png` (2.6M) is at the repo root and nothing references it.
-
 ### `setup/disable_ipv6.sh`
 - Nothing calls it, and ipv6 is currently on (`/proc/sys/net/ipv6/conf/all/disable_ipv6` is 0). Either wire it into the quickstart or delete it.
 
 ### nnn
-- `symlinks/home_@user@_.config_nnn_plugins` holds 60 files, but `NNN_PLUG` in `scripts/nnn-wrap.sh` binds only three (`fzopen`, `dragdrop`, `xdgdefault`). The rest look like the upstream plugin set, including `*-mac` ones and ones for programs that may not be installed (`kdeconnect`, `mocq`, `cmusq`). Plugins can be run other ways, so unused is not certain. They could be fetched at install time with the `getplugs` plugin instead of tracked.
+- `symlinks/home_@user@_.config_nnn_plugins` holds 55 files, but `NNN_PLUG` in `scripts/nnn-wrap.sh` binds only three (`fzopen`, `dragdrop`, `xdgdefault`). The rest look like the upstream plugin set, including `*-mac` ones and ones for programs that may not be installed (`kdeconnect`, `mocq`, `cmusq`). Plugins can be run other ways, so unused is not certain. They could be fetched at install time with the `getplugs` plugin instead of tracked.
 - `symlinks/home_@user@_.config_nnn_sessions_startup` is a binary nnn session file holding machine paths: state, not config.
 
 ### Smaller items
 - Two nano configs, `root_.nanorc` and `home_@user@_.config_nano_nanorc`, alongside micro. Which editors are in use was not checked.
-- `etc_pacman.d_hooks_expressvpn.hook` has the header comment `# /etc/pacman.d/hooks/clean-cache.hook`; a copy-paste slip, the hook itself is fine.
+- `symlinks/home_@user@_.config_herbstluftwm/scripts/supplemental.kmap` is a console keymap with nothing referencing it; it is loaded by hand with `loadkeys`, so unused is not certain.
 - `monitor_check.sh` has one failing check, "background: the solid image" (it fails the same way without the reconcile fix); likely a stale expected colour after the Colours renames. Not looked into.
 - Polybar `ups` still shows `? | ?` after any restart of the panel that is not a lock: a real monitor layout change, a herbstluftwm reload, or a `polybar.ini` save (polybar's own `--reload`). `panel.sh` skips the `hook 0` send after its first run (`my_not_first_autostart_panel`), and a polybar reload never runs `panel.sh`. Lock/unlock no longer restarts it since the `get_attr` fix in `monitor_reconcile.sh`. Left as is: these restarts are rare and a count refresh means querying aur.
 

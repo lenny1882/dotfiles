@@ -374,7 +374,6 @@ step_fonts() {
 		ttf-dejavu-nerd \
 		ttf-tw \
 		ttf-ubraille
-	# yay -Rdd ttf-harmonyos-sans
 }
 
 step_printers() {
@@ -1093,50 +1092,3 @@ export STORAGE_DIR USER_DIR DOWNLOAD_DIR PROGRAMS_DIR
 cd "$DOWNLOAD_DIR" || exit
 
 runMenu
-
-# easystroke
-# read -r -e -p "Install easystroke? ([Y]es - patched / [n]o / from [a]UR): " i && choice=${i:-Y}
-# case ${choice,,} in
-# 	y) wget http://openartisthq.org/easystroke/patched-easystroke-master.tar.bz2
-# 	   tar xvjf patched-easystroke-master.tar.bz2
-# 	   cd patched-easystroke-master/easystroke || exit
-# 	   make
-# 	   cp ./easystroke $PROGRAMS_DIR
-# 	   cd $DOWNLOAD_DIR || exit
-# 	   ;;
-# 	a) installer easystroke ;;
-# 	*) ;;
-# esac
-
-# sublime
-# read -r -e -p "Install sublime-text? ([Y]es / [n]o): " i && choice=${i:-Y}
-# case ${choice,,} in
-# 	y) curl -O https://download.sublimetext.com/sublimehq-pub.gpg && sudo pacman-key --add sublimehq-pub.gpg && sudo pacman-key --lsign-key 8A8F901A && rm sublimehq-pub.gpg
-# 	   echo -e "\n[sublime-text]\nServer = https://download.sublimetext.com/arch/stable/x86_64" | sudo tee -a /etc/pacman.conf
-# 	   # NOTE: not installer, as above specifically adds an entry to pacman
-# 	   sudo pacman -Sy sublime-text
-# 	   ;;
-# 	*) ;;
-# esac
-
-# unifi
-# read -r -e -p "Install unifi? ([Y]es - 5.14.23-1 / [n]o / from [a]UR): " i && choice=${i:-Y}
-# case ${choice,,} in
-# 	y) installer mongodb-bin jre8-openjdk-headless fontconfig
-# 	   mkdir tmp-unifi
-# 	   cd tmp-unifi || exit
-# 	   wget https://aur.archlinux.org/cgit/aur.git/snapshot/aur-5844bbc6593b9a6a456e9bc42240288ac6301611.tar.gz
-# 	   tar xvf aur-5844bbc6593b9a6a456e9bc42240288ac6301611.tar.gz
-# 	   cd aur-5844bbc6593b9a6a456e9bc42240288ac6301611 || exit
-# 	   makepkg
-# 	   local-installer unifi-5.14.23-1-x86_64.pkg.tar.zst
-# 	   systemctl enable --now unifi
-# 	   cd $DOWNLOAD_DIR || exit
-#        rm -r tmp-unifi
-#        sudo sed -rie 's/#IgnorePkg/IgnorePkg/' /etc/pacman.conf
-#        sudo sed -rie '/^IgnorePkg.*/s/$/ unifi/' /etc/pacman.conf
-# 	   ;;
-# 	a) installer unifi ;;
-# 	*) ;;
-# esac
-
