@@ -71,7 +71,7 @@ To decide: where drives should mount (`/run/media/$USER` is the udisks2 default)
 
 Weighting: effort 2, blast radius 1, improvement 2, priority 0.67.
 
-No clipboard manager is installed (nothing found for `xclip`, `xsel`, `clipmenu`, `greenclip`, `copyq`). The only clipboard tools seen are the nnn plugins `cbcopy-mac` and `cbpaste-mac`. Options such as `clipmenu` (rofi-compatible; `rofi` is installed), `greenclip` and `copyq` were not checked against this setup. Not decided; the work is optional.
+No clipboard manager is installed (nothing found for `xsel`, `clipmenu`, `greenclip`, `copyq`). `xclip` is installed, but only as the copy tool `scripts/screenshot.sh` pipes into; it keeps no history. The only other clipboard tools seen are the nnn plugins `cbcopy-mac` and `cbpaste-mac`. Options such as `clipmenu` (rofi-compatible; `rofi` is installed), `greenclip` and `copyq` were not checked against this setup. Not decided; the work is optional.
 
 ## Repo cleanup
 
