@@ -80,7 +80,6 @@ Weighting: effort 2, blast radius 2, improvement 2, priority 0.50.
 Findings from a read-only pass over the tracked files. "Referenced" means the file name appears in another tracked file outside `.planning/` and the backups; nothing was run. Git history keeps anything deleted.
 
 ### Smaller items
-- `monitor_check.sh` has one failing check, "background: the solid image" (it fails the same way without the reconcile fix); likely a stale expected colour after the Colours renames. Not looked into.
 - Polybar `ups` still shows `? | ?` after any restart of the panel that is not a lock: a real monitor layout change, a herbstluftwm reload, or a `polybar.ini` save (polybar's own `--reload`). `panel.sh` skips the `hook 0` send after its first run (`my_not_first_autostart_panel`), and a polybar reload never runs `panel.sh`. Lock/unlock no longer restarts it since the `get_attr` fix in `monitor_reconcile.sh`. Left as is: these restarts are rare and a count refresh means querying aur.
 
 ### Simplify (judgment calls, not read in depth)

@@ -481,8 +481,8 @@ got=$(bg $'eDP-1 eDP-1 00ffffffffffff0009e5c90b00000000\nDP-4 DP-4 -' "$PANEL"$'
 [[ $got == "--no-fehbg --bg-fill $wall "*.ppm ]] && ok "background: the panel keeps the wallpaper, an unrecognised external gets the solid colour" || { bad "background: panel wallpaper, unknown external colour"; echo "        $got"; }
 bg $'eDP-1 eDP-1 -\nDP-4 DP-4 -' "$PANEL"$'\n'"$EXT" >/dev/null
 read -r -d '' ppm <"$B/feh.log.ppm"
-[[ $(head -3 "$B/feh.log.ppm" | tr '\n' ' ') == 'P3 64 64 255 ' && $(tail -n +4 "$B/feh.log.ppm" | tr -s ' \n' '\n\n' | sort | uniq -c | tr -s ' \n' ' ') == ' 4096 101 4096 192 4096 21 ' ]] \
-    && ok "background: the solid colour is a 64x64 image of #1565C0 (a 1x1 image scales to black in feh)" || { bad "background: the solid image"; head -4 "$B/feh.log.ppm" | cut -c1-40 | sed 's/^/        /'; }
+[[ $(head -3 "$B/feh.log.ppm" | tr '\n' ' ') == 'P3 64 64 255 ' && $(tail -n +4 "$B/feh.log.ppm" | tr -s ' \n' '\n\n' | sort | uniq -c | tr -s ' \n' ' ') == ' 4096 110 4096 204 4096 40 ' ]] \
+    && ok "background: the solid colour is a 64x64 image of #286ECC (a 1x1 image scales to black in feh)" || { bad "background: the solid image"; head -4 "$B/feh.log.ppm" | cut -c1-40 | sed 's/^/        /'; }
 got=$(bg $'eDP-1 eDP-1 00ffffffffffff0009e5c90b00000000\nDP-4 desk 00ffffffffffff0005e3bbbbbbbbbbbb' "$PANEL"$'\n'"$EXT")
 [[ $got == "--no-fehbg --bg-fill $wall" ]] && ok "background: an external listed in MONITORS keeps the wallpaper too" || { bad "background: listed external"; echo "        $got"; }
 got=$(bg $'eDP-1 eDP-1 -\nDP-4 00ffffffffffff0005e3bbbbbbbbbbbb 00ffffffffffff0005e3bbbbbbbbbbbb' "$EXT"$'\n'"$PANEL")
