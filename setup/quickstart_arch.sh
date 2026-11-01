@@ -312,6 +312,12 @@ step_config_links() {
 		# GLib (so the portal) only finds a user-level desktop entry for a mime type through
 		# this cache; without it "open folder" from VS Code offers an empty "Open With" chooser
 		command -v update-desktop-database >/dev/null && update-desktop-database ~/.local/share/applications
+		# the services folder may be new since the session bus started; the bus must reread it
+		# and the portal must restart to see the nnn backend
+		if busctl --user status >/dev/null 2>&1; then
+			busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus ReloadConfig
+			systemctl --user restart xdg-desktop-portal
+		fi
 	} 2>&1 | pinnedOutput
 }
 
