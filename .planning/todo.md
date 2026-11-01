@@ -16,15 +16,32 @@ Each section carries a `Weighting:` line under its heading with the same numbers
 
 | # | Item | Effort | Blast | Improvement | Priority |
 |---|------|--------|-------|-------------|----------|
-| 1 | Backups | 4 | 1 | 5 | 1.00 |
-| 2 | Automount removable drives on plug-in | 3 | 2 | 4 | 0.80 |
-| 3 | Clipboard history | 2 | 1 | 2 | 0.67 |
-| 4 | Repo cleanup | 2 | 2 | 2 | 0.50 |
-| 5 | Remove unused network managers | 1 | 2 | 1 | 0.33 |
+| 1 | Speakers pop | 2 | 1 | 3 | 1.00 |
+| 2 | Backups | 4 | 1 | 5 | 1.00 |
+| 3 | Automount removable drives on plug-in | 3 | 2 | 4 | 0.80 |
+| 4 | Clipboard history | 2 | 1 | 2 | 0.67 |
+| 5 | Repo cleanup | 2 | 2 | 2 | 0.50 |
 | 6 | System theme changer in the tui | 5 | 4 | 3 | 0.33 |
 | 7 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
 | 8 | Lock screen look | 4 | 3 | 2 | 0.29 |
 | 9 | GUI session environment lacks the shellrc exports | 2 | 2 | 1 | 0.25 |
+
+## Speakers pop
+
+Weighting: effort 2, blast radius 1, improvement 3, priority 1.00.
+
+The speakers pop when sound starts (reported), which fits the audio codec or the pipewire sink waking from idle. Cause not confirmed.
+
+Checked:
+- Audio is pipewire with pipewire-pulse and wireplumber (no pulseaudio); `alsa-utils` is installed. The device is the AMD Ryzen HD Audio Controller (`c2:00.6`) on `snd_hda_intel`.
+- `snd_hda_intel` `power_save` is 10 (seconds) and `power_save_controller` is Y, the kernel defaults. Nothing in `/etc/modprobe.d` sets them, and there is no wireplumber config in `/etc/wireplumber` or `~/.config/wireplumber`.
+
+Options:
+- `options snd_hda_intel power_save=0` (and `power_save_controller=N`) in a file in `/etc/modprobe.d`: needs a reboot or a module reload; the live test is `echo 0 | sudo tee /sys/module/snd_hda_intel/parameters/power_save`.
+- A wireplumber rule setting `session.suspend-timeout-seconds = 0` on the alsa nodes, so pipewire never suspends the sink: no reboot, user-level, but it does not touch the codec's own power saving.
+- Whichever works would be tracked in the repo (a `symlinks/` entry or a quickstart step).
+
+To decide: test the live setting first to confirm the cause. Power saving off costs a little idle power, which matters little on a desktop (not checked whether this is a laptop).
 
 ## Backups
 
@@ -86,12 +103,6 @@ Findings from a read-only pass over the tracked files. "Referenced" means the fi
 - `.planning/monitor_changes/monitor_tui_check.py` (76K) and `monitor_check.sh` (28K): test scaffolding for work that may be finished.
 
 Not covered: the large scripts (`monitor_tui.py`, `monitor_reconcile.sh`, the rest of `quickstart_arch.sh`) were not read for internal simplification.
-
-## Remove unused network managers
-
-Weighting: effort 1, blast radius 2, improvement 1, priority 0.33.
-
-NetworkManager is the one in use (enabled, default wpa_supplicant backend). `iwd` and `netctl` are explicitly installed but not enabled or configured, and nothing requires them. Remove both.
 
 ## System theme changer in the tui
 
