@@ -117,7 +117,26 @@ Places known so far:
 
 Not needed: terminal, editor and wallpaper, which are set by hand.
 
-When building: survey the installed programs and the ui framework each is built with, so each can be made to read the system theme.
+Survey of the quickstart package list, by toolkit (checked by the libraries each binary links; the apps with no match were judged by hand, not tested):
+- GTK 3: gnome-disk-utility, gthumb, gpick, peek, xarchiver, easystroke, dragon-drop, Inkscape, minecraft-launcher; Orca Slicer and Bambu Studio (wxWidgets on GTK).
+- GTK 4: pavucontrol, scangearmp2.
+- Qt 6: Krita, FreeCAD, easyeffects.
+- Chromium or Electron: Vivaldi, Rambox, VS Code, Obsidian. Vivaldi links Qt too.
+- Own UI, nothing for the changer to set: Blender, Sublime Text, mpv, tigervnc.
+- Already themed by the colours project, not this feature: rofi, dunst, polybar, urxvt, feh.
+- Versions: gtk3 3.24.52, gtk4 4.24.1, libadwaita 1.10.0, qt6-base 6.12.0.
+
+State and tests so far (2026-11-02):
+- `color-scheme` is `prefer-dark` and `gtk-theme` is `Adwaita`. `~/.config/gtk-3.0` and `gtk-4.0` are empty (no `settings.ini`). The session sets `GTK_USE_PORTAL=1` and `QT_QPA_PLATFORMTHEME=xdgdesktopportal`; `GTK_THEME` is not set.
+- The portal follows `color-scheme`: `org.freedesktop.appearance color-scheme` reads 1 for `prefer-dark` and 2 for `prefer-light` (`busctl --user call org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop org.freedesktop.portal.Settings Read ss org.freedesktop.appearance color-scheme`). The first read after a change was stale once (still 1); the cause was not found, and later reads were right at once. `portals.conf` has `default=gtk`, so Settings comes from `xdg-desktop-portal-gtk`.
+- pavucontrol (GTK 4) ignores `color-scheme`: screenshots of a fresh launch under `prefer-light` and under `prefer-dark` are identical and both light. Not a live-update problem. Why is unknown: libgtk-4 has `gtk-interface-color-scheme`, and nothing pins the theme.
+- `GTK_THEME=Adwaita:dark pavucontrol` opens dark, so the GTK theme name is a mechanism that works.
+- Krita and Vivaldi: no visible change could be seen on a `color-scheme` change. Not a clear test; Vivaldi's browser UI has its own theme setting ("Use system theme"), and a page that follows the system would be the better test.
+- Not tested: GTK 3 apps (gthumb is the one to try), whether Qt apps follow anything, and whether the "needed for vivaldi" note still holds.
+
+Idea to test first (not built): write `~/.config/gtk-3.0/settings.ini` and `~/.config/gtk-4.0/settings.ini` with `gtk-application-prefer-dark-theme` (1 or 0) and keep `color-scheme` set alongside for the Chromium apps; then launch pavucontrol and gthumb in each mode. Unknown whether the settings files work for GTK 4 as `GTK_THEME` did. The files would be tracked through `symlinks/`.
+
+When building: the Qt apps and the Chromium apps still need a mechanism found; the survey above says what to cover.
 
 ## Script consistency and shared helpers
 
