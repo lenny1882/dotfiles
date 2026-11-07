@@ -401,6 +401,18 @@ step_fonts() {
 		ttf-ubraille
 }
 
+# copied rather than symlinked, like udev-reload: the module options in
+# /etc/modprobe.d are symlinks into the dotfiles, unreadable when snd_hda_intel
+# loads, so this applies them once /media/Storage is mounted
+step_module_options() {
+	{
+		sed "s|@SETUP_DIR@|$SCRIPT_DIR|" "$SCRIPT_DIR/module-options.service" | sudo tee /etc/systemd/system/module-options.service >/dev/null
+		sudo systemctl daemon-reload
+		sudo systemctl enable --now module-options.service
+		echo "module-options.service: $(systemctl is-enabled module-options.service), $(systemctl is-active module-options.service)"
+	} 2>&1 | pinnedOutput
+}
+
 step_printers() {
 	{ installer cups; systemctl enable --now org.cups.cupsd.service; } 2>&1 | pinnedOutput
 }
@@ -647,6 +659,7 @@ STEP_NAMES=(
 	"Power group (power off without a password)"
 	"Symlink user directories"
 	"Link config files"
+	"Apply module options (boot)"
 	"SSH agent (autostart)"
 	"Load shell rc files"
 	"Display manager"
@@ -669,6 +682,7 @@ STEP_FUNCS=(
 	step_power_group
 	step_symlinks
 	step_config_links
+	step_module_options
 	step_ssh_agent
 	step_shell_loader
 	step_display_manager
@@ -685,7 +699,7 @@ STEP_FUNCS=(
 # groups: name + how many of the STEP_NAMES entries (taken in order,
 # starting where the previous group left off) belong to it
 GROUP_NAMES=("System" "User setup" "Desktop" "Software")
-GROUP_SIZES=(7 4 6 3)
+GROUP_SIZES=(7 5 6 3)
 
 # STEP_NAMES/STEP_FUNCS are index-paired, and GROUP_SIZES assumes STEP_NAMES
 # is laid out as contiguous runs matching GROUP_NAMES in order - none of that

@@ -1,0 +1,11 @@
+[Unit]
+Description=Apply the audio power save module options
+RequiresMountsFor=/media/Storage
+After=sound.target
+
+[Service]
+Type=oneshot
+ExecStart=@SETUP_DIR@/module_options_apply.sh /etc/modprobe.d/audio_power_save.conf
+
+[Install]
+WantedBy=multi-user.target
