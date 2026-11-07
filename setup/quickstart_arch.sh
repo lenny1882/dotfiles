@@ -524,6 +524,20 @@ step_window_manager() {
 	} 2>&1 | pinnedOutput
 }
 
+# keeps the mode the system is already in; with the links and color-scheme
+# disagreeing (a fresh install), color-scheme decides, and dark if it is unset
+step_theme() {
+	{
+		local mode
+		mode=$("$SCRIPT_DIR/theme.sh" current)
+		if [[ $mode == mixed ]]; then
+			mode=$("$SCRIPT_DIR/theme.sh" scheme)
+			[[ $mode == unset ]] && mode=dark
+		fi
+		"$SCRIPT_DIR/theme.sh" apply "$mode"
+	} 2>&1 | pinnedOutput
+}
+
 step_packages() {
 	echo -n "Which packages do you want to install:"
 	selectAndInstall \
@@ -664,6 +678,7 @@ STEP_NAMES=(
 	"Load shell rc files"
 	"Display manager"
 	"Window manager (herbstluftwm)"
+	"Theme (dark or light)"
 	"Terminal emulator"
 	"Fonts"
 	"Printers (CUPS)"
@@ -687,6 +702,7 @@ STEP_FUNCS=(
 	step_shell_loader
 	step_display_manager
 	step_window_manager
+	step_theme
 	step_terminal
 	step_fonts
 	step_printers
@@ -699,7 +715,7 @@ STEP_FUNCS=(
 # groups: name + how many of the STEP_NAMES entries (taken in order,
 # starting where the previous group left off) belong to it
 GROUP_NAMES=("System" "User setup" "Desktop" "Software")
-GROUP_SIZES=(7 5 6 3)
+GROUP_SIZES=(7 5 7 3)
 
 # STEP_NAMES/STEP_FUNCS are index-paired, and GROUP_SIZES assumes STEP_NAMES
 # is laid out as contiguous runs matching GROUP_NAMES in order - none of that

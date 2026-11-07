@@ -323,8 +323,95 @@ with tempfile.TemporaryDirectory() as tmp:
         ls = text(r)
         check(f"overview: {ww}x{hh} fills the window exactly", len(ls) == hh - 2 and all(len(l) == ww for l in ls), (len(ls), {len(l) for l in ls}))
     least = tui.footer_width(footer)
-    least_h = tui.FOOTER_ROWS + 2 * tui.MIN_PANEL_ROWS
+    least_h = tui.FOOTER_ROWS + tui.OVERVIEW_BODY_MIN
     check("fits: the least that works", tui.fits(least_h, least, footer) and not tui.fits(least_h - 1, 200, footer) and not tui.fits(40, least - 1, footer), least)
+    check("fits: the right column holds the tags panel at its least plus the theme panel",
+          tui.OVERVIEW_BODY_MIN == tui.MIN_PANEL_ROWS + tui.THEME_H and least_h == 13, (tui.OVERVIEW_BODY_MIN, least_h))
+
+    real_theme_run, real_theme_current, real_dry = tui.theme_run, tui.theme_current, tui.DRY
+    tui.theme_current = lambda: "dark"
+    dt = tui.gather()
+    rt, _ = tui.render_overview(dt, 3, 100, 40)
+    lt = text(rt)
+    top = next(i for i, l in enumerate(lt) if "┌─ Theme ─" in l)
+    check("theme: a Theme panel sits under the Tags panel with its mode in it",
+          top == 40 - tui.FOOTER_ROWS - tui.THEME_H and "Mode     dark" in lt[top + 2], (top, lt[top + 2]))
+    check("theme: selecting it turns its border green and the Tags border plain",
+          "border_sel" in {r for t, r in rt[top] if t.startswith("┌")} and all("border_sel" not in {r for t, r in rt[i] if t.strip(" ")} for i in range(0, top)),
+          None)
+    check("theme: the panels still fill everything above the footer", len(rt) == 38 and all(len(l) == 100 for l in lt))
+    dm = tui.gather()
+    dm.theme = "mixed"
+    check("theme: mixed says the links and color-scheme differ",
+          any("links and color-scheme differ" in l for l in text(tui.render_overview(dm, 0, 100, 40)[0])))
+
+    te = tui.ThemeEdit("dark")
+    check("theme edit: starts on the current mode", te.sel == 0)
+    te.handle("DOWN")
+    check("theme edit: Down moves to Light and no further", te.sel == 1 and (te.handle("DOWN"), te.sel)[1] == 1)
+    check("theme edit: Up moves back and stops at Dark", (te.handle("UP"), te.sel)[1] == 0 and (te.handle("UP"), te.sel)[1] == 0)
+    check("theme edit: Ctrl-S saves, Esc and Ctrl-C cancel, other keys do nothing",
+          te.handle("CTRL_S") == "save" and te.handle("ESC") == "cancel" and te.handle("CTRL_C") == "cancel"
+          and te.handle("ENTER") is None and te.handle("q") is None)
+    check("theme edit: a mode it does not know (mixed, unknown) starts on Dark",
+          tui.ThemeEdit("mixed").sel == 0 and tui.ThemeEdit("unknown").sel == 0 and tui.ThemeEdit("light").sel == 1)
+    de = tui.gather()
+    de.theme = "dark"
+    re_, _ = tui.render_overview(de, 3, 100, 40, tui.ThemeEdit("dark"))
+    le = text(re_)
+    check("theme edit: the panel lists Dark and Light with the selection and the current mode marked",
+          "› Dark *" in le[top + 2] and "Light" in le[top + 3] and "› Light" not in le[top + 3], (le[top + 2], le[top + 3]))
+    check("theme edit: the panel still fills the window", len(re_) == 38 and all(len(l) == 100 for l in le))
+    check("footer: a message replaces the page title and the hints stay",
+          tui.overview_footer("light applied") == ("light applied", tui.FOOTER) and tui.overview_footer()[0] == "Overview")
+
+    tui.DRY = True
+    check("theme apply: a dry run applies nothing and says so", tui.theme_apply("light") == "dry run: would apply light")
+    tui.DRY = False
+    calls, state = [], {"mode": "dark"}
+    def fake_run(*a):
+        calls.append(a)
+        if a[0] == "apply":
+            state["mode"] = a[1]
+        return 0, ""
+    tui.theme_run = fake_run
+    check("theme apply: runs theme.sh apply with the mode and reports it",
+          tui.theme_apply("light") == "light applied" and calls == [("apply", "light")], calls)
+    tui.theme_run = lambda *a: (1, "theme: could not set color-scheme\ntheme: /x/settings.ini is a regular file, not replacing it")
+    check("theme apply: a failure gives theme.sh's last line",
+          tui.theme_apply("dark") == "theme: /x/settings.ini is a regular file, not replacing it")
+    def no_run(*a):
+        raise OSError(2, "No such file or directory")
+    tui.theme_run = no_run
+    check("theme apply: a missing theme.sh says so", tui.theme_apply("dark") == "cannot run theme.sh: No such file or directory")
+
+    tui.theme_run = fake_run
+    state["mode"] = "dark"
+    calls.clear()
+    tui.theme_current = lambda: state["mode"]
+    class LoopWin:
+        def getmaxyx(self): return 40, 100
+        def timeout(self, ms): pass
+    keys = iter(["DOWN", "RIGHT", "DOWN", "ENTER", "DOWN", "CTRL_S", "q"])
+    seen = []
+    real_read_key, real_paint = tui.read_key, tui.paint
+    tui.read_key = lambda win: next(keys)
+    tui.paint = lambda win, rows, footer, cursor=None: seen.append(footer)
+    tui.loop(LoopWin(), ["overview"], 0, tui.gather())
+    tui.read_key, tui.paint = real_read_key, real_paint
+    check("theme loop: Enter on the Theme panel shows the editing hints, Ctrl-S applies and the title says so",
+          seen[4] == ("Theme", tui.THEME_EDIT_HINTS) and seen[5] == ("Theme", tui.THEME_EDIT_HINTS)
+          and seen[6] == ("light applied", tui.FOOTER) and calls == [("apply", "light")], (seen, calls))
+    keys = iter(["DOWN", "RIGHT", "DOWN", "ENTER", "DOWN", "ESC", "q"])
+    seen.clear()
+    calls.clear()
+    tui.read_key = lambda win: next(keys)
+    tui.paint = lambda win, rows, footer, cursor=None: seen.append(footer)
+    tui.loop(LoopWin(), ["overview"], 0, tui.gather())
+    tui.read_key, tui.paint = real_read_key, real_paint
+    check("theme loop: Esc cancels the edit, applies nothing and goes back to the overview footer",
+          seen[5] == ("Theme", tui.THEME_EDIT_HINTS) and seen[6] == ("Overview", tui.FOOTER) and calls == [], (seen, calls))
+    tui.theme_run, tui.theme_current, tui.DRY = real_theme_run, real_theme_current, real_dry
 
     class FakeWin:
         def __init__(self, h, w):
@@ -380,7 +467,7 @@ with tempfile.TemporaryDirectory() as tmp:
     small = FakeWin(5, 140)
     tui.paint_too_small(small, 5, 140, footer)
     check("paint: a window too small says what it needs, in a message that fits",
-          small.writes[0][2] == f"too small: need {tui.footer_width(footer)}x{tui.FOOTER_ROWS + 2 * tui.MIN_PANEL_ROWS}", small.writes)
+          small.writes[0][2] == f"too small: need {tui.footer_width(footer)}x{tui.FOOTER_ROWS + tui.OVERVIEW_BODY_MIN}", small.writes)
 
     tui.HC = "/nonexistent/herbstclient"
     data = tui.gather()

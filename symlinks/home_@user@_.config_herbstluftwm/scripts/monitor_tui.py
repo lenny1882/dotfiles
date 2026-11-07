@@ -23,6 +23,8 @@ NONE = "none"     # the layout variable that means a tag has no layout assigned
 RULES_FILE = os.environ.get("RULES_AUTOSTART", os.path.join(SCRIPT_DIR, "..", "rules.autostart"))
 HLWM_TAG_LAYOUTS = os.environ.get("HLWM_TAG_LAYOUTS", os.path.join(SCRIPT_DIR, "hlwm_tag_layouts.conf"))
 HC = os.environ.get("HERBSTCLIENT", "herbstclient")
+THEME_SH = os.environ.get("THEME_SH", os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..", "setup", "theme.sh"))
+THEME_MODES = ("dark", "light")
 DRY = bool(os.environ.get("MONITOR_TUI_DRY"))
 KEEP_SECONDS = 15     # how long an applied change waits for a yes before it is undone
 
@@ -550,10 +552,35 @@ class Overview:
         self.model = Model([])
         self.key = ""
         self.tags = []
+        self.theme = ""
+
+
+def theme_run(*args):
+    p = subprocess.run([THEME_SH, *args], capture_output=True, text=True)
+    return p.returncode, (p.stdout + p.stderr).strip()
+
+
+def theme_current():
+    try:
+        code, out = theme_run("current")
+    except OSError:
+        return "unknown"
+    return out if code == 0 and out else "unknown"
+
+
+def theme_apply(mode):
+    if DRY:
+        return f"dry run: would apply {mode}"
+    try:
+        code, out = theme_run("apply", mode)
+    except OSError as e:
+        return f"cannot run theme.sh: {e.strerror}"
+    return f"{mode} applied" if code == 0 else (out.splitlines() or ["theme.sh failed"])[-1]
 
 
 def gather():
     data = Overview()
+    data.theme = theme_current()
     try:
         data.model = load_model()
         data.key = data.model.key()
@@ -627,6 +654,8 @@ GAP_X = 1       # blank columns between the overview's columns
 FOOTER = "↑/↓ select   ←/→ column   Enter open   q quit"
 FOOTER_ROWS = 2
 MIN_PANEL_ROWS = 3 + 2 * PAD_V
+THEME_H = 2 + 2 * PAD_V + 2
+OVERVIEW_BODY_MIN = max(2 * MIN_PANEL_ROWS, MIN_PANEL_ROWS + THEME_H)
 
 
 def panel(title, content, w, h, selected):
@@ -683,11 +712,11 @@ def footer_width(footer):
 
 
 def fits(height, width, footer):
-    return height >= FOOTER_ROWS + 2 * MIN_PANEL_ROWS and width >= footer_width(footer)
+    return height >= FOOTER_ROWS + OVERVIEW_BODY_MIN and width >= footer_width(footer)
 
 
-def overview_footer():
-    return "Overview", FOOTER
+def overview_footer(message=""):
+    return message or "Overview", FOOTER
 
 
 def clip(segs, width):
@@ -726,14 +755,47 @@ def tags_content(data, cw, ch):
     return lines
 
 
-def render_overview(data, sel, width, height):
+THEME_EDIT_HINTS = "↑/↓ select   Ctrl-S apply   Esc cancel"
+
+
+class ThemeEdit:
+    """The choice being made in the Theme panel; handle() says when to save or cancel."""
+
+    def __init__(self, current):
+        self.sel = THEME_MODES.index(current) if current in THEME_MODES else 0
+
+    def handle(self, key):
+        if key in ("ESC", "CTRL_C"):
+            return "cancel"
+        if key == "CTRL_S":
+            return "save"
+        if key == "UP":
+            self.sel = max(0, self.sel - 1)
+        elif key == "DOWN":
+            self.sel = min(len(THEME_MODES) - 1, self.sel + 1)
+        return None
+
+
+def theme_content(data, cw, ch, edit=None):
+    if edit:
+        return [[(("› " if i == edit.sel else "  ") + mode.capitalize() + (" *" if mode == data.theme else ""),
+                  "label" if i == edit.sel else "text")] for i, mode in enumerate(THEME_MODES)]
+    lines = [[("Mode".ljust(9), "name"), (data.theme, "text")]]
+    if data.theme == "mixed":
+        lines.append(clip([("links and color-scheme differ", "italic")], cw))
+    return lines
+
+
+def render_overview(data, sel, width, height, edit=None):
     h1, h2 = split_height(height)
     rw = width * 40 // 100
     lw = width - rw - GAP_X
     left = panel("Layout", layout_content(data, lw - 2 - 2 * PAD, h1 - 2 - 2 * PAD_V), lw, h1, sel == 0)
     left += panel("Monitors", monitors_content(data, lw - 2 - 2 * PAD, h2 - 2 - 2 * PAD_V), lw, h2, sel == 1)
     th = height - FOOTER_ROWS
-    right = panel("Tags", tags_content(data, rw - 2 - 2 * PAD, th - 2 - 2 * PAD_V), rw, th, sel == 2)
+    tag_h = th - THEME_H
+    right = panel("Tags", tags_content(data, rw - 2 - 2 * PAD, tag_h - 2 - 2 * PAD_V), rw, tag_h, sel == 2)
+    right += panel("Theme", theme_content(data, rw - 2 - 2 * PAD, THEME_H - 2 - 2 * PAD_V, edit), rw, THEME_H, sel == 3)
     return [l + [(" " * GAP_X, "text")] + r for l, r in zip(left, right)], overview_footer()
 
 
@@ -2329,7 +2391,7 @@ def paint(win, rows, footer, cursor=None):
 
 def paint_too_small(win, height, width, footer, need=None):
     win.erase()
-    need_h, need_w = need or (FOOTER_ROWS + 2 * MIN_PANEL_ROWS, footer_width(footer))
+    need_h, need_w = need or (FOOTER_ROWS + OVERVIEW_BODY_MIN, footer_width(footer))
     put(win, 0, 0, f"too small: need {need_w}x{need_h}")
     win.refresh()
 
@@ -2432,12 +2494,12 @@ def run(win):
 
 
 def loop(win, stack, sel, data):
-    screens, left_sel = {}, 0
+    screens, left_sel, edit, message = {}, 0, None, ""
     while True:
         h, w = win.getmaxyx()
         name, footer, need, cursor = stack[-1], None, None, None
         if name == "overview":
-            footer = overview_footer()
+            footer = ("Theme", THEME_EDIT_HINTS) if edit else overview_footer(message)
         elif name == "Layout":
             need = (LAYOUT_MIN_ROWS, layout_min_width())
         elif name == "Tags":
@@ -2446,7 +2508,7 @@ def loop(win, stack, sel, data):
             need = (MONITORS_MIN_ROWS, monitors_min_width())
         if (h >= need[0] and w >= need[1]) if need else fits(h, w, footer):
             if name == "overview":
-                rows, _ = render_overview(data, sel, w, h)
+                rows, _ = render_overview(data, sel, w, h, edit)
             else:
                 rows, footer, cursor = screens[name].render(w, h)
             paint(win, rows, footer, cursor)
@@ -2470,16 +2532,31 @@ def loop(win, stack, sel, data):
                 stack.pop()
                 data = gather()
             continue
+        if edit:
+            act = edit.handle(key)
+            if act == "save":
+                message = theme_apply(THEME_MODES[edit.sel])
+                data.theme = theme_current()
+            if act:
+                edit = None
+            continue
+        message = ""
         if key in ("q", "CTRL_C"):
             return
         if key == "UP" and sel < 2:
             sel = 0
+        elif key == "UP" and sel == 3:
+            sel = 2
         elif key == "DOWN" and sel < 2:
             sel = 1
+        elif key == "DOWN" and sel == 2:
+            sel = 3
         elif key == "RIGHT" and sel < 2:
             left_sel, sel = sel, 2
-        elif key == "LEFT" and sel == 2:
+        elif key == "LEFT" and sel >= 2:
             sel = left_sel
+        elif key == "ENTER" and sel == 3:
+            edit = ThemeEdit(data.theme)
         elif key == "ENTER":
             name = ("Layout", "Monitors", "Tags")[sel]
             stack.append(name)
