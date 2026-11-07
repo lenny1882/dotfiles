@@ -6,6 +6,10 @@ source ~/.config/herbstluftwm/variables.autostart
 # GTK and Qt file dialogs go through the portal, whose FileChooser is nnn (scripts/nnn-portal.py)
 hc export GTK_USE_PORTAL=1
 hc export QT_QPA_PLATFORMTHEME=xdgdesktopportal
+# one cursor size for everything - unset, each program sizes it from the screen height; xsetroot redoes the root cursor herbstluftwm set before this ran
+hc export XCURSOR_THEME=Adwaita
+hc export XCURSOR_SIZE=24
+hc spawn xsetroot -cursor_name left_ptr
 
 # --------------------------------
 # commands
