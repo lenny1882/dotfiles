@@ -31,6 +31,12 @@ confirm() {
 	[[ $answer == [yY]* ]]
 }
 
+# the device must be typed back; for steps that destroy data
+confirm_device() {
+	ask "type the device name again to confirm ($1)"
+	[[ $REPLY == "$1" ]]
+}
+
 # run a command (via sudo unless root); only print it under --dry-run
 run() {
 	if $dry_run; then echo "  (dry-run) $*"; return 0; fi
@@ -59,7 +65,8 @@ if [[ $(lsblk -ndo TYPE "$dev") == disk ]] && [[ -z $(lsblk -nro NAME "$dev" | t
 		# MBR (fdisk) can't address past 2TiB, so bigger disks get GPT via parted
 		size=$(lsblk -bndo SIZE "$dev")
 		if (( size < 2199023255552 )); then tool=fdisk; else tool=parted; fi
-		if confirm "create a single full-size partition on $dev with $tool? (ERASES $dev)"; then
+		echo "about to write a new partition table on $dev with $tool -- WHATEVER IS ON IT NOW WILL BE LOST"
+		if confirm_device "$dev"; then
 			command -v "$tool" >/dev/null || die "$tool not found"
 			if [[ $tool == fdisk ]]; then
 				# o = new DOS table, n/p/1 = primary partition 1, blank lines = default start/end, w = write
@@ -91,8 +98,7 @@ if [[ -z $fstype ]]; then
 	ask "label (optional)"
 	label=$REPLY
 	echo "about to format $dev as $fstype -- ALL DATA ON IT WILL BE LOST"
-	ask "type the device name again to confirm"
-	[[ $REPLY == "$dev" ]] || die "confirmation didn't match, nothing changed"
+	confirm_device "$dev" || die "confirmation didn't match, nothing changed"
 	if [[ -n $label ]]; then run "mkfs.$fstype" -L "$label" "$dev"; else run "mkfs.$fstype" "$dev"; fi
 	$dry_run || { udevadm settle; fstype=$(blkid -o value -s TYPE "$dev"); }
 fi
