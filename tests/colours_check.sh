@@ -2,20 +2,11 @@
 
 # usage: colours_check.sh   (run it under sh, bash and bash --posix)
 
-dir=$(cd "$(dirname "$0")/../../setup" && pwd)
+dir=$(cd "$(dirname "$0")/../setup" && pwd)
 colours_dir=$dir
 . "$dir/colours.sh"
 
-pass=0
-fail=0
-check() {
-	if [ "$2" = "$3" ]; then
-		pass=$((pass + 1))
-	else
-		fail=$((fail + 1))
-		echo "FAIL $1: expected '$2', got '$3'"
-	fi
-}
+. "$(dirname "$0")/lib.sh"
 
 check hex_green "#287D2D" "$(colour_hex col_green)"
 check hex_reference "#C5292C" "$(colour_hex col_red)"
@@ -59,24 +50,24 @@ done
 
 check 256_override "28" "$(colour_256 col_green)"
 col_t="#2E7D32"
-if (colour_256 col_t) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL colour_256 guessed a colour that is not an xterm entry"; else pass=$((pass + 1)); fi
-if (colour_256 col_orange) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL colour_256 guessed for col_orange"; else pass=$((pass + 1)); fi
+check_fails "colour_256 guessed a colour that is not an xterm entry" colour_256 col_t
+check_fails "colour_256 guessed for col_orange" colour_256 col_orange
 col_t="#808080"; check 256_exact_grey244 "244" "$(colour_256 col_t)"
 col_t="#080808"; check 256_exact_grey232 "232" "$(colour_256 col_t)"
 col_t="#eeeeee"; check 256_exact_grey255 "255" "$(colour_256 col_t)"
-col_t="#8a8a8b"; if (colour_256 col_t) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL near-grey accepted"; else pass=$((pass + 1)); fi
+col_t="#8a8a8b"; check_fails "near-grey accepted" colour_256 col_t
 col_t="#ffffff"; col_t_256=16; check 256_override_wins_over_exact "16" "$(colour_256 col_t)"
 col_t_256=300
-if (colour_256 col_t) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL override above 255 accepted"; else pass=$((pass + 1)); fi
+check_fails "override above 255 accepted" colour_256 col_t
 col_t_256=ab
-if (colour_256 col_t) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL non-numeric override accepted"; else pass=$((pass + 1)); fi
+check_fails "non-numeric override accepted" colour_256 col_t
 unset col_t_256
 
 
-if (colour_hex nope) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL unknown name accepted"; else pass=$((pass + 1)); fi
-if (colour_hex 'a;b') 2>/dev/null; then fail=$((fail + 1)); echo "FAIL bad name accepted"; else pass=$((pass + 1)); fi
+check_fails "unknown name accepted" colour_hex nope
+check_fails "bad name accepted" colour_hex 'a;b'
 col_bad="red"
-if (colour_hex col_bad) 2>/dev/null; then fail=$((fail + 1)); echo "FAIL non-hex value accepted"; else pass=$((pass + 1)); fi
+check_fails "non-hex value accepted" colour_hex col_bad
 
 leftover=$(
 	colour_rgb col_green >/dev/null; colour_256 col_green >/dev/null; colour_argb col_dark CC >/dev/null
@@ -114,5 +105,4 @@ check white_is_a_base "#FFFFFF" "$(colour_hex col_white)"
 (unset colours_dir; . "$dir/colours.sh") >/dev/null 2>&1; check source_needs_colours_dir 1 "$?"
 (colours_dir=$work; . "$dir/colours.sh") >/dev/null 2>&1; check source_needs_generated_file 1 "$?"
 
-echo "$pass passed, $fail failed"
-[ "$fail" -eq 0 ]
+summary

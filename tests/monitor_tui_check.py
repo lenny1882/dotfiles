@@ -3,8 +3,9 @@
 turn-off guard, the generated layout, saving to the conf, and a dry run through
 monitor_reconcile.sh --layout over stdin. Run from anywhere:
 
-    python3 .planning/monitor_changes/monitor_tui_check.py
+    python3 tests/monitor_tui_check.py
 """
+import contextlib
 import importlib.util
 import os
 import sys
@@ -15,11 +16,21 @@ sys.dont_write_bytecode = True
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS = os.path.normpath(os.path.join(
-    HERE, "..", "..", "symlinks", "home_@user@_.config_herbstluftwm", "scripts"))
+    HERE, "..", "symlinks", "home_@user@_.config_herbstluftwm", "scripts"))
 
 spec = importlib.util.spec_from_file_location("monitor_tui", os.path.join(SCRIPTS, "monitor_tui.py"))
 tui = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tui)
+
+@contextlib.contextmanager
+def restored_environ():
+    saved = dict(os.environ)
+    try:
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(saved)
+
 
 DOCKED = """\
 eDP-1 connected primary 2560x1600+0+0 340mm x 210mm
@@ -43,11 +54,20 @@ DP-4 connected 340mm x 210mm
 passed = failed = 0
 
 
+VERBOSE = os.environ.get("TEST_VERBOSE") == "1"
+
+
+def section(title):
+    if VERBOSE:
+        print("\n" + title)
+
+
 def check(desc, cond, detail=""):
     global passed, failed
     if cond:
         passed += 1
-        print(f"  ok    {desc}")
+        if VERBOSE:
+            print(f"  ok    {desc}")
     else:
         failed += 1
         print(f"  FAIL  {desc} {detail}")
@@ -57,7 +77,7 @@ def model(text):
     return tui.Model(tui.parse_xrandr(text))
 
 
-print("monitor_tui.py")
+section("monitor_tui.py")
 
 m = model(DOCKED)
 e, d = m.outs
@@ -121,7 +141,7 @@ m = model(DOCKED)
 m.make_primary(m.outs[1])
 check("make primary moves the flag", m.outs[1].primary and not m.outs[0].primary)
 
-with tempfile.TemporaryDirectory() as tmp:
+with tempfile.TemporaryDirectory() as tmp, restored_environ():
     fixture = os.path.join(tmp, "docked.q")
     with open(fixture, "w") as f:
         f.write(DOCKED)
@@ -140,7 +160,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check("reconcile --layout rejects an unreadable file", rc != 0, err)
 
 # ------------------------------------------------------------------ overview
-print("\nmonitor_tui.py overview")
+section("monitor_tui.py overview")
 
 # the dumps from a live session (tags 3wayR|5 and left|3 with one window, 8 empty)
 D_3WAYR = "(split horizontal:0.5:1 (clients horizontal:0) (split vertical:0.5:1 (clients horizontal:0) (clients horizontal:0)))"
@@ -217,7 +237,7 @@ check("diagram: scaled 80 px per column, 160 per row (32x10 and 24x7)",
       len(diagram) == 10 and diagram[0] == "┏" + "━" * 30 + "┓┏" + "━" * 22 + "┓", diagram[:1])
 check("diagram: numbers inside, * on the primary", diagram[1].startswith("┃ 1*") and "┃ 2 " in diagram[1], diagram[1])
 
-with tempfile.TemporaryDirectory() as tmp:
+with tempfile.TemporaryDirectory() as tmp, restored_environ():
     stub = os.path.join(tmp, "hc")
     with open(stub, "w") as f:
         f.write('#!/bin/sh\ncase "$1" in\n get_attr) echo "3wayR|5" ;;\n dump) echo "%s" ;;\n *) exit 1 ;;\nesac\n' % D_3WAYR)
@@ -493,7 +513,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check("overview: shows the message in the layout panel",
           any("herbstluftwm" in l for l in text(tui.render_overview(data, 0, 100, 40)[0])[:19]))
 
-print("\nLayout screen")
+section("Layout screen")
 import shutil
 
 with tempfile.TemporaryDirectory() as tmp:
@@ -656,7 +676,7 @@ with tempfile.TemporaryDirectory() as tmp:
           and tui.norm_key(tui.curses.KEY_UP) == "UP" and tui.norm_key("é") == "é")
 
 
-print("\nMonitors screen")
+section("Monitors screen")
 if True:
     applied = []
     RATED = DOCKED.replace("   1280x720     60.00\nHDMI", "   1280x720     60.00\nHDMI").replace(
@@ -954,7 +974,7 @@ if True:
     check("layout_lines carries a chosen rate only for that output",
           "--rate" not in "".join(model(DOCKED).layout_lines()))
 
-print("\nTags screen")
+section("Tags screen")
 
 TAGS3 = ('declare -gA TAG_LAYOUTS=()\n\nTAG_LAYOUTS["DP-4 eDP-1"]="\nleft|3   max         {3}  [spotify:0 rambox:0]\n'
          'middle|1 horizontal  {1}\nright|2  max         {2}  [vivaldi-stable:1]\nsplit    split\n"\n\nTAG_LAYOUTS["eDP-1"]="\nonly max\n"\n')
@@ -1150,7 +1170,7 @@ with tempfile.TemporaryDirectory() as tmp:
     ts2 = tui.TagsScreen(); ts2.handle("k")
     check("tags: with no monitors an edit says there is nothing to save it for", ts2.mode == "browse" and ts2.message == "no monitors to save it for", ts2.message)
 
-print("\nA monitor that is off")
+section("A monitor that is off")
 if True:
     ids = {}
     applied = []
@@ -1195,7 +1215,7 @@ if True:
     rows = ["".join(t for t, _ in r) for r in none.diagram(100, 12)]
     check("with every monitor off they are all drawn dashed", len(none.model.active()) == 0 and any("┏ ━ ━" in r for r in rows) and not any("━━" in r for r in rows), rows)
 
-print("\nRotation and re-flow")
+section("Rotation and re-flow")
 if True:
     ROT = """\
 eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 340mm x 210mm
@@ -1287,5 +1307,5 @@ DP-5 connected 1920x1080+0+1600 (normal left inverted right x axis y axis) 530mm
     ro = tui.MonitorScreen(); ro.handle("RIGHT"); ro.handle("o")
     check("o on a monitor that is off says to turn it on first", ro.message == "DP-4 is off: r to turn it on", ro.message)
 
-print(f"\n{passed} passed, {failed} failed")
+print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

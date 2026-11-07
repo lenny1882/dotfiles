@@ -142,7 +142,7 @@ Findings from a read-only pass over the tracked files. "Referenced" means the fi
 
 ### Simplify (judgment calls, not read in depth)
 - Colours files: `colours.sh`, `colours.g.sh`, `colours.rules.sh`, `colours-derive`, `colours-gen`. Recent work; their contents were not looked at.
-- `.planning/monitor_changes/monitor_tui_check.py` (76K) and `monitor_check.sh` (28K): test scaffolding for work that may be finished.
+- `tests/monitor_tui_check.py` (76K) and `tests/monitor_check.sh` (28K): test scaffolding for work that may be finished.
 
 Not covered: the large scripts (`monitor_tui.py`, `monitor_reconcile.sh`, the rest of `quickstart_arch.sh`) were not read for internal simplification.
 

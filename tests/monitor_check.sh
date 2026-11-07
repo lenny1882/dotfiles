@@ -2,21 +2,18 @@
 # Safe pre-flight checks for the monitor scripts. Changes nothing: no xrandr
 # changes, no herbstclient calls. Run it before restarting or reloading.
 #
-#   .planning/monitor_changes/monitor_check.sh
+#   tests/monitor_check.sh
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../symlinks/home_@user@_.config_herbstluftwm/scripts" && pwd)"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../symlinks/home_@user@_.config_herbstluftwm/scripts" && pwd)"
 CONF_DIR="$(dirname "$DIR")"
 RECONCILE="$DIR/monitor_reconcile.sh"
 TMP=$(mktemp -d) && trap 'rm -rf "$TMP"' EXIT
 
-pass=0 fail=0 skip=0
-ok()   { printf '  ok    %s\n' "$1"; pass=$((pass + 1)); }
-bad()  { printf '  FAIL  %s\n' "$1"; fail=$((fail + 1)); }
-skp()  { printf '  skip  %s\n' "$1"; skip=$((skip + 1)); }
-head_() { printf '\n%s\n' "$1"; }
+# the copied scripts source ~/.config/herbstluftwm/variables.autostart: give them the repo's files, not the installed ones
+mkdir -p "$TMP/home/.config" && ln -s "$CONF_DIR" "$TMP/home/.config/herbstluftwm"
+export HOME="$TMP/home"
 
-expect() { if grep -Eq -- "$3" "$2"; then ok "$1"; else bad "$1 (no match for: $3)"; sed 's/^/        /' "$2"; fi; }
-reject() { if grep -Eq -- "$3" "$2"; then bad "$1 (found: $3)"; sed 's/^/        /' "$2"; else ok "$1"; fi; }
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 # ---------------------------------------------------------------- fixtures
 cat >"$TMP/laptop.q" <<'EOF'
@@ -502,5 +499,4 @@ else
 fi
 
 # ---------------------------------------------------------------- summary
-printf '\n%d passed, %d failed, %d skipped\n' "$pass" "$fail" "$skip"
-((fail == 0))
+summary

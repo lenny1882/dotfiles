@@ -15,7 +15,7 @@ Could not do:
 - No live herbstluftwm session, so nothing that needs one was run.
 - No fresh-install run.
 
-Test baseline before any change (all green): `colours_check.sh` 72, `colours_gen_check.sh` 16, `monitor_check.sh` 108 (includes `monitor_tui_check.py` 387). Run: `bash .planning/colours/colours_check.sh; bash .planning/colours/colours_gen_check.sh; bash .planning/monitor_changes/monitor_check.sh`. `monitor_check.sh` skips 2 checks without a display.
+Test baseline before any change (all green): `colours_check.sh` 72, `colours_gen_check.sh` 16, `monitor_check.sh` 108 (includes `monitor_tui_check.py` 387). Run: `bash tests/run.sh` (`-v` lists every check; before WP4 the four checks lived in `.planning/colours` and `.planning/monitor_changes`). `monitor_check.sh` skips 2 checks without a display.
 
 Working constraints from the user (from `tui_spec.md` and the saved memory): ask open questions about design; do exactly what is asked; no new language or runtime without asking (python is already accepted for the TUI); never execute `quickstart_arch.sh` to test it (check with `bash -n` and counts); commit only when told; report results in text.
 
@@ -65,7 +65,7 @@ Working constraints from the user (from `tui_spec.md` and the saved memory): ask
   - `monitor_tui.py:7` says "Rotation is not handled" (rotation is implemented: `Output.rot`, `Model.rotate`, `MonitorScreen.begin_rotate`); the module usage line and `main()`'s usage message list `--print [WIDTH [HEIGHT]]` but the code also takes `layout` and `tags`.
   - `hlwm_layouts.conf` and `hlwm_tag_layouts.conf` headers say "Seeded from layouts.autostart (which still loads its own strings)"; `layouts.autostart` is now 7 lines that call `tag_layouts.sh`.
   - `setup/colours.sh:143` unsets `_cube`, which is never assigned.
-  - `.planning/colours/colours_check.sh` comment "the r;g;b values written in shellrc/.shellrc_custom"; the prompt now calls `colour_rgb`.
+  - `tests/colours_check.sh` comment "the r;g;b values written in shellrc/.shellrc_custom"; the prompt now calls `colour_rgb`.
 - [x] B12. (Done: renamed to `shellrc/.shellrc_sensible`, special case removed from `.shellrc_env`, `HISTFILESIZE` 500000; `/media/Storage/User/custom.bash` existed and was identical, so the review was wrong that nothing loaded it.) `shellrc/custom.bash` was loaded only through `${USER_DIR}/custom.bash`, not from the repo: `.shellrc_env:15-17` sources `${USER_DIR}/custom.bash` (outside the repo) and the loader only globs `.shellrc*`. It also sets `HISTFILESIZE=100000` below `HISTSIZE=500000`.
 - [x] B13. `.planning/colours/search/chain.py`: `fit_group` has an unreachable second `for b in cands:` loop after `return best`.
 - [x] B14. (Done: SGR codes 3 and 4, `last_command_symbol` takes the status as `$1`, prompt output identical before and after. Backticks left, see section 12.) `shellrc/.shellrc_custom`: `_italics="\[\e[4m\]"` is SGR 4 (underline) and `_underline="\[\e[7m\]"` is SGR 7 (reverse); neither is used. `__prompt_command` reads `$_lastcommand` from `last_command_symbol` through dynamic scope. Backticks instead of `$()`.
@@ -120,14 +120,14 @@ Not recorded anywhere:
   - y/n confirm handling in three screens; dispatch in two styles (`getattr(self, "key_" + self.mode)` in `MonitorScreen`/`TagsScreen`, an `if` chain in `LayoutScreen`);
   - three ways to build a layout label: `layout_label`, `tag_rows`, `TagsScreen.label`.
 - [ ] TUI-2. The tests monkeypatch about a dozen module globals: `tui.HC`, `tui.load_model`, `tui.apply_lines`, `tui.DRY`, `tui.HLWM_LAYOUTS`, `tui.HLWM_TAG_LAYOUTS`, `tui.LAYOUTS_CONF`, `tui.RULES_FILE`, `tui.theme_run`, `tui.theme_current`, `tui.read_key`, `tui.paint`, plus `tui.curses.color_pair` and `time.monotonic`. A package split needs a facade that re-exports these names, or all 387 checks break. Constants the tests read: `TOP_PAD`, `CELL_PAD`, `TABLE_MARGIN`, `HDASH`, `OFF_GAP`, `KEEP_SECONDS`, `OVERVIEW_BODY_MIN`.
-- [ ] TUI-3. The test is order-dependent: `os.environ["XRANDR_FIXTURE"]` is set inside `with tempfile…` blocks and never unset.
+- [x] TUI-3. (Done 2026-11-07: `restored_environ()` wraps the two `with tempfile` blocks that set `XRANDR_FIXTURE`; verified it is unset again after the whole run.)) The test is order-dependent: `os.environ["XRANDR_FIXTURE"]` is set inside `with tempfile…` blocks and never unset.
 - [ ] TUI-4. Env contract: `monitor-tui-wrap.sh` computes five `TUI_COLOUR_*` variables that python reads with defaults; the wrapper exists only to compute them (and set a UTF-8 locale).
 - [ ] TUI-5. `nnn-portal.py`'s `TERMINAL` default duplicates the launch command (DUP-6). `pty_inset.py` is clean.
 
 ## 10. Tests
 
-- [ ] TEST-1. Three harnesses: `ok/bad/skp` + `expect/reject` (`monitor_check.sh`), `check` expected/got with pass/fail counters (`colours_check.sh`, `colours_gen_check.sh`, copy-pasted, plus the `if (cmd) 2>/dev/null; then fail; else pass` idiom 12 times), `check(desc, cond)` (`monitor_tui_check.py`). No single entry point and nothing runs `colours-derive --check` automatically.
-- [ ] TEST-2. Not hermetic: `monitor_check.sh` copies scripts into `$TMP`, but `rule_hook.sh`, `tags.sh`, `tag_windows.sh` and `background.sh` source the real `~/.config/herbstluftwm/variables.autostart`, and the background test reads `$wallpaper` from it with `bash -c 'source ~/.config/…'`. On a machine without the links these would fail.
+- [x] TEST-1. (Done 2026-11-07: the four checks moved from `.planning` to `tests/`; `tests/lib.sh` (POSIX sh) holds the counters, `ok/bad/skp`, `check`, `check_fails` (replaces the 8 `if (cmd) 2>/dev/null` lines, not 12), `expect/reject` and `summary`; `tests/run.sh [-v]` runs everything (colours checks under sh, bash and bash --posix) and prints one line per suite, failures listed under a failing suite, exit 1 on failure; output is failures-only unless `TEST_VERBOSE=1`. `colours_check.sh` already ran `colours-derive --check` (line 94), so the claim below that nothing runs it was wrong. The python check keeps its own `check(desc, cond)` but follows the same output rule.)) Three harnesses: `ok/bad/skp` + `expect/reject` (`monitor_check.sh`), `check` expected/got with pass/fail counters (`colours_check.sh`, `colours_gen_check.sh`, copy-pasted, plus the `if (cmd) 2>/dev/null; then fail; else pass` idiom 12 times), `check(desc, cond)` (`monitor_tui_check.py`). No single entry point and nothing runs `colours-derive --check` automatically.
+- [x] TEST-2. (Done 2026-11-07: `monitor_check.sh` runs with `HOME` set to a scratch directory whose `.config/herbstluftwm` links to the repo folder, so the copied scripts and the wallpaper lookup read the repo files, not the installed ones; no hard-coded home path is left in `tests/`.)) Not hermetic: `monitor_check.sh` copies scripts into `$TMP`, but `rule_hook.sh`, `tags.sh`, `tag_windows.sh` and `background.sh` source the real `~/.config/herbstluftwm/variables.autostart`, and the background test reads `$wallpaper` from it with `bash -c 'source ~/.config/…'`. On a machine without the links these would fail.
 - [ ] TEST-3. Coverage gaps (no test names them): `config_links.sh`, `symlinks.sh`, `shell_loader.sh`, `add_drive_fstab.sh`, `module_options_apply.sh`, `keybinds.sh`, `volume.sh`, `brightness.sh`, `screenshot.sh`, `nnn-wrap.sh`, `pty_inset.py`, `nnn-portal.py`, `bottom-wrap.sh`, `xrdb-wrap.sh`, `rofi-wrap.sh`, `monitor-tui-wrap.sh`, `quickstart_arch.sh`. `theme.sh` is exercised only through a stub (`THEME_SH`) in the TUI check; `panel.sh` and `startup.autostart` only by syntax and dispatch stubs.
 - Constraint for refactors: the hlwm tests copy one script into a temp directory and stub `monitor_reconcile.sh` beside it; any shared `lib/` has to be copied into those directories too.
 
@@ -156,7 +156,7 @@ Not recorded anywhere:
 | 1 | **Done 2026-11-07, uncommitted** except `setup/..pre-wipe.txt` and `setup/notes.txt`, left for a decision. Delete unrecorded dead files; fix stale text (B11, B13, docs, section 7, section 8) | 1 | 1 | n/a |
 | 2 | **Done 2026-11-07, uncommitted.** Defects B1-B6, B8-B10, B14, B15 | 2 | 2 | partial |
 | 3 | Security SEC-1 to SEC-4 (copy root-run files, anchor regex, `uaccess`, typed confirm) | 2 | 3 | none |
-| 4 | One test entry point, shared test lib, hermetic tests (TEST-1, TEST-2, TUI-3) | 2 | 1 | itself |
+| 4 | **Done 2026-11-07, uncommitted.** One test entry point, shared test lib, hermetic tests (TEST-1, TEST-2, TUI-3) | 2 | 1 | itself |
 | 5 | `DOTFILES_DIR`, `col_urgent`, polybar env contract, `/home/lenny` templates (DUP-3, DUP-7, DUP-11) | 3 | 3 | `monitor_check.sh` |
 | 6 | `lib/tagconf.sh` plus parity fixture with the python parser (DUP-1, DUP-4, DUP-5) | 3 | 3 | yes |
 | 7 | `tui-wrap.sh` and one margin mechanism (DUP-6) | 2 | 2 | none |
