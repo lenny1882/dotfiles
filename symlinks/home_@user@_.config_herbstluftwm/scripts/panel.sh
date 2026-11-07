@@ -9,15 +9,13 @@ hc() {
 
 # --------------------------------
 # variables
-col_active=$1
-col_urgent=$2
+source ~/.config/herbstluftwm/variables.autostart
 
 declare -A hc_monitors
 declare -A pb_monitors
 panel_height=25
 panel_padding=5
 
-source "${DOTFILES_DIR:?DOTFILES_DIR is not set}/setup/colours.sh"
 export COLOUR_BG_DARK=$(colour_argb col_dark CC)
 export COLOUR_BG_LIGHT=$(colour_argb col_grey CC)
 export COLOUR_BG_TRANSPARENT=$(colour_argb col_black 00)

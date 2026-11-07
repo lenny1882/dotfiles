@@ -45,7 +45,7 @@ pgrep -u $UID -f '^(/usr/bin/|/bin/)?bash .*monitor_changes\.sh$' >/dev/null \
 hc unlock
 
 # load the panel
-$SCRIPTS_DIR/panel.sh $col_active $col_purple &
+$SCRIPTS_DIR/panel.sh &
 
 # the rambox startup rule only places its first window
 ( sleep 10; hc unrule rambox-startup-onetime ) &

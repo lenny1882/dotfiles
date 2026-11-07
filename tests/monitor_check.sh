@@ -310,7 +310,10 @@ hook monitors_changed
 expect "monitors_changed runs monitor_reconcile.sh" "$TMP/hooks.log" '^monitor_reconcile.sh *$'
 reject "monitors_changed runs nothing else" "$TMP/hooks.log" 'panel|background'
 hook monitors_applied
-expect "monitors_applied runs panel.sh with the active and urgent colours" "$TMP/hooks.log" '^panel.sh #[0-9A-Fa-f]{6} #[0-9A-Fa-f]{6}$'
+expect "monitors_applied runs panel.sh, which reads the active and urgent colours itself" "$TMP/hooks.log" '^panel.sh *$'
+urgent=$(bash -c 'source ~/.config/herbstluftwm/variables.autostart; echo "$col_urgent"')
+purple=$(bash -c 'source ~/.config/herbstluftwm/variables.autostart; echo "$col_purple"')
+[[ -n $urgent && $urgent == "$purple" ]] && ok "variables.autostart defines col_urgent once, as purple" || bad "col_urgent is '$urgent', col_purple is '$purple'"
 expect "monitors_applied then resets the background" "$TMP/hooks.log" '^background.sh'
 reject "monitors_applied does not reconcile again" "$TMP/hooks.log" 'monitor_reconcile'
 hook rule peek_opened
