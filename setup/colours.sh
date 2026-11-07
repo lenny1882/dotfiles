@@ -140,6 +140,6 @@ colours_unload() {
 		unset "$_n"
 	done
 	unset colours_dir
-	unset _n _cv _h _r _g _b _ov _lv _lvv _ri _gi _bi _rv _gv _bv _cube
+	unset _n _cv _h _r _g _b _ov _lv _lvv _ri _gi _bi _rv _gv _bv
 	unset -f colour_hex colour_rgb colour_alpha colour_argb colour_256 _colour_value _colour_split _colour_override _colour_badoverride _colour_level _colour_levelval colours_unload
 }

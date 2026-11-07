@@ -108,20 +108,6 @@ def fit_group(args):
                 if r[0]<cur[0]: cur=r
         if best is None or cur[0]<best[0]: best=cur
     return best
-    for b in cands:
-        errs=[];assign=[]
-        for i,m in enumerate(members):
-            bestm=(dist(from_lch(*b),mrgb[i]),("none",0,0))
-            for ch in CH:
-                for f in (1-R,1,1+R):
-                    for k in (1,2,3):
-                        t=nom[ch]*f*k
-                        d=dist(apply(b,ch,t),mrgb[i])
-                        if d<bestm[0]: bestm=(d,(ch,k,nom[ch]*f))
-            errs.append(bestm[0]); assign.append(bestm[1])
-        sc=(max(errs),sum(errs))
-        if best is None or sc<best[0]: best=(sc,b,assign,errs)
-    return best
 GRID={"light":[0.08,0.12,0.16,0.2],"dark":[0.08,0.12,0.16],"soft":[0.15,0.2,0.25,0.3],"hard":[0.15,0.25,0.35],"pale":[0.1,0.13,0.16,0.2],"shade":[0.08,0.12,0.16],"muted":[0.15,0.25,0.35],"warm":[8,10,12,15],"cool":[8,10,12,15]}
 def evaluate(nom,pool):
     res=pool.map(fit_group,[(G[g],nom) for g in G])

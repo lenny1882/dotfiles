@@ -60,7 +60,7 @@ shopt -s cmdhist
 
 # Huge history. Doesn't appear to slow things down, so why not?
 HISTSIZE=500000
-HISTFILESIZE=100000
+HISTFILESIZE=500000
 
 # Avoid duplicate entries
 HISTCONTROL="erasedups:ignoreboth"

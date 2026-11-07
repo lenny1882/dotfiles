@@ -12,7 +12,7 @@ Step 10 of `monitor_changes_plan.md`. Needs a herbstluftwm session and real moni
 
 | # | Case | Expect |
 |---|------|--------|
-| 1 | Laptop only, fresh login | Panel on, wallpaper (`~/.fehbg`), polybar on the primary (the only monitor) |
+| 1 | Laptop only, fresh login | Panel on, wallpaper (from `background.sh`), polybar on the primary (the only monitor) |
 | 2 | Plug one external, no layout entry | Fallback layout: the panel stays primary at 0x0, the external is to its right, solid colour background |
 | 3 | Same set, with a layout entry | Your layout is used, wallpaper returns, panel on or off as the entry says |
 | 4 | The 3-monitor desk setup, with a layout entry | Left, middle and right as configured, padding correct on each |
@@ -103,4 +103,4 @@ Use a second monitor you can lose without harm; changes apply immediately throug
 - `monitor_layouts.conf` has only the one docked entry (`DP-4 eDP-1`); the rest are commented examples.
 - Polybar and its padding go on the xrandr primary monitor, matched to the herbstluftwm monitor by rect (`panel.sh`); monitor 0 if none matches. Checked on real hardware.
 - "Unknown" means no layout entry for the output names, not an EDID check. Identical monitors can't be told apart.
-- Monitors screen (not built): when built, changing a mode or position will not re-flow the other outputs; no rotation; no way to create a mode for a rejected EDID (use a layout entry).
+- Monitors screen: changing a position or geometry does not re-flow the other outputs (a resolution or rotation change does); no way to create a mode for a rejected EDID (use a layout entry).

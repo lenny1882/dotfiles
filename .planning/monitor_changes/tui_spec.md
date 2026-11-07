@@ -238,8 +238,8 @@ Alt-S writes the connected set's layout to `monitor_layouts.conf`; a change othe
 
 All committed (`5f8c892` and later): the overview, Layout and Monitors screens in `scripts/monitor_tui.py`,
 `monitor-tui-wrap.sh`, the two conf files (`hlwm_layouts.conf` holds the user's own edits; the seeded
-`hlwm_tag_layouts.conf` assignments are still placeholders, identical per set, and nothing loads from them
-yet), the `Super+Alt+L` keybinding, and the checks (`monitor_tui_check.py`, run by section 4 of
+`hlwm_tag_layouts.conf` assignments were placeholders, identical per set, and are now loaded by `tag_layouts.sh` and `tags.sh`),
+the `Super+Alt+L` keybinding, and the checks (`monitor_tui_check.py`, run by section 4 of
 `monitor_check.sh`; they use a fixed copy of the seeded layouts, never the live file).
 
 Hook handling is in one place: `monitor_changes.sh` only emits `monitors_changed`; `rule_hook.sh` (the

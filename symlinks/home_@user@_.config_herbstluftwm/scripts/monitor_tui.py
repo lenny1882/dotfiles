@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Curses TUI for herbstluftwm layouts and monitors (Super+Alt+L through monitor-tui-wrap.sh).
 
-  monitor_tui.py [--print [layout] [WIDTH [HEIGHT]]]
+  monitor_tui.py [--print [layout|tags] [WIDTH [HEIGHT]]]
 
 Environment for testing: HERBSTCLIENT, XRANDR_FIXTURE, HLWM_LAYOUTS, HLWM_TAG_LAYOUTS, MONITOR_TUI_DRY.
-Rotation is not handled.
 """
 import copy
 import curses
@@ -2582,7 +2581,7 @@ def main():
         print(footer[0] + footer[1].rjust(width - 1 - len(footer[0])))
         return 0
     if args:
-        sys.exit("usage: monitor_tui.py [--print [WIDTH [HEIGHT]]]")
+        sys.exit("usage: monitor_tui.py [--print [layout|tags] [WIDTH [HEIGHT]]]")
     os.environ.setdefault("ESCDELAY", "25")     # Esc must not wait for an escape sequence
     curses.wrapper(run)
     return 0

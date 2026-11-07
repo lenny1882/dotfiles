@@ -11,7 +11,3 @@ export VISUAL="micro"
 export EDITOR="micro"
 
 export BROWSER="vivaldi-stable"
-
-if [ -f ${USER_DIR}/custom.bash ]; then
-	source ${USER_DIR}/custom.bash
-fi

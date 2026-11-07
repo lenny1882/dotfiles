@@ -61,13 +61,13 @@ Working constraints from the user (from `tui_spec.md` and the saved memory): ask
 - [ ] B8. `setup/shell_loader.sh`: the final `source $shellrc` runs inside the child process the quickstart starts and has no lasting effect; `$shellrc`, `$path` and `$file` are unquoted; `echo "$(sed …)" >| $shellrc` rewrites the whole file (`sed -i` would be simpler). Idempotency itself is fine (verified).
 - [ ] B9. `setup/quickstart_arch.sh`: `step_nvidia` calls `yay -Rscu nvidia-inst` directly (line 359) and bypasses the yay/pamac detection at lines 11-19; `installer` and `builder` are undefined if neither helper exists; `local-installer` (lines 14, 18) is never used; for yay, `builder` and `installer` are identical.
 - [ ] B10. `scripts/rule_hook.sh`: a leftover `test)` branch that runs `notify-send -t 10000 a a`; `peek_opened` and `splash_opened` have identical bodies; `source variables.autostart` runs inside the `monitors_applied` branch on every event.
-- [ ] B11. Stale text in code:
+- [x] B11. Stale text in code:
   - `monitor_tui.py:7` says "Rotation is not handled" (rotation is implemented: `Output.rot`, `Model.rotate`, `MonitorScreen.begin_rotate`); the module usage line and `main()`'s usage message list `--print [WIDTH [HEIGHT]]` but the code also takes `layout` and `tags`.
   - `hlwm_layouts.conf` and `hlwm_tag_layouts.conf` headers say "Seeded from layouts.autostart (which still loads its own strings)"; `layouts.autostart` is now 7 lines that call `tag_layouts.sh`.
   - `setup/colours.sh:143` unsets `_cube`, which is never assigned.
   - `.planning/colours/colours_check.sh` comment "the r;g;b values written in shellrc/.shellrc_custom"; the prompt now calls `colour_rgb`.
-- [ ] B12. `shellrc/custom.bash` (the repo copy of "sensible.bash") is not loaded by anything: `.shellrc_env:15-17` sources `${USER_DIR}/custom.bash` (outside the repo) and the loader only globs `.shellrc*`. It also sets `HISTFILESIZE=100000` below `HISTSIZE=500000`.
-- [ ] B13. `.planning/colours/search/chain.py`: `fit_group` has an unreachable second `for b in cands:` loop after `return best`.
+- [x] B12. (Done: renamed to `shellrc/.shellrc_sensible`, special case removed from `.shellrc_env`, `HISTFILESIZE` 500000; `/media/Storage/User/custom.bash` existed and was identical, so the review was wrong that nothing loaded it.) `shellrc/custom.bash` was loaded only through `${USER_DIR}/custom.bash`, not from the repo: `.shellrc_env:15-17` sources `${USER_DIR}/custom.bash` (outside the repo) and the loader only globs `.shellrc*`. It also sets `HISTFILESIZE=100000` below `HISTSIZE=500000`.
+- [x] B13. `.planning/colours/search/chain.py`: `fit_group` has an unreachable second `for b in cands:` loop after `return best`.
 - [ ] B14. `shellrc/.shellrc_custom`: `_italics="\[\e[4m\]"` is SGR 4 (underline) and `_underline="\[\e[7m\]"` is SGR 7 (reverse); neither is used. `__prompt_command` reads `$_lastcommand` from `last_command_symbol` through dynamic scope. Backticks instead of `$()`.
 - [ ] B15. `startup.autostart`: eight `hc spawn … &` lines (picom, numlockx, background.sh, easystroke, rambox, vivaldi, obsidian, spotify) carry a redundant trailing `&` (`hc spawn` already detaches).
 
@@ -96,20 +96,20 @@ Working constraints from the user (from `tui_spec.md` and the saved memory): ask
 Recorded elsewhere as deliberate, still removable: polybar unused keys and `polybar/scripts/colors` (`colours.md` §4); Xresources `#define nord0`–`nord15` (lines 1-16, unused) and three commented palettes (lines 19-68); `home_@user@_.config_nano_nanorc` and `root_.nanorc` (two near-identical 331-line files, 11 differing colour lines, `nano` is aliased to micro); `bottom-defaults.toml` (189 lines, all commented upstream defaults; `bottom-wrap.sh` passes `-C`); `/home/lenny` hard-codes.
 
 Not recorded anywhere:
-- [ ] `symlinks/home_@user@_.fehbg`: nothing runs it; `background.sh` owns the wallpaper and uses `--no-fehbg`.
-- [ ] `symlinks/etc_X11_mhwd.d_nvidia.conf.bak2`: byte-identical to `.bak` (md5 equal); `.bak` and `skip.etc_X11_mhwd.d_nvidia.conf` are also ignored by the linker.
-- [ ] `shellrc/skip.shellrc_nvm`: stale copy of `.shellrc_nvm` (differs only in the `NVM_DIR` line).
-- [ ] `shellrc/custom.bash`: never loaded (B12).
+- [x] `symlinks/home_@user@_.fehbg` (deleted; the dangling `~/.fehbg` link needs `rm ~/.fehbg` by hand): nothing runs it; `background.sh` owns the wallpaper and uses `--no-fehbg`.
+- [x] `symlinks/etc_X11_mhwd.d_nvidia.conf.bak2` (deleted): byte-identical to `.bak` (md5 equal); `.bak` and `skip.etc_X11_mhwd.d_nvidia.conf` are also ignored by the linker.
+- [x] `shellrc/skip.shellrc_nvm` (deleted): stale copy of `.shellrc_nvm` (differs only in the `NVM_DIR` line).
+- [x] `shellrc/custom.bash`: renamed, see B12.
 - [ ] `setup/..pre-wipe.txt` (odd name; lists `.xbindkeysrc`, Typora, easystroke and other things that are no longer used) and `setup/notes.txt` (mimeapps notes): documentation in `setup/`; belongs with the Backups item in `todo.md`.
 - picom.conf carries exclusions for apps not installed (Bspwm, Conky, Cairo-clock, Ulauncher, i3lock); template cruft, low value.
 
 ## 8. Docs that no longer match the code
 
-- [ ] `monitor_test_checklist.md` "Known gaps" last bullet says the Monitors screen is "not built… no rotation"; case 1 says the wallpaper comes from `~/.fehbg`.
-- [ ] `monitor_changes_plan.md` step 11 says `o` "cycles" through rotations; `tui_spec.md` and the code open a menu.
-- [ ] `colours_plan.md` mentions `autostart-3monitors`, `12palette`, `colors_nord` and `cfg/nano_nanorc`, none tracked; "six polybar clicks" (there are more); lists `rule_hook.sh` and `background.sh` as sourcing `colours.sh` directly.
-- [ ] `tui_spec.md` "Built so far" says the seeded tag assignments are placeholders that nothing loads from; they are loaded now.
-- [ ] `colours.md` "13 scripts source `variables.autostart`" (13 lines; the count of scripts differs).
+- [x] `monitor_test_checklist.md` "Known gaps" last bullet says the Monitors screen is "not built… no rotation"; case 1 says the wallpaper comes from `~/.fehbg`.
+- [x] `monitor_changes_plan.md` step 11 says `o` "cycles" through rotations; `tui_spec.md` and the code open a menu.
+- [x] `colours_plan.md` (the "six polybar clicks" claim was right: polybar.ini has six bottom-wrap calls) mentions `autostart-3monitors`, `12palette`, `colors_nord` and `cfg/nano_nanorc`, none tracked; "six polybar clicks" (there are more); lists `rule_hook.sh` and `background.sh` as sourcing `colours.sh` directly.
+- [x] `tui_spec.md` "Built so far" says the seeded tag assignments are placeholders that nothing loads from; they are loaded now.
+- [x] `colours.md` "13 scripts source `variables.autostart`" (13 lines; the count of scripts differs).
 
 ## 9. `monitor_tui.py` and its tests
 
@@ -152,7 +152,7 @@ Not recorded anywhere:
 
 | WP | Scope | Effort | Blast | Test cover |
 |---|---|---|---|---|
-| 1 | Delete unrecorded dead files; fix stale text (B11, B13, docs, section 7, section 8) | 1 | 1 | n/a |
+| 1 | **Done 2026-11-07, uncommitted** except `setup/..pre-wipe.txt` and `setup/notes.txt`, left for a decision. Delete unrecorded dead files; fix stale text (B11, B13, docs, section 7, section 8) | 1 | 1 | n/a |
 | 2 | Defects B1-B6, B8-B10, B14, B15 | 2 | 2 | partial |
 | 3 | Security SEC-1 to SEC-4 (copy root-run files, anchor regex, `uaccess`, typed confirm) | 2 | 3 | none |
 | 4 | One test entry point, shared test lib, hermetic tests (TEST-1, TEST-2, TUI-3) | 2 | 1 | itself |

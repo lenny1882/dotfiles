@@ -20,7 +20,7 @@ check() {
 check hex_green "#287D2D" "$(colour_hex col_green)"
 check hex_reference "#C5292C" "$(colour_hex col_red)"
 
-# the r;g;b values written in shellrc/.shellrc_custom
+# the r;g;b values the shell prompt reads through colour_rgb
 check rgb_light "234;234;234" "$(colour_rgb col_light)"
 check rgb_green "40;125;45" "$(colour_rgb col_green)"
 check rgb_purple "122;37;159" "$(colour_rgb col_purple)"
