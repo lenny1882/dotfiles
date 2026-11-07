@@ -7,16 +7,15 @@ function symlinker () {
 	local user_dir="${USER_DIR:-/media/Storage/User}"
 	user_dir="${user_dir%/}/"
 
-	# remove existing and symlink in new
+	# replace each home folder with a link, but only if the target exists
 	for folder in "${home_folders[@]}"; do
-		if [[ -d $home_dir$folder ]]; then
-			if [[ -L $home_dir$folder ]]; then
-				unlink $home_dir$folder
-			else
-				rm -r $home_dir$folder
-			fi
+		[[ -d $user_dir$folder ]] || { echo "skip $folder: $user_dir$folder does not exist"; continue; }
+		if [[ -L $home_dir$folder ]]; then
+			unlink "$home_dir$folder"
+		elif [[ -d $home_dir$folder ]]; then
+			rm -r "$home_dir$folder"
 		fi
-		[ -d $user_dir$folder ] && ln -s $user_dir$folder $home_dir
+		ln -s "$user_dir$folder" "$home_dir"
 	done
 }
 

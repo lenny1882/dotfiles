@@ -12,11 +12,7 @@ hc() {
 case $hook in
     rule)
         case $name in
-            peek_opened)
-                hc set_attr clients.focus.decorated false
-                ;;
-
-            splash_opened)
+            peek_opened|splash_opened)
                 hc set_attr clients.focus.decorated false
                 ;;
 
@@ -28,10 +24,6 @@ case $hook in
 
     ipc)
         polybar-msg action ups hook 0
-        ;;
-
-    test)
-        notify-send -t 10000 a a
         ;;
 
     tag_changed)

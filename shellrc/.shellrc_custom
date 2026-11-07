@@ -52,8 +52,8 @@ export PAGER='less -iFJMRsW --mouse +Gg'
 # colours and decorations
 _regular="\[\e[0m\]"
 _bold="\[\e[1m\]"
-_italics="\[\e[4m\]"
-_underline="\[\e[7m\]"
+_italics="\[\e[3m\]"
+_underline="\[\e[4m\]"
 
 _bgcyan="\[\e[48;2;$(colour_rgb col_cyan)m\]"
 _bgblue="\[\e[48;2;$(colour_rgb col_blue)m\]"
@@ -88,7 +88,7 @@ __prompt_command() {
     
     PS1+="$_bold"
     # PS1+="`last_command_symbol`$fgwhite"
-    PS1+="`last_command_symbol` $HISTCMD $_fgwhite$_bgdefault "
+    PS1+="`last_command_symbol "$_lastcommand"` $HISTCMD $_fgwhite$_bgdefault "
     # PS1+="$_bggrey$_fglightgrey $HISTCMD $_fgwhite"
     PS1+="$_bgpurple`current_time`$_fgpurple"
     [ -n "$NNNLVL" ] && PS1+="$_bgbrightgreen`separator blockright`$_fgwhite N$NNNLVL $_fgbrightgreen"
@@ -122,7 +122,7 @@ last_command_symbol () {
 #        printf "$_fgwhite$_bgred \[\xe2\x9c\]\x95 $_bgdefault"
 #    fi
 
-    if [[ $_lastcommand = 0 ]]; then
+    if [[ $1 = 0 ]]; then
         printf "$_bggrey$_fglightgrey"
     else
         printf "$_fgwhite$_bgred"

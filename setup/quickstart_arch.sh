@@ -11,11 +11,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if hash yay 2>/dev/null; then
 	builder() { yay -S --needed "$@"; }
 	installer() { yay -S --needed "$@"; }
-	local-installer() { yay -U --needed "$@"; }
+	remover() { yay -Rscu "$@"; }
 elif hash pamac 2>/dev/null; then
 	builder() { pamac build "$@"; }
 	installer() { pamac install "$@"; }
-	local-installer() { pamac install "$@"; }
+	remover() { pamac remove --orphans "$@"; }
+else
+	builder() { echo "No AUR helper (yay or pamac) found" >&2; return 1; }
+	installer() { builder; }
+	remover() { builder; }
 fi
 
 # colours, matching yay's own scheme (magenta index, bold names, bold green prompts)
@@ -356,7 +360,7 @@ step_nvidia() {
 	{
 		installer nvidia-inst
 		nvidia-inst
-		yay -Rscu nvidia-inst
+		remover nvidia-inst
 	} 2>&1 | pinnedOutput
 }
 

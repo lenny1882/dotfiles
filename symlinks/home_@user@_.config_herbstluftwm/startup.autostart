@@ -17,16 +17,16 @@ hc spawn xsetroot -cursor_name left_ptr
 # autostart - but only if custom var has not been created
 if hc silent new_attr bool my_not_first_autostart ; then 
     hc spawn $SCRIPTS_DIR/xrdb-wrap.sh ~/.Xresources
-    hc spawn picom --config ~/.config/picom.conf &
-    hc spawn numlockx on &
-    hc spawn $SCRIPTS_DIR/background.sh &
+    hc spawn picom --config ~/.config/picom.conf
+    hc spawn numlockx on
+    hc spawn $SCRIPTS_DIR/background.sh
 
-    hc spawn easystroke enable &
-    hc spawn rambox &
+    hc spawn easystroke enable
+    hc spawn rambox
     # hc spawn bash -c "vivaldi --password-store=basic" &
-    hc spawn vivaldi &
-    hc spawn obsidian &
-    hc spawn spotify &
+    hc spawn vivaldi
+    hc spawn obsidian
+    hc spawn spotify
 fi
 
 # --------------------------------
@@ -44,6 +44,9 @@ hc unlock
 # load the panel
 $SCRIPTS_DIR/panel.sh $col_active $col_purple &
 
+# the rambox startup rule only places its first window
+( sleep 10; hc unrule rambox-startup-onetime ) &
+
 # one hook loop per session; a reload runs this file again
 if ! hc silent new_attr bool my_hook_loop_started; then
     exit 0
@@ -52,6 +55,3 @@ fi
 herbstclient --idle | while read hook name winid; do
     $SCRIPTS_DIR/rule_hook.sh $hook $name $winid
 done
-
-sleep 10
-hc unrule rambox-startup-onetime

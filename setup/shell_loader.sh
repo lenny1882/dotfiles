@@ -24,20 +24,19 @@ function loader() {
 		[[ $reply =~ ^[Yy]$ ]] || { echo "Aborted, $shellrc not changed."; return 1; }
 	fi
 
-	echo "$(sed "/^$startString/,/^$endString/d;" $shellrc)" >| $shellrc
+	# the command substitution also drops trailing blank lines, so repeated runs do not grow the file
+	echo "$(sed "/^$startString/,/^$endString/d;" "$shellrc")" >| "$shellrc"
 
-	echo -e "\n$startString" >> $shellrc
+	echo -e "\n$startString" >> "$shellrc"
 	# the locations chosen in quickstart_arch.sh, so the shellrc files see
 	# them in every shell (only the ones that were actually set)
 	for var in STORAGE_DIR USER_DIR PROGRAMS_DIR; do
-		[ -n "${!var}" ] && echo "export $var=\"${!var}\"" >> $shellrc
+		[ -n "${!var}" ] && echo "export $var=\"${!var}\"" >> "$shellrc"
 	done
-	for file in $path/.shellrc*; do 
-	    echo "if [ -f $file ]; then . $file; fi" >> $shellrc
+	for file in "$path"/.shellrc*; do
+		echo "if [ -f \"$file\" ]; then . \"$file\"; fi" >> "$shellrc"
 	done
-	echo -e "$endString\n" >> $shellrc
-
-	source $shellrc
+	echo -e "$endString\n" >> "$shellrc"
 }
 
 loader "$1" || exit 1

@@ -82,6 +82,8 @@ for monitor in $(hc list_monitors | cut -d: -f1); do
     fi
 done
 
+mkdir -p ~/.config/herbstluftwm/polybar/logs
+
 MONITOR=${pb_monitors[$primary_rect]:-$primary_output} \
     COLOUR_ACTIVE=$col_active \
     COLOUR_URGENT=$col_urgent \
