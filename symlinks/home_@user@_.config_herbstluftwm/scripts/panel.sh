@@ -17,8 +17,7 @@ declare -A pb_monitors
 panel_height=25
 panel_padding=5
 
-colours_dir=$(cd -P "$(dirname "${BASH_SOURCE[0]}")/../../../setup" && pwd)
-source "$colours_dir/colours.sh"
+source "${DOTFILES_DIR:?DOTFILES_DIR is not set}/setup/colours.sh"
 export COLOUR_BG_DARK=$(colour_argb col_dark CC)
 export COLOUR_BG_LIGHT=$(colour_argb col_grey CC)
 export COLOUR_BG_TRANSPARENT=$(colour_argb col_black 00)

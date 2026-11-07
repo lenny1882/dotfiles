@@ -105,4 +105,11 @@ check white_is_a_base "#FFFFFF" "$(colour_hex col_white)"
 (unset colours_dir; . "$dir/colours.sh") >/dev/null 2>&1; check source_needs_colours_dir 1 "$?"
 (colours_dir=$work; . "$dir/colours.sh") >/dev/null 2>&1; check source_needs_generated_file 1 "$?"
 
+# colours.sh finds itself from DOTFILES_DIR when colours_dir is not set
+check dotfiles_dir_green "#287D2D" "$( (unset colours_dir; DOTFILES_DIR=$(dirname "$dir"); . "$dir/colours.sh" && colour_hex col_green) 2>&1)"
+check_fails "neither DOTFILES_DIR nor colours_dir set is refused" sh -c 'unset colours_dir DOTFILES_DIR; . "$1/colours.sh"' sh "$dir"
+
+# no script locates setup/ by a relative path of its own any more
+repo=$(dirname "$dir")
+check_fails "no script walks up to setup/ itself" sh -c 'grep -rnE "cd -P .*/setup" "$1/symlinks" "$1/shellrc" | grep .' sh "$repo"
 summary

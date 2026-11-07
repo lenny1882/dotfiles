@@ -4,8 +4,9 @@ hc() {
     herbstclient "$@"
 }
 
-colours_dir=$(cd -P "$(dirname "${BASH_SOURCE[0]}")/../../setup" && pwd)
-source "$colours_dir/colours.sh"
+DOTFILES_DIR=$(cd -P "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+export DOTFILES_DIR
+source "$DOTFILES_DIR/setup/colours.sh"
 col_active=$col_green
 
 SCRIPTS_DIR=~/.config/herbstluftwm/scripts

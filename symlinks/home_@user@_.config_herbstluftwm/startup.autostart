@@ -9,6 +9,9 @@ hc export QT_QPA_PLATFORMTHEME=xdgdesktopportal
 # one cursor size for everything - unset, each program sizes it from the screen height; xsetroot redoes the root cursor herbstluftwm set before this ran
 hc export XCURSOR_THEME=Adwaita
 hc export XCURSOR_SIZE=24
+# where the repo is: scripts find setup/colours.sh through it; the D-Bus line is for the nnn portal, which D-Bus starts, not herbstluftwm
+hc export DOTFILES_DIR="$DOTFILES_DIR"
+dbus-update-activation-environment DOTFILES_DIR
 hc spawn xsetroot -cursor_name left_ptr
 
 # --------------------------------

@@ -189,8 +189,7 @@ if [[ $1 == --list ]]; then
     build
 else
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    colours_dir=$(cd -P "$SCRIPT_DIR/../../../setup" && pwd)
-    source "$colours_dir/colours.sh"
+    source "${DOTFILES_DIR:?DOTFILES_DIR is not set}/setup/colours.sh"
     green=$(colour_hex col_green)
     grey=$(colour_hex col_grey_light)
     blue=$(colour_hex col_blue)
