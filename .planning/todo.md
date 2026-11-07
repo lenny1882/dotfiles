@@ -19,8 +19,8 @@ Each section carries a `Weighting:` line under its heading with the same numbers
 | 1 | Backups | 4 | 1 | 5 | 1.00 |
 | 2 | Automount removable drives on plug-in | 3 | 2 | 4 | 0.80 |
 | 3 | Clipboard history | 2 | 1 | 2 | 0.67 |
-| 4 | Repo cleanup | 2 | 2 | 2 | 0.50 |
-| 5 | System theme changer in the tui | 5 | 4 | 3 | 0.33 |
+| 4 | System theme changer in the tui | 3 | 2 | 3 | 0.60 |
+| 5 | Repo cleanup | 2 | 2 | 2 | 0.50 |
 | 6 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
 | 7 | Lock screen look | 4 | 3 | 2 | 0.29 |
 | 8 | GUI session environment lacks the shellrc exports | 2 | 2 | 1 | 0.25 |
@@ -71,6 +71,59 @@ Weighting: effort 2, blast radius 1, improvement 2, priority 0.67.
 
 No clipboard manager is installed (nothing found for `xsel`, `clipmenu`, `greenclip`, `copyq`). `xclip` is installed, but only as the copy tool `scripts/screenshot.sh` pipes into; it keeps no history. The only other clipboard tools seen are the nnn plugins `cbcopy-mac` and `cbpaste-mac`. Options such as `clipmenu` (rofi-compatible; `rofi` is installed), `greenclip` and `copyq` were not checked against this setup. Not decided; the work is optional.
 
+## System theme changer in the tui
+
+Weighting: effort 3, blast radius 2, improvement 3, priority 0.60.
+
+Switch the whole system between dark, light, etc. from the tui, setting every place that needs it. Rescored 2026-11-07: the places to set turned out to be two (see below), not the GTK theme and Qt theme separately.
+
+Not needed: terminal, editor and wallpaper, which are set by hand.
+
+Survey of the quickstart package list, by toolkit (checked by the libraries each binary links; the apps with no match were judged by hand, not tested):
+- GTK 3: gnome-disk-utility, gthumb, gpick, peek, xarchiver, easystroke, dragon-drop, Inkscape, minecraft-launcher; Orca Slicer and Bambu Studio (wxWidgets on GTK).
+- GTK 4: pavucontrol, scangearmp2.
+- Qt 6: Krita, FreeCAD, easyeffects.
+- Chromium or Electron: Vivaldi, Rambox, VS Code, Obsidian. Vivaldi links Qt too.
+- Own UI, nothing for the changer to set: Blender, Sublime Text, mpv, tigervnc.
+- Already themed by the colours project, not this feature: rofi, dunst, polybar, urxvt, feh.
+- Versions: gtk3 3.24.52, gtk4 4.24.1, libadwaita 1.10.0, qt6-base 6.12.0.
+
+Mechanisms found (tested 2026-11-07 in the X11 session, `XDG_SESSION_TYPE=x11`; the session sets `GTK_USE_PORTAL=1` and `QT_QPA_PLATFORMTHEME=xdgdesktopportal`):
+- `gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'` (or `prefer-light`) covers Qt 6 and Chromium, with no file. Designer, Linguist and Assistant (Qt 6) and a local page in Vivaldi follow it on a fresh start.
+- GTK 3 follows `gtk-application-prefer-dark-theme` (1 or 0) in `~/.config/gtk-3.0/settings.ini` (xarchiver: no file light, 1 dark, 0 light). It ignores `color-scheme`.
+- GTK 4 follows `gtk-interface-color-scheme` in `~/.config/gtk-4.0/settings.ini` (pavucontrol). The value must be the name `dark` or `light`, not the enum number: `2` and `3` give "value that cannot be interpreted". `gtk-application-prefer-dark-theme` is read in GTK 4 but has no effect (deprecated since 4.20). `gtk4-query-settings` and `gtk-query-settings` print what GTK read, which is the quick check.
+- `GTK_THEME=Adwaita:dark` also works, but it is an environment variable and cannot change a running session.
+
+Why GTK 4 ignores the portal: `gtk-interface-color-scheme` reads `UNSUPPORTED` on X11. Strings in `libgtk-4.so.1` put the portal Settings reader (`org.freedesktop.appearance`, `ReadAll`) in `gdk/wayland/gdksettings-wayland.c`, and the X11 backend reads XSETTINGS, which has no key for it. From strings only, not the source. No XSETTINGS daemon is running.
+
+Open windows do not update (tested with a window open while the setting was flipped):
+- GTK 3 (xarchiver), GTK 4 (pavucontrol), Qt 6 (Designer, Linguist, Assistant, and a QML window): stay as they started. For Qt the portal signal arrives (`SettingChanged` on both namespaces, checked with `dbus-monitor`) and Qt's own scheme value changes (`Application.styleHints.colorScheme` went Light then Dark), but the window palette stays dark. The cause was not found; the plugin has a `settingChanged` slot and calls `requestColorScheme`.
+- Chromium changes live: a local page in Vivaldi, Vivaldi's own tabs and toolbar, and Rambox when its theme is set to System.
+- So a switch applies to programs started afterwards, except Chromium and Electron apps set to follow the system.
+
+Apps with their own theme setting ignore `color-scheme` until that setting is changed in the app (not part of the changer):
+- Rambox 3.1.2: was set to Dark; on System it follows live (tested).
+- Krita 6.0.4.1: dark under both `prefer-light` and `prefer-dark` on a fresh launch (tested); `kritarc` has no theme key.
+- VS Code 1.145.2: `workbench.colorTheme` is `Dark Modern` and `window.autoDetectColorScheme` is unset (config only). `window.autoDetectColorScheme` with `workbench.preferredDarkColorTheme` and `workbench.preferredLightColorTheme` should make it follow; not tested.
+- Obsidian 1.14.5: `appearance.json` has `"theme": "obsidian"` (fixed dark), with the Minimal community theme (config only). `"system"` should make it follow; not tested.
+- FreeCAD 1.1.4: `Theme` is `FreeCAD Dark` with its own stylesheet in `user.cfg` (config only, not launched).
+- gthumb stays dark whatever the GTK 3 file says (its binary contains `prefer-dark`, so it likely sets it itself).
+
+Other findings: the old "needed for vivaldi" note holds. The earlier "pavucontrol ignores `color-scheme`" result is explained by GTK 4 on X11 above, and "Krita and Vivaldi show no change" by their own theme settings. `gtk-interface-color-scheme=default` is accepted by GTK 4 and renders light, the same as no setting, so the changer can use `dark` and `light`.
+
+The open Qt windows not re-theming: searched, no matching bug found. [QTBUG-116197](https://bugreports.qt.io/browse/QTBUG-116197) added the portal `SettingChanged` subscription (reported picked to 6.6 and 6.7), which fits the signal and Qt's scheme value updating here; [QTBUG-65475](https://bugreports-test.qt.io/browse/QTBUG-65475) says runtime palette changes are not propagated to all widgets. Cause still open.
+
+Not tested: easyeffects (Qt 6, no theme setting seen), FreeCAD launched, VS Code and Obsidian set to follow the system.
+
+Decided (2026-11-07):
+- The `settings.ini` files: the repo tracks a dark and a light copy for GTK 3 and for GTK 4 (four small files, outside `symlinks/` because an entry there encodes a single target), and the changer points `~/.config/gtk-3.0/settings.ini` and `~/.config/gtk-4.0/settings.ini` at the chosen copy. The link lives in the home directory, so a switch does not dirty the git tree. A quickstart step sets the initial mode, including `color-scheme`, which nothing in the repo sets today (it was set by hand and lives in dconf).
+- Open windows: nothing. The tui shows no note and offers no restart; a switch applies to programs started afterwards (and to Chromium and Electron apps set to follow the system).
+
+Decided for building (2026-11-07):
+- The four files live in `setup/themes/` (next to `setup/templates/`, outside the linker), named `gtk-3.0.dark.ini`, `gtk-3.0.light.ini`, `gtk-4.0.dark.ini` and `gtk-4.0.light.ini`.
+- The tui lists a fixed pair of modes, dark and light, mapped to `prefer-dark` and `prefer-light` plus the matching file pair. A third mode is added when one exists; its `color-scheme` value has no obvious meaning yet.
+- The current mode is read from both the link targets and `color-scheme`. It shows as dark or light when they agree and as "mixed" when they do not. Applying a mode sets all three places.
+
 ## Repo cleanup
 
 Weighting: effort 2, blast radius 2, improvement 2, priority 0.50.
@@ -85,40 +138,6 @@ Findings from a read-only pass over the tracked files. "Referenced" means the fi
 - `.planning/monitor_changes/monitor_tui_check.py` (76K) and `monitor_check.sh` (28K): test scaffolding for work that may be finished.
 
 Not covered: the large scripts (`monitor_tui.py`, `monitor_reconcile.sh`, the rest of `quickstart_arch.sh`) were not read for internal simplification.
-
-## System theme changer in the tui
-
-Weighting: effort 5, blast radius 4, improvement 3, priority 0.33.
-
-Switch the whole system between dark, light, etc. from the tui, setting every place that needs it.
-
-Places known so far:
-- `gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'` (needed for vivaldi to use its dark theme)
-- GTK theme
-- Qt theme
-
-Not needed: terminal, editor and wallpaper, which are set by hand.
-
-Survey of the quickstart package list, by toolkit (checked by the libraries each binary links; the apps with no match were judged by hand, not tested):
-- GTK 3: gnome-disk-utility, gthumb, gpick, peek, xarchiver, easystroke, dragon-drop, Inkscape, minecraft-launcher; Orca Slicer and Bambu Studio (wxWidgets on GTK).
-- GTK 4: pavucontrol, scangearmp2.
-- Qt 6: Krita, FreeCAD, easyeffects.
-- Chromium or Electron: Vivaldi, Rambox, VS Code, Obsidian. Vivaldi links Qt too.
-- Own UI, nothing for the changer to set: Blender, Sublime Text, mpv, tigervnc.
-- Already themed by the colours project, not this feature: rofi, dunst, polybar, urxvt, feh.
-- Versions: gtk3 3.24.52, gtk4 4.24.1, libadwaita 1.10.0, qt6-base 6.12.0.
-
-State and tests so far (2026-11-02):
-- `color-scheme` is `prefer-dark` and `gtk-theme` is `Adwaita`. `~/.config/gtk-3.0` and `gtk-4.0` are empty (no `settings.ini`). The session sets `GTK_USE_PORTAL=1` and `QT_QPA_PLATFORMTHEME=xdgdesktopportal`; `GTK_THEME` is not set.
-- The portal follows `color-scheme`: `org.freedesktop.appearance color-scheme` reads 1 for `prefer-dark` and 2 for `prefer-light` (`busctl --user call org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop org.freedesktop.portal.Settings Read ss org.freedesktop.appearance color-scheme`). The first read after a change was stale once (still 1); the cause was not found, and later reads were right at once. `portals.conf` has `default=gtk`, so Settings comes from `xdg-desktop-portal-gtk`.
-- pavucontrol (GTK 4) ignores `color-scheme`: screenshots of a fresh launch under `prefer-light` and under `prefer-dark` are identical and both light. Not a live-update problem. Why is unknown: libgtk-4 has `gtk-interface-color-scheme`, and nothing pins the theme.
-- `GTK_THEME=Adwaita:dark pavucontrol` opens dark, so the GTK theme name is a mechanism that works.
-- Krita and Vivaldi: no visible change could be seen on a `color-scheme` change. Not a clear test; Vivaldi's browser UI has its own theme setting ("Use system theme"), and a page that follows the system would be the better test.
-- Not tested: GTK 3 apps (gthumb is the one to try), whether Qt apps follow anything, and whether the "needed for vivaldi" note still holds.
-
-Idea to test first (not built): write `~/.config/gtk-3.0/settings.ini` and `~/.config/gtk-4.0/settings.ini` with `gtk-application-prefer-dark-theme` (1 or 0) and keep `color-scheme` set alongside for the Chromium apps; then launch pavucontrol and gthumb in each mode. Unknown whether the settings files work for GTK 4 as `GTK_THEME` did. The files would be tracked through `symlinks/`.
-
-When building: the Qt apps and the Chromium apps still need a mechanism found; the survey above says what to cover.
 
 ## Script consistency and shared helpers
 
