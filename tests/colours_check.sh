@@ -111,5 +111,18 @@ check_fails "neither DOTFILES_DIR nor colours_dir set is refused" sh -c 'unset c
 
 # no script locates setup/ by a relative path of its own any more
 repo=$(dirname "$dir")
-check_fails "no script walks up to setup/ itself" sh -c 'grep -rnE "cd -P .*/setup" "$1/symlinks" "$1/shellrc" | grep .' sh "$repo"
+check_fails "no script walks up to setup/ itself" sh -c 'grep -rnE "cd -P .*/setup|[.][.]/setup" "$1/symlinks" "$1/shellrc" | grep .' sh "$repo"
+# the polybar contract: every colour the bar names is defined, every key is used, every variable it reads is exported
+pb=$repo/symlinks/home_@user@_.config_herbstluftwm
+for k in $(grep -oE '\$\{colours\.[a-z_]+\}' "$pb/polybar/polybar.ini" | sed 's/.*[.]//; s/}//' | sort -u); do
+	check "polybar key $k is defined" 1 "$(grep -c "^$k = " "$pb/polybar/scripts/colours")"
+done
+for k in $(grep -oE '^[a-z_]+ =' "$pb/polybar/scripts/colours" | sed 's/ =//'); do
+	if grep -q "[$]{colours[.]$k}" "$pb/polybar/polybar.ini"; then used=yes; else used=no; fi
+	check "polybar key $k is used" yes "$used"
+done
+for v in $(grep -oE 'env:COLOUR_[A-Z_]+' "$pb/polybar/scripts/colours" | sed 's/env://' | sort -u); do
+	if grep -qE "(export )?$v=" "$pb/scripts/panel.sh"; then exported=yes; else exported=no; fi
+	check "polybar variable $v is exported by panel.sh" yes "$exported"
+done
 summary

@@ -1,24 +1,18 @@
-[colors_vscode_dark]
+[colours]
 ;https://mui.com/customization/palette/
 ;https://www.color-hex.com/color-palette/98179
 bg_active = ${env:COLOUR_ACTIVE}
 bg_urgent = ${env:COLOUR_URGENT}
 bg_dark = ${env:COLOUR_BG_DARK}
 bg_light = ${env:COLOUR_BG_LIGHT}
-bg_med = #CC2d2d30
 bg_transparent = ${env:COLOUR_BG_TRANSPARENT}
 bg_dark_translucent = ${env:COLOUR_BG_DARK_TRANSLUCENT}
 bg_green = ${env:COLOUR_ACTIVE}
 bg_yellow = ${env:COLOUR_BG_YELLOW}
 bg_red = ${env:COLOUR_BG_RED}
-fg_active = ${env:COLOUR_ACTIVE}
-fg_urgent = ${env:COLOUR_URGENT}
 fg_disabled = ${env:COLOUR_FG_DISABLED}
 fg_error = ${env:COLOUR_FG_ERROR}
 fg_label = ${env:COLOUR_FG_LABEL}
 fg_monitor_empty = ${env:COLOUR_FG_MONITOR_EMPTY}
 fg_transparent = ${env:COLOUR_FG_TRANSPARENT}
 fg_white = ${env:COLOUR_FG_WHITE}
-line_green = ${env:COLOUR_ACTIVE}
-line_yellow = #ff9800
-line_red = #d32f2f
