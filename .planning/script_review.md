@@ -1,0 +1,169 @@
+# Script review (todo item 7: script consistency and shared helpers)
+
+Written 2026-11-07 from a full read of the repo. Nothing in the repo was changed by the review; every item below is still to do. This file is the record, so work can resume without the conversation.
+
+Status key: `[ ]` not done, `[x]` done. Update the boxes as work lands. "Verified" says how a claim was checked; "by reading" means no command confirmed it.
+
+## 1. Scope and limits
+
+Read in full: every tracked script, config, conf, template, systemd unit, udev rule, polkit rule, pacman hook, polybar and rofi file, Xresources, picom, desktop files; `monitor_tui.py` (2,592 lines); all four test suites (`colours_check.sh`, `colours_gen_check.sh`, `monitor_check.sh`, `monitor_tui_check.py`); every `.planning` document. The untracked dotfiles in the repo root (`.bashrc`, `.zshrc`, `.gitconfig`, `.mcp.json`, `.idea`, `.vscode`, `.claude/*`) are zero-byte read-only placeholders created 2026-11-07 16:00, not your content; ignored.
+
+Not reviewed: bodies of `bottom-defaults.toml` and the two nanorcs (only their diff), the binary nnn session file, `screenshot.png`, git history.
+
+Could not do:
+- shellcheck and dash are not installed and the sandbox denies network access to pypi, so quoting and POSIX findings are by reading. The nine `/bin/sh` scripts were grepped for bashisms and are clean. To get the tools: `! sudo pacman -S shellcheck dash`
+- No live herbstluftwm session, so nothing that needs one was run.
+- No fresh-install run.
+
+Test baseline before any change (all green): `colours_check.sh` 72, `colours_gen_check.sh` 16, `monitor_check.sh` 108 (includes `monitor_tui_check.py` 387). Run: `bash .planning/colours/colours_check.sh; bash .planning/colours/colours_gen_check.sh; bash .planning/monitor_changes/monitor_check.sh`. `monitor_check.sh` skips 2 checks without a display.
+
+Working constraints from the user (from `tui_spec.md` and the saved memory): ask open questions about design; do exactly what is asked; no new language or runtime without asking (python is already accepted for the TUI); never execute `quickstart_arch.sh` to test it (check with `bash -n` and counts); commit only when told; report results in text.
+
+## 2. Corrections made along the way (so they are not repeated)
+
+- An early claim that `shell_loader.sh` could wipe `~/.bashrc` is wrong. Verified on a scratch `$HOME`: the command substitution reads the file before the redirect truncates it, and three runs left the file unchanged (no blank-line growth).
+- `[[ ${#output} > 0 ]]` in `network-interfaces.sh` works; the real bug in that file is B4.
+- `volume.sh` makes 6 `pactl` calls per keypress, not 8.
+- `hc()` has one real definition. `herbstclient_command` is never set anywhere in the repo, so six definitions carry a dead fallback.
+- Counts: 39 `~/.config/herbstluftwm` literals outside `.planning`; 13 `source ~/.config/herbstluftwm/variables.autostart` lines; 41 case arms in `keybinds.sh describe()`; 7 `hc()` definitions plus 1 conditional in `monitor_reconcile.sh`; quickstart is 379 lines of steps and 826 lines of other code (helpers, menu, prompts) out of 1,205.
+- Performance is not a problem: 25 `$(colour_rgb …)` calls cost about 14 ms and one prompt about 5 ms.
+- Already recorded in `.planning` as deliberate, so not discoveries (still removable): the polybar leftovers and unused `colors` file and the Xresources nord defines and commented palettes (`colours.md` section 4); the nanorc files ("real nano is not used"); `bottom-defaults.toml` staying (`colours_plan.md`); the `/home/lenny` hard-code (`nnn_portal.md`); the fixed copies of the layout files in the python check (by design, so the tests never touch the real files).
+
+## 3. Open decisions for the user
+
+- [ ] D-A. xrandr: who owns parsing, `monitor_reconcile.sh` (expose a `--state` output the TUI reads) or `monitor_tui.py` (see finding DUP-8).
+- [ ] D-B. Which margin mechanism to keep for the framed terminal windows: `pty_inset.py`, the curses `Inset` class, or urxvt `internalBorder` (DUP-6).
+- [ ] D-C. How scripts find the repo: one exported `DOTFILES_DIR`, or another scheme (DUP-3).
+- [ ] D-D. Root-executed files (udev rules, pacman hooks, sysctl, polkit rule, the module-options script): copy them into place instead of linking, as `udev-reload.service` already is (SEC-1).
+- [ ] D-E. Whether to split `monitor_tui.py` into modules, given the tests monkeypatch module globals (TUI-1, WP8).
+
+## 4. Security findings
+
+- [ ] SEC-1. Root-executed config lives in the user-writable repo. Verified live on this machine:
+  - `/etc/udev/rules.d/90-backlight.rules`, `/etc/udev/rules.d/51-android.rules`, `/etc/pacman.d/hooks/{package-changes,rambox,clean-cache}.hook`, `/etc/sysctl.d/99-swappiness.conf` are symlinks into `/media/Storage/dotfiles`, owned by `lenny:lenny`. udev `RUN+=` and pacman hooks execute as root, so anything running as the user can get root at the next package transaction or boot.
+  - `/etc/systemd/system/module-options.service` is installed by copy (the quickstart comment says the copy exists so a link does not dangle at boot) but its `ExecStart=/media/Storage/dotfiles/setup/module_options_apply.sh` runs a user-owned script as root. The copy therefore gains nothing.
+  - `/usr/share/xsessions/herbstluftwm.desktop` is also a link (low risk: it runs as the user).
+  - Fix: install the root-run files by copy (the pattern `step_udev_reload` already uses), and have the unit run a root-owned copy of the script. This is a trade-off of the symlink design, not a typo.
+- [ ] SEC-2. `symlinks/etc_udev_rules.d_51-android.rules`: `MODE="0666"` with `GROUP="adbusers"` makes the group irrelevant; every local user can open those USB devices (vendors 2e17 and 18d1). The comment's advice (`chmod a+r`) does nothing useful. Usual fix: `TAG+="uaccess"`.
+- [ ] SEC-3. `symlinks/etc_polkit-1_rules.d_50-power.rules`: the regex `^org\.freedesktop\.login1\.(power-off|reboot)` is not anchored at the end, so it also matches the `-multiple-sessions` and `-ignore-inhibit` variants, letting the group bypass inhibitors without a password. The rule is not linked on this machine (`/etc/polkit-1/rules.d/50-power.rules` is absent).
+- [ ] SEC-4. `setup/add_drive_fstab.sh`: partitioning a bare disk (`fdisk`/`parted`, "ERASES") needs only a `y/N` (`confirm`), while formatting needs the device name retyped. The two destructive steps are guarded differently.
+- [ ] SEC-5. `quickstart_arch.sh` `_app_claude`: `curl -fsSL https://claude.ai/install.sh | bash`. Normal for that install method; noted for completeness.
+
+## 5. Defects and risks
+
+- [ ] B1. `setup/symlinks.sh`: `rm -r $home_dir$folder` (line 16) runs before `[ -d $user_dir$folder ] && ln -s …` (line 19). A wrong or missing `USER_DIR` deletes the home folder and links nothing. Every expansion in the file is unquoted. By reading.
+- [ ] B2. `polybar/logs/` is not in a fresh clone. `.gitignore` has `**/logs/**` and `git ls-files | grep polybar/logs` returns nothing. `scripts/panel.sh:88` ends with `2>$HOME/.config/herbstluftwm/polybar/logs/log &`. Verified that a redirect into a missing directory fails and the command does not run (`bash: …: No such file or directory`, rc 1). On a fresh install polybar will not start. Fix: create the directory in `panel.sh` or point the log at `$XDG_RUNTIME_DIR`/`$XDG_STATE_HOME`.
+- [ ] B3. `startup.autostart:56-57` (`sleep 10`, `hc unrule rambox-startup-onetime`) is unreachable. It follows `herbstclient --idle | while read …; done` (lines 52-54), which only ends when herbstluftwm exits; on a reload the `exit 0` at line 49 is taken first. The label appears only in `rules.autostart:24` and here. So the rambox rule is never removed. By reading.
+- [ ] B4. `polybar/scripts/network-interfaces.sh`: the lock glyph is prefixed on every loop pass (`output="$lock $output$interface ($ip)"`). Verified with stubbed `ip` and `expressvpnctl` (two default routes, VPN up): output is `󰌆 󰌆 eth0 (10.0.0.2) | wlan0 (10.0.1.2)`. `echo $output` is also unquoted.
+- [ ] B5. `scripts/volume.sh`: 6 `pactl` calls per keypress (lines 6, 7 and 13); `$sink` is used on line 7 before it is assigned on line 13 (works because empty arithmetic is 0); `grep $current` is unquoted; the dead commented alternatives on lines 4, 5, 11, 12. `pactl set-sink-volume @DEFAULT_SINK@ +5%` and `pactl get-sink-volume @DEFAULT_SINK@` replace the whole lookup.
+- [ ] B6. `scripts/brightness.sh`: `$device` is empty if no backlight has `max_brightness > 0`, so line 17 runs `cat /brightness`; `$type` (line 7) is never used; the second `elif` branches of `up` and `down` are redundant; `echo … > $device/brightness` is unquoted.
+- [ ] B7. Parser drift between `tags.sh` and the python parser. Verified: a line holding only `lonely` between two valid lines gives `tags.sh --dry-run` the tag `lonely` with key 2, while `monitor_tui.parse_tag_blocks` drops the line (its regex needs tag and layout). See DUP-1.
+- [ ] B8. `setup/shell_loader.sh`: the final `source $shellrc` runs inside the child process the quickstart starts and has no lasting effect; `$shellrc`, `$path` and `$file` are unquoted; `echo "$(sed …)" >| $shellrc` rewrites the whole file (`sed -i` would be simpler). Idempotency itself is fine (verified).
+- [ ] B9. `setup/quickstart_arch.sh`: `step_nvidia` calls `yay -Rscu nvidia-inst` directly (line 359) and bypasses the yay/pamac detection at lines 11-19; `installer` and `builder` are undefined if neither helper exists; `local-installer` (lines 14, 18) is never used; for yay, `builder` and `installer` are identical.
+- [ ] B10. `scripts/rule_hook.sh`: a leftover `test)` branch that runs `notify-send -t 10000 a a`; `peek_opened` and `splash_opened` have identical bodies; `source variables.autostart` runs inside the `monitors_applied` branch on every event.
+- [ ] B11. Stale text in code:
+  - `monitor_tui.py:7` says "Rotation is not handled" (rotation is implemented: `Output.rot`, `Model.rotate`, `MonitorScreen.begin_rotate`); the module usage line and `main()`'s usage message list `--print [WIDTH [HEIGHT]]` but the code also takes `layout` and `tags`.
+  - `hlwm_layouts.conf` and `hlwm_tag_layouts.conf` headers say "Seeded from layouts.autostart (which still loads its own strings)"; `layouts.autostart` is now 7 lines that call `tag_layouts.sh`.
+  - `setup/colours.sh:143` unsets `_cube`, which is never assigned.
+  - `.planning/colours/colours_check.sh` comment "the r;g;b values written in shellrc/.shellrc_custom"; the prompt now calls `colour_rgb`.
+- [ ] B12. `shellrc/custom.bash` (the repo copy of "sensible.bash") is not loaded by anything: `.shellrc_env:15-17` sources `${USER_DIR}/custom.bash` (outside the repo) and the loader only globs `.shellrc*`. It also sets `HISTFILESIZE=100000` below `HISTSIZE=500000`.
+- [ ] B13. `.planning/colours/search/chain.py`: `fit_group` has an unreachable second `for b in cands:` loop after `return best`.
+- [ ] B14. `shellrc/.shellrc_custom`: `_italics="\[\e[4m\]"` is SGR 4 (underline) and `_underline="\[\e[7m\]"` is SGR 7 (reverse); neither is used. `__prompt_command` reads `$_lastcommand` from `last_command_symbol` through dynamic scope. Backticks instead of `$()`.
+- [ ] B15. `startup.autostart`: eight `hc spawn … &` lines (picom, numlockx, background.sh, easystroke, rambox, vivaldi, obsidian, spotify) carry a redundant trailing `&` (`hc spawn` already detaches).
+
+## 6. Duplicated behaviour to abstract
+
+- [ ] DUP-1. The tag-line grammar (`tag  layout  {n}  [instance:index …]`) is parsed in five places: `scripts/tags.sh:20-29`, `scripts/tag_layouts.sh:52-58`, `scripts/tag_programs.sh:12-23`, the python family (`ASSIGN_LINE`, `parse_tag_blocks`, `put_assignment`, `unassign_layout`, `block_lines`, `build_rows`), and the header of `hlwm_tag_layouts.conf`. They have drifted (B7). `tag_windows.sh` calls them as subprocesses instead of functions: `bash -c 'source tag_programs.sh …'` (line 33) and `tags.sh --dry-run` twice (lines 50-51). The `TAG_LAYOUTS_FILE=${HLWM_TAG_LAYOUTS:-$SCRIPT_DIR/hlwm_tag_layouts.conf}` line is written in `tags.sh`, `tag_programs.sh` and `tag_layouts.sh`, and `${TAG_SET_KEY:-$("$SCRIPT_DIR/monitor_reconcile.sh" --key)}` in `tags.sh`, `tag_programs.sh` (and `--key` alone in `tag_layouts.sh`, `tag_windows.sh`). Fix: one `lib/tagconf.sh` with a function printing `pos⇥tag⇥layout⇥key⇥programs`, used by all three, plus a shared fixture checked against the python parser.
+- [ ] DUP-2. Conf-block splicing is written three times in python: `put_assignment` (monitor_tui.py ~974), `put_tag_block` (~1878), `put_monitor_layout` (~1011). Each finds `NAME["key"]="`, finds the closing `"`, then splices or appends, with near-identical errors. `parse_definitions` (~465) and `entry_span` (~864) are two scanners for the one `var='(…)'` grammar. Fix: one `replace_block(text, head, body)` and one definition scanner.
+- [ ] DUP-3. The colours bootstrap appears 10 times with 4 path expressions: `variables.autostart:7-8` (`../../setup`), `scripts/panel.sh:20-21`, `scripts/keybinds.sh:191-193`, `scripts/nnn-wrap.sh:13-14`, `xrdb-wrap.sh:6-7`, `rofi-wrap.sh:6-7`, `monitor-tui-wrap.sh:8-9` (all `../../../setup`), `setup/colours-gen:20-21` (`$dir`), `shellrc/.shellrc_custom:10-11` (`$(dirname BASH_SOURCE)/../setup`), and `bottom-wrap.sh` indirectly through `colours-gen`. Fix (decision D-C): export `DOTFILES_DIR` once (from `variables.autostart`, the lemurs session script, and `hc export` for GUI children) so each site is `. "$DOTFILES_DIR/setup/colours.sh"`; `colours.sh` derives `colours_dir` from it.
+  - "Urgent colour = purple" is written in three places: `startup.autostart:45` and `rule_hook.sh:47` (passed to `panel.sh` as arguments) and `theme.autostart:50-51`. `panel.sh` already sources `colours.sh`, so it can read the variables itself. Define `col_urgent` once in `variables.autostart` and drop the arguments.
+- [ ] DUP-4. `hc()` is defined in `variables.autostart:3`, `keybinds.sh:6`, `panel.sh:6`, `rule_hook.sh:8`, `tags.sh:11`, `tag_windows.sh:10`, `tag_layouts.sh:14`, and conditionally in `monitor_reconcile.sh:21`. Six use `"${herbstclient_command[@]:-herbstclient}"` and that variable is never set in the repo. `tags.sh` and `tag_windows.sh` source `variables.autostart` (which already defines `hc`) and then redefine it; `tag_windows.sh` uses nothing else from that file (verified by grep: no `$Mod*`, `$col_*`, `$SCRIPTS_DIR`, `$wallpaper`). Python's equivalent is the `HERBSTCLIENT` environment variable; the tests stub `herbstclient` through PATH. Fix: delete the indirection, define `hc` once in a lib.
+- [ ] DUP-5. `log`/`die`/`ask`/`confirm`/status verbs are reimplemented per script: `log()` in `tag_layouts.sh:15` (`echo "tag_layouts: …"`), `tag_windows.sh:11` (`echo "tag_windows: …"`), `monitor_reconcile.sh:23` (`printf`); `die()` only in `add_drive_fstab.sh:19`; bare `echo … >&2` elsewhere. The status verbs `ok|skip|link|set|added|moved|relinked` are hand-written in `config_links.sh`, `theme.sh`, and quickstart `step_makepkg`, `step_power_group`, `step_nnn_plugins`, `step_window_manager`. Prompts: quickstart (`selectOne`, `promptSelection`, `parseSelection`), `add_drive_fstab.sh` (`ask`, `confirm`), `shell_loader.sh` (`read -p … [y/N]`), `nnn-pick-save.sh`. Fix: a `lib/common.sh` (hlwm scripts) and a prompt/status helper shared by `setup/`.
+- [ ] DUP-6. `urxvt -name wrapper -e …` appears 16 times: `polybar.ini` ×10 (lines 83, 117, 118, 137, 138, 156, 158, 168, 170, 258), `shortcuts.autostart` ×3 (27-29), `nnn.desktop`, `nnn-portal.py:19` (`TERMINAL`), `.shellrc_aliases:47` (`nbat`). A `scripts/pty_inset.py` prefix appears 8 times (polybar ×7, shortcuts bottom). Three mechanisms produce the same blank margin: `pty_inset.py` (pty level, `M = 1`), the python `Inset` class (curses level, `cols=1, rows=1`), and urxvt `internalBorder: 2` for `wrapper`. `nnn-wrap.sh` calls `pty_inset.py` itself, `monitor-tui-wrap.sh` does not (the TUI has its own), and the polybar/shortcut bottom launches add it in the caller. Fix: one `tui-wrap.sh [--inset] CMD…` that does `exec urxvt -name wrapper -e …`; then decision D-B.
+- [ ] DUP-7. Path literals instead of `$SCRIPTS_DIR`: 39 `~/.config/herbstluftwm` occurrences (`autostart` 9, `polybar.ini` 11, quickstart 3, `.shellrc_aliases` 2, and one each in many `.autostart` files and scripts). `/home/lenny` is hard-coded in `home_@user@_.local_share_applications_nnn.desktop:5`, `home_@user@_.local_share_dbus-1_services_org.freedesktop.impl.portal.desktop.nnn.service:3` and `home_@user@_.fehbg` (config_links.sh substitutes `@user@` only in file names, never contents). The wallpaper path is written in `variables.autostart` and in `.fehbg`. Fix: `panel.sh` already exports 12 variables to polybar, so export `SCRIPTS_DIR` the same way; generate the two `/home/lenny` files from templates as `lemurs.toml` is, or drop `.fehbg`.
+- [ ] DUP-8. xrandr is parsed in two languages. Bash (`monitor_reconcile.sh`): `edid_ids`, `connected_outputs`, `stale_outputs`, `geometries`, `virtual_monitors`, `output_modes`, `split_specs`, `strip_splits`, `names_to_ports`. Python: `parse_xrandr`, `query_xrandr`, `query_listmonitors`, `attach_splits` (`VIRTUAL` regex). The `layout_lines` text format that python writes (`Model.layout_lines`) and bash re-parses has no schema beyond the `monitor_layouts.conf` header. Fixture hooks `XRANDR_FIXTURE` and `LISTMONITORS_FIXTURE` are read in both. Test-injection variables have no naming scheme: `XRANDR_FIXTURE`, `LISTMONITORS_FIXTURE`, `XRANDR_PROP_FIXTURE`, `XRANDR_AFTER_FIXTURE`, `LAYOUTS_CONF`, `HLWM_LAYOUTS`, `HLWM_TAG_LAYOUTS`, `HERBSTCLIENT`, `MONITOR_TUI_DRY`, `THEME_SH`, `RULES_AUTOSTART`, `GSETTINGS`, `XDG_CONFIG_HOME`, `herbstclient_command`. Fix: decision D-A, then one naming scheme (`DOTFILES_TEST_*` or similar).
+- [ ] DUP-9. The "find the logged-in user" one-liner is copy-pasted verbatim into `etc_pacman.d_hooks_package-changes.hook` and `etc_pacman.d_hooks_rambox.hook` (loginctl seat0 active session, then any non-root session, then uid 1000). `${SUDO_USER:-$(id -un)}` is written in `config_links.sh:24`, `step_power_group`, `add_drive_fstab.sh` (chown owner). Fix: one helper installed by copy (see SEC-1).
+- [ ] DUP-10. Five `setup/templates/bottom*.tmpl` files repeat the same colour block (about 22 lines) and the same stale palette comment (hex values of the pre-derivation palette: cyan 1f88a2, blue 2d77ce, …). They differ only in the `[[row]]` section. `bottom-wrap.sh` picks the file by view. Fix: one colour part plus five small layout parts, concatenated by `colours-gen` (or `@layout@`).
+- [ ] DUP-11. polybar colour chain is three layers: `colours.sh` → `panel.sh` exports 12 `COLOUR_*` → `polybar/scripts/colors_vscode_dark` (`${env:…}`) → `polybar.ini`. Four keys carry the same value (`bg_active`, `bg_green`, `fg_active`, `line_green` = `${env:COLOUR_ACTIVE}`). Unused keys: `bg_med`, `fg_active`, `fg_urgent`, `line_green`, `line_yellow` (zero references in `polybar.ini`; `line_red` is only in a comment). `polybar/scripts/colors` is never included. The file name "vscode_dark" no longer describes it.
+- [ ] DUP-12. `shellrc/.shellrc_custom:53-79`: 24 hand-written `_fg*`/`_bg*` lines, each `\[\e[38;2;$(colour_rgb col_x)m\]`. A function or loop gives the same variables in a few lines.
+- [ ] DUP-13. `EDITOR`/`VISUAL=micro` is set in `nnn-wrap.sh:27-28` and `.shellrc_env:10-11`; `todo.md` item 9 would add a third in `startup.autostart`.
+- [ ] DUP-14. `scripts/keybinds.sh describe()` (lines 12-56) has 41 case arms mapping command text to labels, separate from the bindings in `keybindings.autostart` and `shortcuts.autostart`. A new keybind needs two edits or shows as "other". The order of arms matters (`select-clip` before `select`, `area-clip` before `area`) because the globs overlap. Fix: label the bind where it is made (a `bind KEY LABEL CMD…` helper), and have `keybinds.sh` read the table.
+- [ ] DUP-15. `.autostart` files: 13 `source ~/.config/herbstluftwm/variables.autostart` lines (each child file runs as its own process, so each also re-sources the colours); `autostart` spells out 8 child paths by hand. Sourcing the children from `autostart` would drop most of this, except `startup.autostart`, whose `exit 0` (line 49) and infinite hook loop mean it cannot be sourced.
+- [ ] DUP-16. The OKLab/sRGB maths exists twice: awk in `setup/colours-derive`, python in `.planning/colours/search/chain.py` (same constants). The xterm cube levels are written in `colours.sh` (`55 + 40 * n`) and `monitor_tui.cube_rgb` (`0, 95, 135, 175, 215, 255`). `README.md` in `search/` records the reproducibility check (2026-10-17).
+
+## 7. Dead, stale or duplicate files
+
+Recorded elsewhere as deliberate, still removable: polybar unused keys and `polybar/scripts/colors` (`colours.md` §4); Xresources `#define nord0`–`nord15` (lines 1-16, unused) and three commented palettes (lines 19-68); `home_@user@_.config_nano_nanorc` and `root_.nanorc` (two near-identical 331-line files, 11 differing colour lines, `nano` is aliased to micro); `bottom-defaults.toml` (189 lines, all commented upstream defaults; `bottom-wrap.sh` passes `-C`); `/home/lenny` hard-codes.
+
+Not recorded anywhere:
+- [ ] `symlinks/home_@user@_.fehbg`: nothing runs it; `background.sh` owns the wallpaper and uses `--no-fehbg`.
+- [ ] `symlinks/etc_X11_mhwd.d_nvidia.conf.bak2`: byte-identical to `.bak` (md5 equal); `.bak` and `skip.etc_X11_mhwd.d_nvidia.conf` are also ignored by the linker.
+- [ ] `shellrc/skip.shellrc_nvm`: stale copy of `.shellrc_nvm` (differs only in the `NVM_DIR` line).
+- [ ] `shellrc/custom.bash`: never loaded (B12).
+- [ ] `setup/..pre-wipe.txt` (odd name; lists `.xbindkeysrc`, Typora, easystroke and other things that are no longer used) and `setup/notes.txt` (mimeapps notes): documentation in `setup/`; belongs with the Backups item in `todo.md`.
+- picom.conf carries exclusions for apps not installed (Bspwm, Conky, Cairo-clock, Ulauncher, i3lock); template cruft, low value.
+
+## 8. Docs that no longer match the code
+
+- [ ] `monitor_test_checklist.md` "Known gaps" last bullet says the Monitors screen is "not built… no rotation"; case 1 says the wallpaper comes from `~/.fehbg`.
+- [ ] `monitor_changes_plan.md` step 11 says `o` "cycles" through rotations; `tui_spec.md` and the code open a menu.
+- [ ] `colours_plan.md` mentions `autostart-3monitors`, `12palette`, `colors_nord` and `cfg/nano_nanorc`, none tracked; "six polybar clicks" (there are more); lists `rule_hook.sh` and `background.sh` as sourcing `colours.sh` directly.
+- [ ] `tui_spec.md` "Built so far" says the seeded tag assignments are placeholders that nothing loads from; they are loaded now.
+- [ ] `colours.md` "13 scripts source `variables.autostart`" (13 lines; the count of scripts differs).
+
+## 9. `monitor_tui.py` and its tests
+
+- [ ] TUI-1. 97 top-level definitions in one 2,592-line file. Duplicated logic inside it:
+  - the up/down/home/end selection clamp in `LayoutScreen.handle`, `MonitorScreen.key_resolution`, `key_rotate`, `TagsScreen.key_browse`, `key_layout`, `key_rules`, `ThemeEdit.handle`;
+  - four popup list boxes: `MonitorScreen.res_box`, `rot_box`, `TagsScreen.list_box`, `rules_box` (same height/`vis`/scroll-bar arithmetic);
+  - two `input_box` methods (`MonitorScreen`, `TagsScreen`) differing in width, help text and title;
+  - y/n confirm handling in three screens; dispatch in two styles (`getattr(self, "key_" + self.mode)` in `MonitorScreen`/`TagsScreen`, an `if` chain in `LayoutScreen`);
+  - three ways to build a layout label: `layout_label`, `tag_rows`, `TagsScreen.label`.
+- [ ] TUI-2. The tests monkeypatch about a dozen module globals: `tui.HC`, `tui.load_model`, `tui.apply_lines`, `tui.DRY`, `tui.HLWM_LAYOUTS`, `tui.HLWM_TAG_LAYOUTS`, `tui.LAYOUTS_CONF`, `tui.RULES_FILE`, `tui.theme_run`, `tui.theme_current`, `tui.read_key`, `tui.paint`, plus `tui.curses.color_pair` and `time.monotonic`. A package split needs a facade that re-exports these names, or all 387 checks break. Constants the tests read: `TOP_PAD`, `CELL_PAD`, `TABLE_MARGIN`, `HDASH`, `OFF_GAP`, `KEEP_SECONDS`, `OVERVIEW_BODY_MIN`.
+- [ ] TUI-3. The test is order-dependent: `os.environ["XRANDR_FIXTURE"]` is set inside `with tempfile…` blocks and never unset.
+- [ ] TUI-4. Env contract: `monitor-tui-wrap.sh` computes five `TUI_COLOUR_*` variables that python reads with defaults; the wrapper exists only to compute them (and set a UTF-8 locale).
+- [ ] TUI-5. `nnn-portal.py`'s `TERMINAL` default duplicates the launch command (DUP-6). `pty_inset.py` is clean.
+
+## 10. Tests
+
+- [ ] TEST-1. Three harnesses: `ok/bad/skp` + `expect/reject` (`monitor_check.sh`), `check` expected/got with pass/fail counters (`colours_check.sh`, `colours_gen_check.sh`, copy-pasted, plus the `if (cmd) 2>/dev/null; then fail; else pass` idiom 12 times), `check(desc, cond)` (`monitor_tui_check.py`). No single entry point and nothing runs `colours-derive --check` automatically.
+- [ ] TEST-2. Not hermetic: `monitor_check.sh` copies scripts into `$TMP`, but `rule_hook.sh`, `tags.sh`, `tag_windows.sh` and `background.sh` source the real `~/.config/herbstluftwm/variables.autostart`, and the background test reads `$wallpaper` from it with `bash -c 'source ~/.config/…'`. On a machine without the links these would fail.
+- [ ] TEST-3. Coverage gaps (no test names them): `config_links.sh`, `symlinks.sh`, `shell_loader.sh`, `add_drive_fstab.sh`, `module_options_apply.sh`, `keybinds.sh`, `volume.sh`, `brightness.sh`, `screenshot.sh`, `nnn-wrap.sh`, `pty_inset.py`, `nnn-portal.py`, `bottom-wrap.sh`, `xrdb-wrap.sh`, `rofi-wrap.sh`, `monitor-tui-wrap.sh`, `quickstart_arch.sh`. `theme.sh` is exercised only through a stub (`THEME_SH`) in the TUI check; `panel.sh` and `startup.autostart` only by syntax and dispatch stubs.
+- Constraint for refactors: the hlwm tests copy one script into a temp directory and stub `monitor_reconcile.sh` beside it; any shared `lib/` has to be copied into those directories too.
+
+## 11. `setup/quickstart_arch.sh` (1,205 lines)
+
+- [ ] Q-1. Step registry: `STEP_NAMES` (lines ~665), `STEP_FUNCS` and `GROUP_SIZES` are three parallel arrays held together by a runtime check (lines ~700-735). One `group|name|func` line per step removes the check and the hand-counted `GROUP_SIZES=(7 5 7 3)`.
+- [ ] Q-2. `{ … } 2>&1 | pinnedOutput` wraps each of the 22 steps by hand; the runner could wrap the non-interactive part.
+- [ ] Q-3. The unit-status echo `"unit: $(systemctl is-enabled u), $(systemctl is-active u)"` appears 5 times (lines 330, 412, 427, 439, 446). Units are installed by two methods: `sed @SETUP_DIR@ | sudo tee` (module-options) and `sudo install -Dm644` (udev-reload).
+- [ ] Q-4. `sudo` is inconsistent: `systemctl enable` without it for `ufw`, `cups`, the display manager, `expressvpn`, `teamviewer`; with it for `bluetooth`, `fstrim`, `module-options`, `udev-reload`.
+- [ ] Q-5. 826 of the 1,205 lines are not steps: drawing and selection helpers (lines 1-280), the menu, key reading, location prompts (lines 661-1205), including a second ANSI key decoder beside the python one. Candidates for `setup/lib/` files.
+
+## 12. Convention drift (low value, large diff)
+
+- Shebang: `#!/usr/bin/env bash` (most), `#!/bin/bash` (`monitor_changes.sh`, `shell_loader.sh`), `#!/bin/sh` (nine scripts), `#! /bin/sh` (the lemurs session script).
+- Indentation: tabs in `setup/` (and `network-interfaces.sh`, `bottom-wrap.sh`, `xrdb-wrap.sh`); 4 spaces in the hlwm bash scripts; `panel.sh` mixes both (10 tab lines, 13 space lines); `nnn-wrap.sh` and `monitor-tui-wrap.sh` use spaces though they are `/bin/sh`.
+- Argument parsing: `for arg in "$@"; case`, `while (($#)); case`, positional `case ${1:-}` (three styles). Dry run: `-n|--dry-run` in `config_links.sh` and `add_drive_fstab.sh`, `--dry-run` only elsewhere. Usage exit code 2 in the colours scripts, 1 elsewhere. `theme.sh` prints usage with `sed -n '3,9p'` of its own header (breaks if the header moves).
+- No `set -e/-u/pipefail` anywhere; reasonable for the hlwm scripts (keep running after a failure), worth considering for the destructive `setup/` scripts.
+- `[` vs `[[`: bash scripts use `[[`; `[` appears in `shell_loader.sh`, `nnn-pick-save.sh`, `brightness.sh`, `symlinks.sh`, `monitor_reconcile.sh` (2), `quickstart` (3) and the sh scripts (correct there).
+- `echo` (14 scripts) vs `printf` (11 scripts) with no rule.
+
+## 13. Work packages
+
+| WP | Scope | Effort | Blast | Test cover |
+|---|---|---|---|---|
+| 1 | Delete unrecorded dead files; fix stale text (B11, B13, docs, section 7, section 8) | 1 | 1 | n/a |
+| 2 | Defects B1-B6, B8-B10, B14, B15 | 2 | 2 | partial |
+| 3 | Security SEC-1 to SEC-4 (copy root-run files, anchor regex, `uaccess`, typed confirm) | 2 | 3 | none |
+| 4 | One test entry point, shared test lib, hermetic tests (TEST-1, TEST-2, TUI-3) | 2 | 1 | itself |
+| 5 | `DOTFILES_DIR`, `col_urgent`, polybar env contract, `/home/lenny` templates (DUP-3, DUP-7, DUP-11) | 3 | 3 | `monitor_check.sh` |
+| 6 | `lib/tagconf.sh` plus parity fixture with the python parser (DUP-1, DUP-4, DUP-5) | 3 | 3 | yes |
+| 7 | `tui-wrap.sh` and one margin mechanism (DUP-6) | 2 | 2 | none |
+| 8 | `monitor_tui.py` dedupe and optional split with a test facade (TUI-1, TUI-2, DUP-2) | 4 | 2 | 387 checks |
+| 9 | Quickstart registry and helpers (Q-1 to Q-5) | 3 | 3 | `bash -n` and counts only |
+| 10 | xrandr single owner (DUP-8, decision D-A) | 4 | 4 | yes |
+| 11 | Tabs/spaces, shebangs, argument parsing (section 12) | 3 | 3 | none |
+
+Suggested order: 1, 2, 4, 3, 5, 6, 7, 8, 9, then 10 and 11. Doing WP4 early means the later packages are checked as they land. WP9 can only be checked with `bash -n` and step counts (never run quickstart). Nothing here adds a language or runtime.
+
+Todo scoring: `todo.md` item 7 is scored effort 5, blast 5, improvement 3 (priority 0.30). The packages above are mostly small and independent; only WP10 and WP11 are large. Rescore item 7 when work starts (not done).
