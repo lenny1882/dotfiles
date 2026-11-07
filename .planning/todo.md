@@ -21,9 +21,10 @@ Each section carries a `Weighting:` line under its heading with the same numbers
 | 3 | Clipboard history | 2 | 1 | 2 | 0.67 |
 | 4 | System theme changer in the tui | 1 | 1 | 1 | 0.50 |
 | 5 | Repo cleanup | 2 | 2 | 2 | 0.50 |
-| 6 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
-| 7 | Lock screen look | 4 | 3 | 2 | 0.29 |
-| 8 | GUI session environment lacks the shellrc exports | 2 | 2 | 1 | 0.25 |
+| 6 | Initramfs holds stale copies of the /etc config | 1 | 2 | 1 | 0.33 |
+| 7 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
+| 8 | Lock screen look | 4 | 3 | 2 | 0.29 |
+| 9 | GUI session environment lacks the shellrc exports | 2 | 2 | 1 | 0.25 |
 
 ## Backups
 
@@ -144,6 +145,25 @@ Findings from a read-only pass over the tracked files. "Referenced" means the fi
 - `.planning/monitor_changes/monitor_tui_check.py` (76K) and `monitor_check.sh` (28K): test scaffolding for work that may be finished.
 
 Not covered: the large scripts (`monitor_tui.py`, `monitor_reconcile.sh`, the rest of `quickstart_arch.sh`) were not read for internal simplification.
+
+## Initramfs holds stale copies of the /etc config
+
+Weighting: effort 1, blast radius 2, improvement 1, priority 0.33.
+
+dracut builds the initramfs in hostonly mode (`/usr/lib/dracut/dracut.conf.d/hostonly/10-hostonly.conf`), and three of its modules copy host config into it: `80base` copies `/etc/modprobe.d/*.conf`, `11systemd-sysctl` copies `/etc/sysctl.d/*.conf`, and `74udev-rules` copies `/etc/udev/rules.d/*.rules`. A listing of the initramfs (`lsinitrd`, pasted by the user) showed the symlinks from `symlinks/` and also the files they point to, copied in; it was built 2026-11-01 22:10 by the `90-kernel-install.hook` run for kernel 7.2.14. Those copies are frozen until the next kernel install or a manual `dracut --force`.
+
+What that does today (checked from the boot journal and the listing, not on a fresh install):
+- `99-swappiness.conf`: the only thing that sets `vm.swappiness` (nothing in `/etc/sysctl.d`, `/usr/lib/sysctl.d` or `/run/sysctl.d` mentions it). It reads 10 because the initramfs's `systemd-sysctl` applies its embedded copy. The real root's `systemd-sysctl` runs at about 6.45s, before `/media/Storage` mounts at about 7.1s, so it sees a dangling link. A change to the repo file does not apply until the initramfs is rebuilt.
+- Inferred, not tried: on a fresh install the links are made after the first kernel install, so no embedded copy exists and swappiness stays at the kernel default until a later rebuild.
+- `90-backlight.rules` and `51-android.rules` are embedded too, but `udev-reload.service` reloads the rules after the mount, so repo edits take effect.
+- `audio_power_save.conf` is embedded, but `snd_hda_intel` loads after the root switch, so the copy is never read; `module-options.service` now applies it after the mount.
+
+Options:
+- A post-mount step that runs `systemd-sysctl`, in the same style as `udev-reload.service` and `module-options.service` (`RequiresMountsFor=/media/Storage`): swappiness then follows the repo file, with no rebuild. A line in `udev-reload.service` would be the smallest change, or a unit of its own. Not tried.
+- Rebuild the initramfs from the quickstart (`dracut --force`) after the config links: heavy, slower, and the copy is stale again after the next edit.
+- Leave it: only swappiness is affected.
+
+To decide: which option, and whether the fresh-install case is worth a test (it needs a fresh machine or a VM).
 
 ## Script consistency and shared helpers
 
