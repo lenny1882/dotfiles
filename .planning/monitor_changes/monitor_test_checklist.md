@@ -37,8 +37,18 @@ Spec and open questions: `tui_spec.md`. Reload first (`hc reload`) so Super+Alt+
 | O6 | Hand-split a frame on that tag, reopen | The layout name reads `custom`; tags 8 and 9 read `unassigned` |
 | O7 | Monitors panel | Boxes are in proportion to each other and positioned as on the desktop, numbered with `*` on the primary; the numbered details are underneath |
 | O8 | Enter, then Esc, then `q` (also `q` from a screen) | Enter opens the screen, the footer title changes to its name, Esc returns, `q` quits from either |
-| O9 | Resize the window | The panels follow; at a very small size it says `too small: need 52x12` |
+| O9 | Resize the window | The panels follow; at a very small size it says `too small: need 52x13` |
 | O10 | Unplug the external, reopen | The Monitors panel shows one box, the Layout panel uses the `eDP-1` block |
+
+## TUI Theme panel (step 11)
+| # | Do | Expect |
+|---|----|--------|
+| T1 | Open the tui and arrow to the Theme panel | Its border turns green and it shows the current mode; `mixed` plus a note if the GTK links and `color-scheme` disagree |
+| T2 | Enter, ↓, Enter | The list shows Dark and Light; the footer says `light applied`, the panel shows `Mode light`, and `setup/theme.sh current` says `light` |
+| T3 | Enter, ↓, Esc | Nothing applied; the panel still shows the old mode |
+| T4 | After T2, start xarchiver, pavucontrol and Designer | All three open light (windows that were already open keep their look) |
+| T5 | In the edit, press Ctrl-C and Ctrl-S | Nothing happens; the edit stays open |
+| T6 | `setup/theme.sh apply dark` afterwards | Back to dark |
 
 ## TUI Layout screen (step 11)
 
@@ -71,10 +81,10 @@ Use a second monitor you can lose without harm; changes apply immediately throug
 | M4 | `m`, arrows / Ctrl / Shift | 10 px / 1 px / 100 px; the position string updates; overlapping another monitor is refused |
 | M5 | `m`, Alt+arrow | Jumps to the other side of the next monitor, keeping its vertical (or horizontal) position |
 | M6 | `m`, move, Esc | Back where it was, nothing applied |
-| M7 | `m`, move, Ctrl-S | The monitor really moves (xrandr and the desktop agree), tags/polybar follow |
-| M8 | `e`, change the string, Ctrl-S | Applied; a bad string or an overlap stays in the editor with the reason |
+| M7 | `m`, move, Enter | The monitor really moves (xrandr and the desktop agree), tags/polybar follow |
+| M8 | `e`, change the string, Enter | Applied; a bad string or an overlap stays in the editor with the reason |
 | M9 | `r` | A centred list, Custom first, a line per resolution and Hz, scroll bar when long; Enter applies |
-| M10 | `r`, Custom, `1600x900 60`, Ctrl-S | That mode is created if the monitor does not list it, and applied |
+| M10 | `r`, Custom, `1600x900 60`, Enter | That mode is created if the monitor does not list it, and applied |
 | M11 | Ctrl, Shift and Alt with arrows in urxvt | All three work in move mode (Alt may be eaten by the window manager: say so) |
 | M12 | An apply that xrandr rejects | The old positions are put back and the error's last line is shown |
 | M13 | Alt-S, then `y` | The entry for the connected set in `monitor_layouts.conf` is replaced by the current layout; unplug and replug and it comes back as saved (Alt may be taken by the window manager: say so). Passed live. |

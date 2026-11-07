@@ -755,7 +755,7 @@ def tags_content(data, cw, ch):
     return lines
 
 
-THEME_EDIT_HINTS = "↑/↓ select   Ctrl-S apply   Esc cancel"
+THEME_EDIT_HINTS = "↑/↓ select   Enter apply   Esc cancel"
 
 
 class ThemeEdit:
@@ -765,9 +765,9 @@ class ThemeEdit:
         self.sel = THEME_MODES.index(current) if current in THEME_MODES else 0
 
     def handle(self, key):
-        if key in ("ESC", "CTRL_C"):
+        if key == "ESC":
             return "cancel"
-        if key == "CTRL_S":
+        if key == "ENTER":
             return "save"
         if key == "UP":
             self.sel = max(0, self.sel - 1)
@@ -1153,7 +1153,7 @@ class LayoutScreen:
         if self.mode == "confirm":
             return self.handle_confirm(key)
         n = len(self.defs) + 1
-        if key in ("q", "CTRL_C"):
+        if key == "q":
             return "quit"
         if key == "ESC":
             return "back"
@@ -1196,7 +1196,7 @@ class LayoutScreen:
         self.edit_var, self.mode = var, "edit"
 
     def handle_edit(self, key):
-        if key in ("ESC", "CTRL_C"):
+        if key == "ESC":
             self.mode = "browse"
         elif key == "CTRL_S":
             self.save()
@@ -1216,7 +1216,7 @@ class LayoutScreen:
         self.sel = list(self.defs).index(var) + 1
 
     def handle_confirm(self, key):
-        if key in ("n", "ESC", "CTRL_C"):
+        if key in ("n", "ESC"):
             self.mode = "browse"
         elif key == "y":
             action, var = self.confirm
@@ -1328,8 +1328,8 @@ ARROW_DIRS = {"UP": (0, -1), "DOWN": (0, 1), "LEFT": (-1, 0), "RIGHT": (1, 0)}
 MON_INFO_H = 4 + 2 + 2 * PAD_V
 MONITORS_MIN_ROWS = FOOTER_ROWS + MON_INFO_H + 2 + 2 * PAD_V + 7
 BROWSE_HINTS = "←↑↓→ select   p primary   m move   r resolution   o rotate   e edit   Alt-S persist   Esc back   q quit"
-MOVE_HINTS = "←↑↓→ 10px   Ctrl 1px   Shift 100px   Alt hop   Ctrl-S done   Esc cancel"
-INPUT_HINTS = "Ctrl-S apply   Esc cancel"
+MOVE_HINTS = "←↑↓→ 10px   Ctrl 1px   Shift 100px   Alt hop   Enter done   Esc cancel"
+INPUT_HINTS = "Enter apply   Esc cancel"
 RES_HINTS = "↑↓ select   Enter choose   Esc cancel"
 RES_W = 44
 ROT_W = 30
@@ -1471,7 +1471,7 @@ class MonitorScreen:
 
     def key_browse(self, key):
         o = self.cur()
-        if key in ("q", "CTRL_C"):
+        if key == "q":
             return "quit"
         if key == "ESC":
             return "back"
@@ -1515,7 +1515,7 @@ class MonitorScreen:
             self.before = self.model.copy()
             self.model.make_primary(self.cur())
             self.apply()
-        elif key in ("n", "ESC", "CTRL_C"):
+        elif key in ("n", "ESC"):
             self.mode = "browse"
         return None
 
@@ -1524,7 +1524,7 @@ class MonitorScreen:
         if key == "ESC":
             self.model, self.mode = self.before, "browse"
             self.frame = self.nums = None
-        elif key == "CTRL_S":
+        elif key == "ENTER":
             self.apply()
         elif key == "e":
             self.begin_edit()
@@ -1544,7 +1544,7 @@ class MonitorScreen:
         self.mode = "rotate"
 
     def key_rotate(self, key):
-        if key in ("ESC", "CTRL_C"):
+        if key == "ESC":
             self.mode = "browse"
         elif key == "UP":
             self.rot_sel = max(0, self.rot_sel - 1)
@@ -1580,11 +1580,11 @@ class MonitorScreen:
         self.mode = "edit"
 
     def key_edit(self, key):
-        if key in ("ESC", "CTRL_C"):
+        if key == "ESC":
             self.mode = self.prev
             if self.prev == "browse":
                 self.model = self.before
-        elif key == "CTRL_S":
+        elif key == "ENTER":
             m = GEOM_SIGNED.match(self.editor.text().strip())
             if not m:
                 self.message = "expected WxH+X+Y, like 1920x1080+0+0"
@@ -1592,7 +1592,7 @@ class MonitorScreen:
             w, h, x, y = (int(v) for v in m.groups())
             sideways = self.cur().rot in SIDEWAYS
             self.set_size_and_position(f"{h}x{w}" if sideways else f"{w}x{h}", None, x, y)
-        elif key not in ("ENTER", "TAB", "RESIZE"):
+        elif key not in ("TAB", "RESIZE"):
             self.editor.handle(key)
         return None
 
@@ -1631,7 +1631,7 @@ class MonitorScreen:
 
     def key_resolution(self, key):
         n = len(self.res_rows)
-        if key in ("ESC", "CTRL_C"):
+        if key == "ESC":
             self.mode = "browse"
         elif key == "UP":
             self.res_sel = max(0, self.res_sel - 1)
@@ -1656,15 +1656,15 @@ class MonitorScreen:
         return None
 
     def key_custom(self, key):
-        if key in ("ESC", "CTRL_C"):
+        if key == "ESC":
             self.mode = "resolution"
-        elif key == "CTRL_S":
+        elif key == "ENTER":
             m = re.fullmatch(r"(\d+)x(\d+)(?:\s+(\d+(?:\.\d+)?))?", self.editor.text().strip())
             if not m:
                 self.message = "expected WxH, or WxH and the Hz, like 1920x1080 60"
                 return None
             self.set_size_and_position(f"{m.group(1)}x{m.group(2)}", m.group(3))
-        elif key not in ("ENTER", "TAB", "RESIZE"):
+        elif key not in ("TAB", "RESIZE"):
             self.editor.handle(key)
         return None
 
@@ -1688,7 +1688,7 @@ class MonitorScreen:
     def key_keep(self, key):
         if key in ("y", "ENTER"):
             self.mode, self.message = "browse", "applied"
-        elif key in ("n", "ESC", "CTRL_C"):
+        elif key in ("n", "ESC"):
             self.revert()
         return None
 
@@ -1827,7 +1827,7 @@ LIST_W, RULES_W = 44, 58
 TABLE_MARGIN, CELL_PAD, TOP_PAD = 2, 3, 1    # TOP_PAD: rows of screen padding above the table; the panels pad 2 across and 1 down
 HDASH = "─ "      # the dashed line under the table's header: a one-column dash with a one-column gap
 COL_MIN = (5, 14, 20, 24)    # least content width of the Key, Name, Layout and Rules columns
-OV_HINTS = "↑/↓ select   Space tick   0/1 index   Ctrl-S save   Esc cancel"
+OV_HINTS = "↑/↓ select   Space tick   0/1 index   Enter save   Esc cancel"
 BAD_NAME = '"$`\\'
 
 
@@ -1929,7 +1929,7 @@ class TagsScreen:
         self.mode, self.work = "browse", None
 
     def key_browse(self, key):
-        if key in ("q", "CTRL_C"):
+        if key == "q":
             return "quit"
         if key == "ESC":
             return "back"
@@ -1962,7 +1962,7 @@ class TagsScreen:
 
     def key_layout(self, key):
         n = len(self.defs) + 1
-        if key in ("ESC", "CTRL_C"):
+        if key == "ESC":
             self.discard()
         elif key == "UP":
             self.lay_sel = max(0, self.lay_sel - 1)
@@ -1987,7 +1987,7 @@ class TagsScreen:
         self.summary, self.mode = summary, "confirm"
 
     def key_confirm(self, key):
-        if key in ("n", "ESC", "CTRL_C"):
+        if key in ("n", "ESC"):
             self.discard()
         elif key == "y":
             try:
@@ -2000,11 +2000,11 @@ class TagsScreen:
         return None
 
     def key_input(self, key, done):
-        if key in ("ESC", "CTRL_C"):
+        if key == "ESC":
             self.discard()
-        elif key == "CTRL_S":
+        elif key == "ENTER":
             done(self.editor.text().strip())
-        elif key not in ("RESIZE", "TAB", "ENTER", "UP", "DOWN"):
+        elif key not in ("RESIZE", "TAB", "UP", "DOWN"):
             self.editor.handle(key)
         return None
 
@@ -2067,7 +2067,7 @@ class TagsScreen:
 
     def key_rules(self, key):
         e = self.ov[self.ov_sel]
-        if key in ("ESC", "CTRL_C"):
+        if key == "ESC":
             self.discard()
         elif key == "UP":
             self.ov_sel = max(0, self.ov_sel - 1)
@@ -2084,13 +2084,13 @@ class TagsScreen:
             e["idx"] += key
         elif key == "BACKSPACE" and e["on"]:
             e["idx"] = e["idx"][:-1]
-        elif key == "CTRL_S":
+        elif key == "ENTER":
             self.finish_rules()
         return None
 
     def key_move(self, key):
         e = self.ov[self.ov_sel]
-        if key in ("n", "ESC", "CTRL_C"):
+        if key in ("n", "ESC"):
             self.mode = "rules"
         elif key == "y":
             e["on"], e["from"], e["other"] = True, e["other"], ""
@@ -2123,7 +2123,7 @@ class TagsScreen:
             e = self.ov[self.ov_sel]
             return f"Move {e['inst']} from {e['other']} to {wr['tag']}?", "y yes   n no"
         if self.mode in ("key", "name"):
-            return self.message or f"{'Key' if self.mode == 'key' else 'Name'} of {wr['tag']}", "Ctrl-S save   Esc cancel"
+            return self.message or f"{'Key' if self.mode == 'key' else 'Name'} of {wr['tag']}", "Enter save   Esc cancel"
         if self.mode == "layout":
             return f"Layout of {wr['tag']}", "↑/↓ select   Enter choose   Esc cancel"
         if self.mode == "rules":
@@ -2405,7 +2405,7 @@ def norm_key(ch):
              curses.KEY_SR: "SHIFT_UP", curses.KEY_SF: "SHIFT_DOWN",
              curses.KEY_PPAGE: "PGUP", curses.KEY_NPAGE: "PGDN"}
     chars = {"\n": "ENTER", "\r": "ENTER", "\x1b": "ESC", "\x7f": "BACKSPACE", "\b": "BACKSPACE",
-             "\x13": "CTRL_S", "\x03": "CTRL_C", "\t": "TAB"}
+             "\x13": "CTRL_S", "\t": "TAB"}
     if isinstance(ch, int):
         return names.get(ch) or terminfo_arrow(ch)
     return chars.get(ch, ch)
@@ -2541,7 +2541,7 @@ def loop(win, stack, sel, data):
                 edit = None
             continue
         message = ""
-        if key in ("q", "CTRL_C"):
+        if key == "q":
             return
         if key == "UP" and sel < 2:
             sel = 0

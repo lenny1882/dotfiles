@@ -350,9 +350,9 @@ with tempfile.TemporaryDirectory() as tmp:
     te.handle("DOWN")
     check("theme edit: Down moves to Light and no further", te.sel == 1 and (te.handle("DOWN"), te.sel)[1] == 1)
     check("theme edit: Up moves back and stops at Dark", (te.handle("UP"), te.sel)[1] == 0 and (te.handle("UP"), te.sel)[1] == 0)
-    check("theme edit: Ctrl-S saves, Esc and Ctrl-C cancel, other keys do nothing",
-          te.handle("CTRL_S") == "save" and te.handle("ESC") == "cancel" and te.handle("CTRL_C") == "cancel"
-          and te.handle("ENTER") is None and te.handle("q") is None)
+    check("theme edit: Enter saves, Esc cancels, other keys (Ctrl-S, Ctrl-C, q) do nothing",
+          te.handle("ENTER") == "save" and te.handle("ESC") == "cancel"
+          and te.handle("CTRL_S") is None and te.handle("\x03") is None and te.handle("q") is None)
     check("theme edit: a mode it does not know (mixed, unknown) starts on Dark",
           tui.ThemeEdit("mixed").sel == 0 and tui.ThemeEdit("unknown").sel == 0 and tui.ThemeEdit("light").sel == 1)
     de = tui.gather()
@@ -392,14 +392,14 @@ with tempfile.TemporaryDirectory() as tmp:
     class LoopWin:
         def getmaxyx(self): return 40, 100
         def timeout(self, ms): pass
-    keys = iter(["DOWN", "RIGHT", "DOWN", "ENTER", "DOWN", "CTRL_S", "q"])
+    keys = iter(["DOWN", "RIGHT", "DOWN", "ENTER", "DOWN", "ENTER", "q"])
     seen = []
     real_read_key, real_paint = tui.read_key, tui.paint
     tui.read_key = lambda win: next(keys)
     tui.paint = lambda win, rows, footer, cursor=None: seen.append(footer)
     tui.loop(LoopWin(), ["overview"], 0, tui.gather())
     tui.read_key, tui.paint = real_read_key, real_paint
-    check("theme loop: Enter on the Theme panel shows the editing hints, Ctrl-S applies and the title says so",
+    check("theme loop: Enter on the Theme panel shows the editing hints, Enter applies and the title says so",
           seen[4] == ("Theme", tui.THEME_EDIT_HINTS) and seen[5] == ("Theme", tui.THEME_EDIT_HINTS)
           and seen[6] == ("light applied", tui.FOOTER) and calls == [("apply", "light")], (seen, calls))
     keys = iter(["DOWN", "RIGHT", "DOWN", "ENTER", "DOWN", "ESC", "q"])
@@ -411,6 +411,23 @@ with tempfile.TemporaryDirectory() as tmp:
     tui.read_key, tui.paint = real_read_key, real_paint
     check("theme loop: Esc cancels the edit, applies nothing and goes back to the overview footer",
           seen[5] == ("Theme", tui.THEME_EDIT_HINTS) and seen[6] == ("Overview", tui.FOOTER) and calls == [], (seen, calls))
+    keys = iter(["\x03", "DOWN", "q"])
+    seen.clear()
+    tui.read_key = lambda win: next(keys)
+    tui.paint = lambda win, rows, footer, cursor=None: seen.append(footer)
+    tui.loop(LoopWin(), ["overview"], 0, tui.gather())
+    tui.read_key, tui.paint = real_read_key, real_paint
+    check("Ctrl-C no longer quits: the overview keeps running until q", len(seen) == 3, len(seen))
+    check("norm_key leaves Ctrl-C unnamed", tui.norm_key("\x03") == "\x03")
+    keys = iter(["DOWN", "RIGHT", "DOWN", "ENTER", "DOWN", "CTRL_S", "ESC", "q"])
+    seen.clear()
+    calls.clear()
+    tui.read_key = lambda win: next(keys)
+    tui.paint = lambda win, rows, footer, cursor=None: seen.append(footer)
+    tui.loop(LoopWin(), ["overview"], 0, tui.gather())
+    tui.read_key, tui.paint = real_read_key, real_paint
+    check("Ctrl-S does nothing in the theme edit: the edit stays open and applies nothing",
+          seen[5] == ("Theme", tui.THEME_EDIT_HINTS) and seen[6] == ("Theme", tui.THEME_EDIT_HINTS) and calls == [], (seen, calls))
     tui.theme_run, tui.theme_current, tui.DRY = real_theme_run, real_theme_current, real_dry
 
     class FakeWin:
@@ -698,25 +715,25 @@ if True:
     ms.handle("DOWN"); ms.handle("ESC")
     check("Esc cancels the whole move", ms.mode == "browse" and ms.cur().y == 0 and ms.cur().x == 2560)
     before = len(applied)
-    ms.handle("m"); ms.handle("DOWN"); ms.handle("DOWN"); ms.handle("CTRL_S")
-    check("Ctrl-S applies the move (positions measured from the top-left)", len(applied) == before + 1 and "DP-4 1920x1080 --pos 2560x20 --primary" in applied[-1], applied[-1])
+    ms.handle("m"); ms.handle("DOWN"); ms.handle("DOWN"); ms.handle("ENTER")
+    check("Enter applies the move (positions measured from the top-left)", len(applied) == before + 1 and "DP-4 1920x1080 --pos 2560x20 --primary" in applied[-1], applied[-1])
     ms.handle("y")
 
     ms.handle("e")
     check("e opens the geometry as herbstluftwm reads it", ms.mode == "edit" and ms.editor.text() == "1920x1080+2560+20", ms.editor.text())
     for _ in range(30): ms.handle("BACKSPACE")
     for ch in "1920x1080+2560+0": ms.handle(ch)
-    ms.handle("CTRL_S")
-    check("Ctrl-S applies the edited string", ms.mode == "keep" and "DP-4 1920x1080 --pos 2560x0 --primary" in applied[-1], applied[-1])
+    ms.handle("ENTER")
+    check("Enter applies the edited string", ms.mode == "keep" and "DP-4 1920x1080 --pos 2560x0 --primary" in applied[-1], applied[-1])
     ms.handle("y")
     ms.handle("e")
     for _ in range(20): ms.handle("BACKSPACE")
     for ch in "nonsense": ms.handle(ch)
-    ms.handle("CTRL_S")
+    ms.handle("ENTER")
     check("a bad string stays in the editor and says what it expects", ms.mode == "edit" and "WxH+X+Y" in ms.message, ms.message)
     for _ in range(20): ms.handle("BACKSPACE")
     for ch in "1920x1080+100+0": ms.handle(ch)
-    ms.handle("CTRL_S")
+    ms.handle("ENTER")
     check("an edit that would overlap is refused", ms.mode == "edit" and "overlap" in ms.message, ms.message)
     ms.handle("ESC")
     check("Esc closes the editor without applying", ms.mode == "browse")
@@ -739,13 +756,13 @@ if True:
     check("Enter on Custom opens the values for editing, filled with the current ones", ms.mode == "custom" and ms.editor.text() == "1920x1080 59.94", ms.editor.text())
     for _ in range(20): ms.handle("BACKSPACE")
     for ch in "1600x900 75": ms.handle(ch)
-    ms.handle("CTRL_S")
-    check("Ctrl-S applies the custom resolution and rate", ms.mode == "keep" and "DP-4 1600x900 --rate 75 --pos 2560x0 --primary" in applied[-1], applied[-1])
+    ms.handle("ENTER")
+    check("Enter applies the custom resolution and rate", ms.mode == "keep" and "DP-4 1600x900 --rate 75 --pos 2560x0 --primary" in applied[-1], applied[-1])
     ms.handle("y")
     ms.handle("r"); ms.handle("HOME"); ms.handle("ENTER")
     for _ in range(20): ms.handle("BACKSPACE")
     for ch in "wide": ms.handle(ch)
-    ms.handle("CTRL_S")
+    ms.handle("ENTER")
     check("a bad custom value is refused", ms.mode == "custom" and "WxH" in ms.message)
     ms.handle("ESC"); ms.handle("ESC")
     check("Esc backs out of the custom values and then the list", ms.mode == "browse")
@@ -753,7 +770,7 @@ if True:
     ms.handle("ESC")
 
     before_lines = ms.model.layout_lines()
-    ms.handle("m"); ms.handle("DOWN"); ms.handle("CTRL_S")
+    ms.handle("m"); ms.handle("DOWN"); ms.handle("ENTER")
     check("an apply waits for a yes, showing the seconds left",
           ms.mode == "keep" and ms.footer() == ("Keep these settings? Reverting in 15s", "y keep   n revert"), ms.footer())
     ms.handle("UP"); ms.handle("q")
@@ -762,20 +779,20 @@ if True:
     ms.handle("n")
     check("n puts the old positions back", ms.mode == "browse" and ms.message == "reverted" and len(applied) == n + 1
           and applied[-1] == before_lines, (applied[-1], before_lines))
-    ms.handle("m"); ms.handle("DOWN"); ms.handle("CTRL_S")
+    ms.handle("m"); ms.handle("DOWN"); ms.handle("ENTER")
     real_clock = time.monotonic
     time.monotonic = lambda: real_clock() + tui.KEEP_SECONDS + 1
     n = len(applied)
     ms.tick()
     check("with no answer for 15 s it reverts by itself", ms.mode == "browse" and ms.message == "reverted" and len(applied) == n + 1, ms.message)
     time.monotonic = real_clock
-    ms.handle("m"); ms.handle("DOWN"); ms.handle("CTRL_S"); ms.tick()
+    ms.handle("m"); ms.handle("DOWN"); ms.handle("ENTER"); ms.tick()
     check("tick before the time is up changes nothing", ms.mode == "keep")
     ms.handle("ENTER")
     check("Enter keeps it", ms.mode == "browse" and ms.message == "applied")
 
     tui.apply_lines = lambda lines: (1, "xrandr: cannot do that")
-    ms.handle("m"); ms.handle("DOWN"); ms.handle("CTRL_S")
+    ms.handle("m"); ms.handle("DOWN"); ms.handle("ENTER")
     check("a failed apply puts the old positions back and says why", ms.message == "xrandr: cannot do that" and ms.mode == "browse", ms.message)
     tui.apply_lines = lambda lines: (applied.append(list(lines)), (0, ""))[1]
 
@@ -801,7 +818,7 @@ if True:
           all(len(l) == 110 for l in flat) and any("Resolution" in l for l in flat) and any("Custom…" in l for l in flat) and "1920x1080" in "".join(flat[10:20]))
     sc.handle("ESC"); sc.handle("e")
     rows, foot, cur = sc.render(110, 30)
-    check("the editor overlay puts the cursor in its field", cur is not None and rows[cur[0]][0] and foot[1] == "Ctrl-S apply   Esc cancel", cur)
+    check("the editor overlay puts the cursor in its field", cur is not None and rows[cur[0]][0] and foot[1] == "Enter apply   Esc cancel", cur)
 
     tui.apply_lines = lambda lines: (applied.append(list(lines)), (0, ""))[1]
     mv = tui.MonitorScreen()
@@ -825,7 +842,7 @@ if True:
     now, _ = where(mv)
     check("the moved monitor goes left of the first one without the group re-centring", now["2"] < now["1"] == start["1"], (start, now))
     check("and is still numbered 2 while the move is unsaved", "┃ 2" in "".join(flat1) and now["2"] != -1)
-    mv.handle("CTRL_S"); mv.handle("y")
+    mv.handle("ENTER"); mv.handle("y")
     after, flat2 = where(mv)
     check("saving centres the group again and numbers it by position: the monitor now on the left is 1",
           after["1"] < after["2"] and "1" in after, after)
@@ -838,7 +855,7 @@ if True:
     tui.load_model = lambda: (fresh.append(1), model(RATED))[1]
     tui.apply_lines = lambda lines: (1, "monitor_reconcile: xrandr failed")
     fl = tui.MonitorScreen(); fresh.clear()
-    fl.handle("RIGHT"); fl.handle("m"); fl.handle("CTRL_S")
+    fl.handle("RIGHT"); fl.handle("m"); fl.handle("ENTER")
     check("after a failed apply the model is read from xrandr again", fresh == [1] and fl.message == "monitor_reconcile: xrandr failed", (fresh, fl.message))
     tui.DRY = True
     tui.load_model = lambda: model(RATED)
@@ -977,17 +994,17 @@ with tempfile.TemporaryDirectory() as tmp:
 
     send("k")
     check("key: k opens an input for the tag's key", ts.mode == "key" and ts.footer()[0] == "Key of left|3", ts.footer())
-    typed("0"); send("CTRL_S")
+    typed("0"); send("ENTER")
     check("key: 0 is refused and the input stays open", ts.mode == "key" and "1 to 9" in ts.message, ts.message)
-    typed("8"); send("CTRL_S")
+    typed("8"); send("ENTER")
     check("key: a key held by an unassigned tag swaps with it like any other",
           ts.mode == "confirm" and ts.footer()[0].startswith("Key of left|3: 3 to 8, 8 gets 3."), ts.footer())
-    send("n", "k"); typed("1"); send("CTRL_S")
-    check("key: Ctrl-S asks before persisting and names the swap",
+    send("n", "k"); typed("1"); send("ENTER")
+    check("key: Enter asks before persisting and names the swap",
           ts.mode == "confirm" and ts.footer() == ("Key of left|3: 3 to 1, middle|1 gets 3. Persist to hlwm_tag_layouts.conf?", "y yes   n no"), ts.footer())
     send("n")
     check("key: n leaves the file alone", open(tfile).read() == TAGS3 and ts.mode == "browse")
-    send("k"); typed("1"); send("CTRL_S", "y")
+    send("k"); typed("1"); send("ENTER", "y")
     got = saved()
     check("key: y writes it, and the other tag takes the old key",
           [r["key"] for r in got[:4]] == [1, 3, 2, 4] and ts.message == "saved", [r["key"] for r in got])
@@ -996,12 +1013,12 @@ with tempfile.TemporaryDirectory() as tmp:
 
     send("DOWN", "n")
     check("name: n opens the name input prefilled", ts.mode == "name" and ts.editor.text() == "middle|1")
-    typed("a$b"); send("CTRL_S")
+    typed("a$b"); send("ENTER")
     check("name: a name with $ is refused", ts.mode == "name" and "cannot" in ts.message, ts.message)
-    typed("middle"); send("CTRL_S", "y")
+    typed("middle"); send("ENTER", "y")
     check("name: y writes the new name (the key is unchanged, names need not be unique)",
           saved()[1]["tag"] == "middle" and saved()[1]["key"] == 3, saved()[1])
-    send("n"); typed("middle"); send("CTRL_S")
+    send("n"); typed("middle"); send("ENTER")
     check("name: an unchanged name says so and closes", ts.mode == "browse" and ts.message == "no change", ts.message)
 
     send("l")
@@ -1025,7 +1042,7 @@ with tempfile.TemporaryDirectory() as tmp:
     ts.sel = 4
     send("n")
     check("none-tags: the name of an unassigned tag can be edited directly", ts.mode == "name" and ts.editor.text() == "5", ts.mode)
-    typed("five"); send("CTRL_S", "y")
+    typed("five"); send("ENTER", "y")
     check("none-tags: and it stays unassigned", saved()[4]["tag"] == "five" and saved()[4]["var"] == "none")
     ts.sel = 3
     send("l")
@@ -1054,15 +1071,15 @@ with tempfile.TemporaryDirectory() as tmp:
     send("1", "0", "BACKSPACE", "2", "DOWN", " ")
     check("rules: 0 and 1 edit the index, any other digit is ignored, Backspace deletes, Space unticks",
           ts.ov[0]["idx"] == "11" and not ts.ov[1]["on"], (ts.ov[0]["idx"], ts.ov[1]["on"]))
-    send("CTRL_S")
-    check("rules: Ctrl-S asks, naming the add, the move and the one left without a tag",
+    send("ENTER")
+    check("rules: Enter asks, naming the add, the move and the one left without a tag",
           ts.mode == "confirm" and "+vivaldi-stable from right|2" in ts.footer()[0] and "-spotify (no tag left)" in ts.footer()[0]
           and ts.footer()[0].endswith("Persist to hlwm_tag_layouts.conf?"), ts.footer())
     send("y")
     got = saved()
     check("rules: y writes them, taking the moved one off its old tag",
           got[0]["progs"] == [["vivaldi-stable", "11"], ["rambox", "0"]] and got[2]["progs"] == [], [r["progs"] for r in got[:3]])
-    send("r", "CTRL_S")
+    send("r", "ENTER")
     check("rules: nothing changed says so", ts.mode == "browse" and ts.message == "no change", ts.message)
     send("r", "ESC")
     check("rules: Esc discards", ts.mode == "browse" and ts.work is None)
@@ -1254,7 +1271,7 @@ DP-5 connected 1920x1080+0+1600 (normal left inverted right x axis y axis) 530mm
     check("e shows the geometry as rotated", rs.editor.text() == "1080x1920+2560+0", rs.editor.text())
     for _ in range(30): rs.handle("BACKSPACE")
     for ch in "1080x1920+2560+0": rs.handle(ch)
-    rs.handle("CTRL_S")
+    rs.handle("ENTER")
     check("typing it back applies the mode of the rotated monitor, not its swapped size", any(l.startswith("DP-4 1920x1080") and "--rotate left" in l for l in applied[-1]), applied[-1:])
     rs.handle("y")
 

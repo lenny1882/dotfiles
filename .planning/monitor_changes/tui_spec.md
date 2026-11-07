@@ -78,6 +78,13 @@ that sets what a keybinding session lacks (a UTF-8 locale for the box characters
 `hc reload` is needed for a changed keybinding to load. `MONITOR_TUI_DRY=1` makes applies dry runs.
 `monitor_tui.py --print [WIDTH [HEIGHT]]` prints the overview as plain text (testing aid).
 
+### Theme panel (built, not yet seen live; 2026-11-07)
+
+- A fourth overview panel under Tags in the right column, 6 rows high. It shows `Mode  dark`, `light`, `mixed` or `unknown`; `mixed` adds a line that the GTK links and `color-scheme` disagree. The overview now needs 13 rows.
+- ↑/↓ move between Tags and Theme in the right column; ← goes back to the left column.
+- **Enter** starts the edit in the panel: Dark and Light, `*` on the current mode, `›` on the selection. ↑/↓ choose, **Enter** applies through `setup/theme.sh apply`, **Esc** cancels. While editing the footer shows the hints; afterwards the title spot shows `dark applied` (or the last line of the error) until the next key.
+- `setup/theme.sh` (`THEME_SH` overrides the path) points `~/.config/gtk-3.0/settings.ini` and `gtk-4.0/settings.ini` at the copies in `setup/themes/` and sets `color-scheme`; `current` reads both and says `mixed` when they disagree. The toolkit tests and the design decisions are in `.planning/todo.md`.
+
 ## Tags screen (built, not yet seen live; 2026-10-11)
 
 Enter on the overview's Tags panel. A borderless table of the connected set's nine tags: `Key (k)`, `Name (n)`, `Layout (l)`,
@@ -98,7 +105,7 @@ back, `q` quits.
   shared padding line above it a lower-half block (`▄`) and below it an upper-half block (`▀`) in the same green extend the
   highlight by half a line each side. There is no marker. With too little room the padding lines, and so the bands, go.
 
-- **Persist:** every edit ends with Ctrl-S (the list in `l`: Enter) and then a `y/n` naming the change and
+- **Persist:** every edit ends with Enter and then a `y/n` naming the change and
   "Persist to hlwm_tag_layouts.conf?". Only that file is written; names and keys reach herbstluftwm at the next login or dock
   (`tags.sh`), rules at the next login. The block of the set is rewritten in a fixed format (`tag  layout  {n}  [instance:index]`,
   columns aligned, `{n}` only where the key differs from the position), so hand-set spacing inside the block is not kept.
@@ -113,7 +120,7 @@ back, `q` quits.
   --instance=` lines in the `# autostart rules` block of `rules.autostart`, which is `RULES_AUTOSTART` or `../rules.autostart`),
   and index. A row ticked elsewhere reads `on <tag>`. Under the table, a list of **Unattached rules**: instances in
   `rules.autostart` that no tag in this set has. Space ticks, `0` and `1` type the index (a frame path: `0` first subtree, `1` second, per the man page's FRAME INDEX; `2`-`9` mean nothing there), Backspace deletes. Ticking one that
-  is on another tag asks `Move X from A to B?`. Ctrl-S's confirmation lists what was added, moved and left without a tag.
+  is on another tag asks `Move X from A to B?`. Enter's confirmation lists what was added, moved and left without a tag.
 - An edit works on a copy of the rows and is only kept (and written) on `y`.
 
 ## Layout feature
@@ -185,7 +192,7 @@ Decided with the user (2026-10-09):
 - On Create new / **s**: the editor opens on `# lname: ` plus `layout='...'`; the variable is made up from
   the lname on save (`3-way right` -> `layout_3_way_right`, unique). An existing layout keeps its variable.
 - Embedded editor (own code, Python curses): arrows, Home/End, Backspace, Delete, Enter, typing;
-  **Ctrl-S** saves, **Esc** cancels. Ctrl-S needs `curses.raw()` (otherwise the terminal swallows it).
+  **Ctrl-S** saves, **Esc** cancels; Enter inserts a newline, so this is the one editor where Enter does not save. Ctrl-S needs `curses.raw()` (otherwise the terminal swallows it).
 - Validation is the parser only (`parse_tree(strict=True)`: direction, fraction 0-1, algorithm, numeric
   selection, brackets, no single quote). herbstluftwm has no validate / dry-run; the throwaway-tag check was
   offered and declined (it would show in polybar's `ewmh` module for an instant).
@@ -209,11 +216,11 @@ Decided with the user (2026-10-09):
 - Arrows select (the nearest monitor within 45 degrees of the direction).
 - **p** make primary, with `y/n`. **m** move mode: arrows 10 px, Ctrl 1 px, Shift 100 px, Alt hops to the other
   side of the next monitor in that direction keeping the other coordinate; the position string updates as it
-  moves; a move that would overlap another monitor is refused; **Ctrl-S** applies, **Esc** cancels.
-- **e** (also from move mode) edits the geometry string as herbstluftwm reads it (`2560x1600+0+0`); Ctrl-S applies,
+  moves; a move that would overlap another monitor is refused; **Enter** applies, **Esc** cancels.
+- **e** (also from move mode) edits the geometry string as herbstluftwm reads it (`2560x1600+0+0`); Enter applies,
   Esc cancels.
 - **r** opens an overlay list, vertical only with a scroll bar: `Custom…` first, then each resolution, one line per
-  refresh rate, largest first; Enter chooses; Enter on Custom opens `WxH [Hz]` for editing, Ctrl-S applies.
+  refresh rate, largest first; Enter chooses; Enter on Custom opens `WxH [Hz]` for editing, Enter applies.
 - **o** opens a menu (Normal, Left 90°, Right 90°, 180°; the current one is selected); Enter applies. A rotated monitor is drawn
   with width and height swapped, its geometry string is as rotated, and its layout line carries `--rotate`.
 - A monitor that is off is drawn as a dashed outline (16:9) right of the active ones, can be selected, and **r** turns it
@@ -221,7 +228,7 @@ Decided with the user (2026-10-09):
 - A resolution or rotation change re-flows the monitors beyond the changed edge by the same amount, so those that touched
   it still do (a shrink pulls them in); an overlap that remains is refused.
 - Every apply asks "Keep these settings?" for 15 s; `y` or Enter keeps it, `n`, Esc or no answer puts the old layout back.
-- Ctrl-S is the save/apply key everywhere something is typed; Esc always cancels / goes back.
+- Enter is the save/apply key everywhere something is typed or arranged, except the layout editor (Enter is a newline there; Ctrl-S saves). Esc always cancels / goes back. Ctrl-C is not used (removed 2026-11-07); q quits from a browse mode. Alt-S persists.
 - Changes are applied at once through `monitor_reconcile.sh --layout` (a failure puts the old model back and shows the
   last line of the error). Modified arrows are decoded for urxvt (terminfo extended keys, `ESC ESC [ D` for Alt) and xterm.
 
