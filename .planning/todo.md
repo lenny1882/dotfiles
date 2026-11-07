@@ -19,7 +19,7 @@ Each section carries a `Weighting:` line under its heading with the same numbers
 | 1 | Backups | 4 | 1 | 5 | 1.00 |
 | 2 | Automount removable drives on plug-in | 3 | 2 | 4 | 0.80 |
 | 3 | Clipboard history | 2 | 1 | 2 | 0.67 |
-| 4 | System theme changer in the tui | 3 | 2 | 3 | 0.60 |
+| 4 | System theme changer in the tui | 1 | 1 | 1 | 0.50 |
 | 5 | Repo cleanup | 2 | 2 | 2 | 0.50 |
 | 6 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
 | 7 | Lock screen look | 4 | 3 | 2 | 0.29 |
@@ -73,9 +73,11 @@ No clipboard manager is installed (nothing found for `xsel`, `clipmenu`, `greenc
 
 ## System theme changer in the tui
 
-Weighting: effort 3, blast radius 2, improvement 3, priority 0.60.
+Weighting: effort 1, blast radius 1, improvement 1, priority 0.50 (rescored 2026-11-07 for the follow-ups left; the changer itself is built).
 
-Switch the whole system between dark, light, etc. from the tui, setting every place that needs it. Rescored 2026-11-07: the places to set turned out to be two (see below), not the GTK theme and Qt theme separately.
+Switch the whole system between dark, light, etc. from the tui, setting every place that needs it.
+
+Built and tried live (2026-11-07, commits `6c0b6ec` and `7433a74`): `setup/theme.sh` (`apply dark|light`, `current`, `scheme`), the four files in `setup/themes/`, the quickstart step "Theme (dark or light)", and a Theme panel on the tui overview under Tags. Enter on the panel starts the edit, ↑/↓ choose Dark or Light, Enter applies, Esc cancels; the footer shows `dark applied` or the error. The live test in the user's session was fine. The same session made Enter the commit key across the tui (Ctrl-S only in the layout editor, where Enter is a newline) and removed Ctrl-C; `tui_spec.md` and the checklist (T1 to T6) describe both.
 
 Not needed: terminal, editor and wallpaper, which are set by hand.
 
@@ -113,13 +115,17 @@ Other findings: the old "needed for vivaldi" note holds. The earlier "pavucontro
 
 The open Qt windows not re-theming: searched, no matching bug found. [QTBUG-116197](https://bugreports.qt.io/browse/QTBUG-116197) added the portal `SettingChanged` subscription (reported picked to 6.6 and 6.7), which fits the signal and Qt's scheme value updating here; [QTBUG-65475](https://bugreports-test.qt.io/browse/QTBUG-65475) says runtime palette changes are not propagated to all widgets. Cause still open.
 
-Not tested: easyeffects (Qt 6, no theme setting seen), FreeCAD launched, VS Code and Obsidian set to follow the system.
+Still open (small follow-ups; none block the changer, and the item can be dropped once they are done or declined):
+- easyeffects (Qt 6, no theme setting seen) has not been launched under each setting.
+- FreeCAD has not been launched; its config pins it to `FreeCAD Dark`.
+- VS Code (`window.autoDetectColorScheme`) and Obsidian (`"theme": "system"`) set to follow the system have not been tried.
+- Why open Qt windows do not re-theme: cause not found.
 
-Decided (2026-11-07):
+Decided (2026-11-07), and built as described:
 - The `settings.ini` files: the repo tracks a dark and a light copy for GTK 3 and for GTK 4 (four small files, outside `symlinks/` because an entry there encodes a single target), and the changer points `~/.config/gtk-3.0/settings.ini` and `~/.config/gtk-4.0/settings.ini` at the chosen copy. The link lives in the home directory, so a switch does not dirty the git tree. A quickstart step sets the initial mode, including `color-scheme`, which nothing in the repo sets today (it was set by hand and lives in dconf).
 - Open windows: nothing. The tui shows no note and offers no restart; a switch applies to programs started afterwards (and to Chromium and Electron apps set to follow the system).
 
-Decided for building (2026-11-07):
+Also decided (2026-11-07), and built:
 - The four files live in `setup/themes/` (next to `setup/templates/`, outside the linker), named `gtk-3.0.dark.ini`, `gtk-3.0.light.ini`, `gtk-4.0.dark.ini` and `gtk-4.0.light.ini`.
 - The tui lists a fixed pair of modes, dark and light, mapped to `prefer-dark` and `prefer-light` plus the matching file pair. A third mode is added when one exists; its `color-scheme` value has no obvious meaning yet.
 - The current mode is read from both the link targets and `color-scheme`. It shows as dark or light when they agree and as "mixed" when they do not. Applying a mode sets all three places.
