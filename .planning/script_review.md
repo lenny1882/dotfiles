@@ -4,6 +4,34 @@ Written 2026-11-07 from a full read of the repo. Nothing in the repo was changed
 
 Status key: `[ ]` not done, `[x]` done. Update the boxes as work lands. "Verified" says how a claim was checked; "by reading" means no command confirmed it.
 
+## Where we are (updated 2026-11-07)
+
+Branch `script-review`. Test command: `bash tests/run.sh` (all green: colours_check 119 under sh, bash and bash --posix, colours_gen_check 16 under sh and bash, monitor_check 109 plus 2 skipped without a display, which includes the 387 TUI checks).
+
+| WP | State | Commit |
+|---|---|---|
+| 1 dead files, stale text | done | e68fc9f |
+| 2 defects | done (B3 changes behaviour, confirmed by the user) | 1721b11 |
+| 4 tests: `tests/run.sh`, `tests/lib.sh`, hermetic, no env leak | done | cf1ab79 |
+| 3 security | done except SEC-1 (deferred: accepted for now, the symlink design stays) and SEC-5 (accepted as is) | f5c50c7 |
+| 5 paths and colours | partly done: DUP-3 (DOTFILES_DIR, col_urgent) and DUP-11 (polybar colours) | c8e029b, 921668e, 315ab31 |
+| 6, 7, 8, 9, 10, 11 | not started | |
+
+Decisions: D-C settled (option 1, export `DOTFILES_DIR`). D-D settled in the user's favour of the symlink design, with SEC-1 left open as an accepted risk. D-A (xrandr owner), D-B (margin mechanism) and D-E (split `monitor_tui.py`) are still open and are asked when their packages start.
+
+**Waiting on the user, WP5 / DUP-7:** how to remove `/home/lenny` from `home_@user@_.local_share_applications_nnn.desktop` and the nnn portal D-Bus service file. Options put to the user: (1) template and generate like `lemurs.tmpl` (needs a new generator, files absent until a step runs), (2) `sh -c 'exec "$HOME/..."'` in both `Exec` lines (no generation; the `.desktop` needs the spec's escaping; cannot be tested here), (3) leave as the recorded limitation (`nnn_portal.md`). My recommendation was 2. After that, DUP-7 still has the `~/.config/herbstluftwm` literals (39 across the files; the idea was to export `SCRIPTS_DIR` to polybar like the `COLOUR_*` variables).
+
+**Not verified live, to check next time on the machine**
+- The bar after the next login (polybar was not started with the renamed colour file or with `panel.sh` taking no arguments).
+- The nnn file chooser portal getting `DOTFILES_DIR` through `dbus-update-activation-environment` (the sandbox cannot see D-Bus).
+- The polkit power rule: it may need `sudo systemctl restart polkit` to notice the change behind a link.
+- The Android udev rule against a real phone.
+- `shell_loader.sh` was run for real once (by the user); `quickstart_arch.sh` was only checked with `bash -n` and its step count, never run.
+
+**Loose ends for the user:** `rm ~/.fehbg` (dangling link; the sandbox cannot remove it). `/media/Storage` is mode 777 without a sticky bit (see SEC-1). `/media/Storage/User/custom.bash` is now an unused copy of `shellrc/.shellrc_sensible`. The `setup/..pre-wipe.txt` and `setup/notes.txt` files are still where they were, for the Backups item. Todo item 7 has not been rescored.
+
+**Corrections made to this review while working:** the claim that nothing loads `custom.bash` (the `$USER_DIR` copy was loaded and identical); that the polkit rule is not linked (it is); that `colours-derive --check` is never run (`colours_check.sh` runs it); 8 uses of the `if (cmd)` idiom, not 12; the "more than six polybar clicks" (exactly six).
+
 ## 1. Scope and limits
 
 Read in full: every tracked script, config, conf, template, systemd unit, udev rule, polkit rule, pacman hook, polybar and rofi file, Xresources, picom, desktop files; `monitor_tui.py` (2,592 lines); all four test suites (`colours_check.sh`, `colours_gen_check.sh`, `monitor_check.sh`, `monitor_tui_check.py`); every `.planning` document. The untracked dotfiles in the repo root (`.bashrc`, `.zshrc`, `.gitconfig`, `.mcp.json`, `.idea`, `.vscode`, `.claude/*`) are zero-byte read-only placeholders created 2026-11-07 16:00, not your content; ignored.
@@ -157,7 +185,7 @@ Not recorded anywhere:
 | 2 | **Done 2026-11-07, uncommitted.** Defects B1-B6, B8-B10, B14, B15 | 2 | 2 | partial |
 | 3 | **Done 2026-11-07, uncommitted, except SEC-1 (deferred by the user).** Security SEC-1 to SEC-4 (copy root-run files, anchor regex, `uaccess`, typed confirm) | 2 | 3 | none |
 | 4 | **Done 2026-11-07, uncommitted.** One test entry point, shared test lib, hermetic tests (TEST-1, TEST-2, TUI-3) | 2 | 1 | itself |
-| 5 | `DOTFILES_DIR`, `col_urgent`, polybar env contract, `/home/lenny` templates (DUP-3, DUP-7, DUP-11) | 3 | 3 | `monitor_check.sh` |
+| 5 | **Partly done:** DUP-3 and DUP-11 done, DUP-7 open (see "Where we are"). `DOTFILES_DIR`, `col_urgent`, polybar env contract, `/home/lenny` templates (DUP-3, DUP-7, DUP-11) | 3 | 3 | `monitor_check.sh` |
 | 6 | `lib/tagconf.sh` plus parity fixture with the python parser (DUP-1, DUP-4, DUP-5) | 3 | 3 | yes |
 | 7 | `tui-wrap.sh` and one margin mechanism (DUP-6) | 2 | 2 | none |
 | 8 | `monitor_tui.py` dedupe and optional split with a test facade (TUI-1, TUI-2, DUP-2) | 4 | 2 | 387 checks |
