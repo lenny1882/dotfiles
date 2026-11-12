@@ -21,10 +21,11 @@ Each section carries a `Weighting:` line under its heading with the same numbers
 | 3 | Clipboard history | 2 | 1 | 2 | 0.67 |
 | 4 | System theme changer in the tui | 1 | 1 | 1 | 0.50 |
 | 5 | Repo cleanup | 2 | 2 | 2 | 0.50 |
-| 6 | Initramfs holds stale copies of the /etc config | 1 | 2 | 1 | 0.33 |
-| 7 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
-| 8 | Lock screen look | 4 | 3 | 2 | 0.29 |
-| 9 | GUI session environment lacks the shellrc exports | 2 | 2 | 1 | 0.25 |
+| 6 | Header bar and border fix for the wrapper windows | 3 | 1 | 2 | 0.50 |
+| 7 | Initramfs holds stale copies of the /etc config | 1 | 2 | 1 | 0.33 |
+| 8 | Script consistency and shared helpers | 5 | 5 | 3 | 0.30 |
+| 9 | Lock screen look | 4 | 3 | 2 | 0.29 |
+| 10 | GUI session environment lacks the shellrc exports | 2 | 2 | 1 | 0.25 |
 
 ## Backups
 
@@ -145,6 +146,18 @@ Findings from a read-only pass over the tracked files. "Referenced" means the fi
 - `.planning/monitor_changes/monitor_tui_check.py` (76K) and `monitor_check.sh` (28K): test scaffolding for work that may be finished.
 
 Not covered: the large scripts (`monitor_tui.py`, `monitor_reconcile.sh`, the rest of `quickstart_arch.sh`) were not read for internal simplification.
+
+## Header bar and border fix for the wrapper windows
+
+Weighting: effort 3, blast radius 1, improvement 2, priority 0.50 (scores are a first guess; nothing is built or mocked).
+
+The wrapper windows (nnn, btm, the monitor tui, bluetui, nmtui, the yay update) are `urxvt -name wrapper` windows, floating and centred at 1280x720 by the `wrapper` rule in `rules.autostart`. The blue border is urxvt's own: `wrapper*borderColor: col_blue` and `wrapper*internalBorder: 2` in `.Xresources`. `scripts/pty_inset.py` runs the program in a pty `M` cells smaller on every side (`M = 1`), rewriting cursor addressing so the program draws inside a blank margin. nnn goes through `nnn-wrap.sh` without `pty_inset.py`.
+
+Idea: a header bar like a normal window's, drawn by `pty_inset.py` in a taller top margin (a row or two): a title passed as an argument, filled with a colour from the colours project. The program cannot scroll or overwrite it, because the scroll region is already pinned and the pty is already smaller. Possible additions, none tried: a clickable close button (the script already intercepts and shifts mouse reports), and live text redrawn on the 0.2 s select timeout. Limits: cell-sized, not pixel-sized; nnn would have to be routed through `pty_inset.py` to get one; the header must be redrawn after a resize. Herbstluftwm's own title bar (`theme.title_when`, `theme.floating.title_when`) is a separate option and was not tried; `theme.autostart` sets a title height and font but no `title_when`.
+
+Bug to fix as part of it (reported by the user, not reproduced or investigated): making a floating wrapper window non-floating messes up the borders. The right and bottom borders come out about 4 times their normal size; the left and top stay the same. For reference, `theme.autostart` sets `theme.border_width 3` and `theme.floating.border_width 4`, and urxvt's `internalBorder` is 2; whether either is involved was not checked.
+
+To decide: title bar in the wrapper (cells) or in herbstluftwm (pixels), a close button or not, and whether nnn is routed through `pty_inset.py`. Mock it first.
 
 ## Initramfs holds stale copies of the /etc config
 
