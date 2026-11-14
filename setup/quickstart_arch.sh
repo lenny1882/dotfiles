@@ -483,6 +483,40 @@ step_power_group() {
 	} 2>&1 | pinnedOutput
 }
 
+
+# keyboard and numpad backlight sync for the Framework Laptop 16 (ISO keyboard
+# 32AC:0018 + numpad 32AC:0014). Loads a BPF program into the kernel and installs
+# a root udev helper, so it is opt-in - see "Known risks" in the README:
+# https://github.com/lenny1882/fw16-backlight-bpf
+# installs under /etc and /usr/local/lib/fw16-backlight only, nothing under $HOME;
+# re-running it upgrades. Remove: re-extract the release, `make uninstall`
+step_fw16_backlight() {
+	{
+		if ! ls /sys/bus/hid/devices/0003:32AC:0018.* >/dev/null 2>&1; then
+			echo "skip   no Framework 16 ISO keyboard module (32AC:0018) found"
+			return
+		fi
+		local answer
+		read -r -p "Install fw16-backlight-bpf (loads a BPF filter, adds a root udev helper)? [y/N] " answer </dev/tty
+		if [[ $answer != [yY]* ]]; then
+			echo "skip   not installed"
+			return
+		fi
+		installer udev-hid-bpf systemd sudo gcc make clang bpf || return
+		local tmp url=https://github.com/lenny1882/fw16-backlight-bpf/releases/latest/download/fw16-backlight-bpf.tar.gz
+		tmp=$(mktemp -d) || return
+		if curl -fsSL "$url" | tar -xz -C "$tmp"; then
+			make -C "$tmp/fw16-backlight-bpf" check-build check-install \
+				&& make -C "$tmp/fw16-backlight-bpf" \
+				&& make -C "$tmp/fw16-backlight-bpf" install \
+				&& make -C "$tmp/fw16-backlight-bpf" reload \
+				&& echo "fw16-backlight-sync: $(systemctl is-enabled fw16-backlight-sync.service), $(systemctl is-active fw16-backlight-sync.service)"
+		else
+			echo "failed to download or unpack $url"
+		fi
+		rm -rf "$tmp"
+	} 2>&1 | pinnedOutput
+}
 step_terminal() {
 	echo -n "Which terminal emulator do you want to install:"
 	local choice
@@ -675,6 +709,7 @@ STEP_NAMES=(
 	"Reload udev rules (boot)"
 	"Makepkg (no debug packages)"
 	"Power group (power off without a password)"
+	"Framework 16 backlight sync (optional)"
 	"Symlink user directories"
 	"Link config files"
 	"Apply module options (boot)"
@@ -699,6 +734,7 @@ STEP_FUNCS=(
 	step_udev_reload
 	step_makepkg
 	step_power_group
+	step_fw16_backlight
 	step_symlinks
 	step_config_links
 	step_module_options
@@ -719,7 +755,7 @@ STEP_FUNCS=(
 # groups: name + how many of the STEP_NAMES entries (taken in order,
 # starting where the previous group left off) belong to it
 GROUP_NAMES=("System" "User setup" "Desktop" "Software")
-GROUP_SIZES=(7 5 7 3)
+GROUP_SIZES=(8 5 7 3)
 
 # STEP_NAMES/STEP_FUNCS are index-paired, and GROUP_SIZES assumes STEP_NAMES
 # is laid out as contiguous runs matching GROUP_NAMES in order - none of that
