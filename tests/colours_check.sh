@@ -102,7 +102,7 @@ sed 's/base_red\([[:space:]]*\)softish/base_nope\1soft/' "$work/colours.rules.sh
 "$work/colours-derive" >/dev/null 2>&1; check derive_rejects_unknown_base 1 "$?"
 check black_is_a_base "#000000" "$(colour_hex col_black)"
 check white_is_a_base "#FFFFFF" "$(colour_hex col_white)"
-(unset colours_dir; . "$dir/colours.sh") >/dev/null 2>&1; check source_needs_colours_dir 1 "$?"
+(unset colours_dir DOTFILES_DIR; . "$dir/colours.sh") >/dev/null 2>&1; check source_needs_colours_dir 1 "$?"
 (colours_dir=$work; . "$dir/colours.sh") >/dev/null 2>&1; check source_needs_generated_file 1 "$?"
 
 # colours.sh finds itself from DOTFILES_DIR when colours_dir is not set

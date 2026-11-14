@@ -16,7 +16,7 @@ from gi.repository import Gio, GLib
 BUS_NAME = "org.freedesktop.impl.portal.desktop.nnn"
 OBJECT_PATH = "/org/freedesktop/portal/desktop"
 WRAP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nnn-wrap.sh")
-TERMINAL = os.environ.get("NNN_PORTAL_TERMINAL", "urxvt -name wrapper").split()
+LAUNCHER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tui-wrap.sh")
 
 FILE_CHOOSER_XML = """
 <node>
@@ -122,7 +122,7 @@ def on_method_call(connection, sender, object_path, interface, method, params, i
     os.close(fd)
     try:
         process = subprocess.Popen(
-            [*TERMINAL, "-title", title or "nnn", "-e", WRAP, "--pick", mode, out, start, name]
+            [LAUNCHER, "--title", title or "nnn", WRAP, "--pick", mode, out, start, name]
         )
     except OSError:
         os.unlink(out)

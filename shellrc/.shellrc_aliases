@@ -44,5 +44,5 @@ help() {
     "$@" --help 2>&1 | bat --plain --language=help
 }
 nbat() {
-    urxvt -name wrapper -e sh -c "COLORTERM=truecolor bat --pager=\"less -iFMRsX --mouse +Gg\" --theme=\"Monokai Extended Origin\" $1"
+    "$HOME/.config/herbstluftwm/scripts/tui-wrap.sh" sh -c "COLORTERM=truecolor bat --pager=\"less -iFMRsX --mouse +Gg\" --theme=\"Monokai Extended Origin\" $1"
 }

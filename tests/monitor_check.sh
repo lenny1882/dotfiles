@@ -488,6 +488,20 @@ got=$(bg $'eDP-1 eDP-1 00ffffffffffff0009e5c90b00000000\nDP-4 desk 00fffffffffff
 got=$(bg $'eDP-1 eDP-1 -\nDP-4 00ffffffffffff0005e3bbbbbbbbbbbb 00ffffffffffff0005e3bbbbbbbbbbbb' "$EXT"$'\n'"$PANEL")
 [[ $got == "--no-fehbg --bg-fill "*".ppm $wall" ]] && ok "background: images follow xrandr's monitor order; an unlisted external with an EDID is unknown" || { bad "background: order, unlisted EDID"; echo "        $got"; }
 
+# ---------------------------------------------------------------- tui-wrap
+head_ "3f. tui-wrap.sh"
+U="$TMP/uw"; mkdir -p "$U/bin"
+cp "$DIR/tui-wrap.sh" "$U/"
+printf '#!/bin/sh\nfor a; do printf "[%%s]" "$a"; done; echo\n' >"$U/bin/urxvt"; chmod +x "$U/bin/urxvt"
+uw() { PATH="$U/bin:$PATH" sh "$U/tui-wrap.sh" "$@" 2>&1; }
+[[ $(uw nnn-wrap.sh) == '[-name][wrapper][-e][nnn-wrap.sh]' ]] && ok "tui-wrap.sh runs the command in the wrapper terminal" || bad "tui-wrap.sh plain"
+[[ $(uw --inset btm -C "a b") == "[-name][wrapper][-e][$U/pty_inset.py][btm][-C][a b]" ]] && ok "tui-wrap.sh --inset puts pty_inset.py in front and keeps arguments with spaces" || bad "tui-wrap.sh --inset"
+[[ $(uw --title "Open File" --inset nnn x) == "[-name][wrapper][-title][Open File][-e][$U/pty_inset.py][nnn][x]" ]] && ok "tui-wrap.sh --title sets the window title" || bad "tui-wrap.sh --title"
+uw >/dev/null; rc=$?; [[ $rc == 2 ]] && ok "tui-wrap.sh without a command prints the usage and exits 2" || bad "tui-wrap.sh without a command (exit $rc)"
+uw --title >/dev/null; rc=$?; [[ $rc == 2 ]] && ok "tui-wrap.sh --title without a value exits 2" || bad "tui-wrap.sh --title without a value (exit $rc)"
+leaks=$(grep -rIl --exclude-dir=.git 'urxvt -name wrapper' "$CONF_DIR/.." "$CONF_DIR/../../shellrc" | sed 's|.*/||' | sort | tr '\n' ' ')
+[[ $leaks == 'tui-wrap.sh ' ]] && ok "only tui-wrap.sh spells out the wrapper terminal command" || { bad "the wrapper terminal command is written outside tui-wrap.sh"; echo "        $leaks"; }
+
 # ---------------------------------------------------------------- tui
 head_ "4. monitor_tui.py (no display needed)"
 if command -v python3 >/dev/null; then

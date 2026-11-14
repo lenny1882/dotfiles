@@ -2,7 +2,7 @@
 Type=Application
 Name=nnn
 Comment=Terminal file manager
-Exec=urxvt -name wrapper -e /bin/sh -c "exec \\"\\$HOME/.config/herbstluftwm/scripts/nnn-wrap.sh\\" \\"\\$@\\"" sh %f
+Exec=/bin/sh -c "exec \\"\\$HOME/.config/herbstluftwm/scripts/tui-wrap.sh\\" \\"\\$HOME/.config/herbstluftwm/scripts/nnn-wrap.sh\\" \\"\\$@\\"" sh %f
 Terminal=false
 Icon=nnn
 MimeType=inode/directory
