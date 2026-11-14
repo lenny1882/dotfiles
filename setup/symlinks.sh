@@ -4,7 +4,7 @@ function symlinker () {
 	# vars
 	local home_dir="${HOME%/}/"
 	local home_folders=("Documents" "Downloads" "Music" "Pictures" "Videos")
-	local user_dir="${USER_DIR:-/media/Storage/User}"
+	local user_dir="${USER_DIR:?USER_DIR is not set}"
 	user_dir="${user_dir%/}/"
 
 	# replace each home folder with a link, but only if the target exists

@@ -1,6 +1,6 @@
 [Unit]
 Description=Apply the audio power save module options
-RequiresMountsFor=/media/Storage
+RequiresMountsFor=@SETUP_DIR@
 After=sound.target
 
 [Service]

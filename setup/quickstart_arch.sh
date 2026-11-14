@@ -421,11 +421,11 @@ step_printers() {
 	{ installer cups; systemctl enable --now org.cups.cupsd.service; } 2>&1 | pinnedOutput
 }
 
-# copied rather than symlinked: systemd has to read the unit before
-# /media/Storage is mounted, so a link into the dotfiles would dangle at boot
+# generated rather than symlinked: systemd has to read the unit before
+# the dotfiles' drive is mounted, so a link into the dotfiles would dangle at boot
 step_udev_reload() {
 	{
-		sudo install -Dm644 "$SCRIPT_DIR/udev-reload.service" /etc/systemd/system/udev-reload.service
+		sed "s|@SETUP_DIR@|$SCRIPT_DIR|" "$SCRIPT_DIR/udev-reload.service" | sudo tee /etc/systemd/system/udev-reload.service >/dev/null
 		sudo systemctl daemon-reload
 		sudo systemctl enable --now udev-reload.service
 		echo "udev-reload.service: $(systemctl is-enabled udev-reload.service), $(systemctl is-active udev-reload.service)"

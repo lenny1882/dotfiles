@@ -1,6 +1,6 @@
 [Unit]
 Description=Reload udev rules and re-trigger backlight devices
-RequiresMountsFor=/media/Storage
+RequiresMountsFor=@SETUP_DIR@
 
 [Service]
 Type=oneshot
