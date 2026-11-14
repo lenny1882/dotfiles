@@ -6,7 +6,8 @@ Status key: `[ ]` not done, `[x]` done. Update the boxes as work lands. "Verifie
 
 ## Where we are (updated 2026-11-07)
 
-Branch `script-review`. Test command: `bash tests/run.sh` (all green: colours_check 119 under sh, bash and bash --posix, colours_gen_check 16 under sh and bash, monitor_check 109 plus 2 skipped without a display, which includes the 387 TUI checks).
+Branch `script-review`. Main merged in on 2026-11-14 (merge 538df6f, up to 39666fd: the optional Framework 16 backlight step in quickstart, no conflicts; step count now 23, System group 8).
+ Test command: `bash tests/run.sh` (all green: colours_check 119 under sh, bash and bash --posix, colours_gen_check 16 under sh and bash, monitor_check 109 plus 2 skipped without a display, which includes the 387 TUI checks).
 
 | WP | State | Commit |
 |---|---|---|
@@ -53,7 +54,7 @@ Working constraints from the user (from `tui_spec.md` and the saved memory): ask
 - `[[ ${#output} > 0 ]]` in `network-interfaces.sh` works; the real bug in that file is B4.
 - `volume.sh` makes 6 `pactl` calls per keypress, not 8.
 - `hc()` has one real definition. `herbstclient_command` is never set anywhere in the repo, so six definitions carry a dead fallback.
-- Counts: 39 `~/.config/herbstluftwm` literals outside `.planning`; 13 `source ~/.config/herbstluftwm/variables.autostart` lines; 41 case arms in `keybinds.sh describe()`; 7 `hc()` definitions plus 1 conditional in `monitor_reconcile.sh`; quickstart is 379 lines of steps and 826 lines of other code (helpers, menu, prompts) out of 1,205.
+- Counts: 39 `~/.config/herbstluftwm` literals outside `.planning`; 13 `source ~/.config/herbstluftwm/variables.autostart` lines; 41 case arms in `keybinds.sh describe()`; 7 `hc()` definitions plus 1 conditional in `monitor_reconcile.sh`; quickstart is 407 lines of steps and 838 lines of other code (helpers, menu, prompts) out of 1,245 (was 379, 826 and 1,205 before the Framework 16 backlight step arrived from main on 2026-11-14).
 - Performance is not a problem: 25 `$(colour_rgb …)` calls cost about 14 ms and one prompt about 5 ms.
 - Already recorded in `.planning` as deliberate, so not discoveries (still removable): the polybar leftovers and unused `colors` file and the Xresources nord defines and commented palettes (`colours.md` section 4); the nanorc files ("real nano is not used"); `bottom-defaults.toml` staying (`colours_plan.md`); the `/home/lenny` hard-code (`nnn_portal.md`); the fixed copies of the layout files in the python check (by design, so the tests never touch the real files).
 
@@ -159,13 +160,13 @@ Not recorded anywhere:
 - [ ] TEST-3. Coverage gaps (no test names them): `config_links.sh`, `symlinks.sh`, `shell_loader.sh`, `add_drive_fstab.sh`, `module_options_apply.sh`, `keybinds.sh`, `volume.sh`, `brightness.sh`, `screenshot.sh`, `nnn-wrap.sh`, `pty_inset.py`, `nnn-portal.py`, `bottom-wrap.sh`, `xrdb-wrap.sh`, `rofi-wrap.sh`, `monitor-tui-wrap.sh`, `quickstart_arch.sh`. `theme.sh` is exercised only through a stub (`THEME_SH`) in the TUI check; `panel.sh` and `startup.autostart` only by syntax and dispatch stubs.
 - Constraint for refactors: the hlwm tests copy one script into a temp directory and stub `monitor_reconcile.sh` beside it; any shared `lib/` has to be copied into those directories too.
 
-## 11. `setup/quickstart_arch.sh` (1,205 lines)
+## 11. `setup/quickstart_arch.sh` (1,245 lines)
 
-- [ ] Q-1. Step registry: `STEP_NAMES` (lines ~665), `STEP_FUNCS` and `GROUP_SIZES` are three parallel arrays held together by a runtime check (lines ~700-735). One `group|name|func` line per step removes the check and the hand-counted `GROUP_SIZES=(7 5 7 3)`.
-- [ ] Q-2. `{ … } 2>&1 | pinnedOutput` wraps each of the 22 steps by hand; the runner could wrap the non-interactive part.
-- [ ] Q-3. The unit-status echo `"unit: $(systemctl is-enabled u), $(systemctl is-active u)"` appears 5 times (lines 330, 412, 427, 439, 446). Units are installed by two methods: `sed @SETUP_DIR@ | sudo tee` (module-options) and `sudo install -Dm644` (udev-reload).
+- [ ] Q-1. Step registry: `STEP_NAMES` (lines ~700), `STEP_FUNCS` and `GROUP_SIZES` are three parallel arrays held together by a runtime check (lines ~740-775). One `group|name|func` line per step removes the check and the hand-counted `GROUP_SIZES=(8 5 7 3)`.
+- [ ] Q-2. `{ … } 2>&1 | pinnedOutput` wraps each of the 23 steps by hand; the runner could wrap the non-interactive part.
+- [ ] Q-3. The unit-status echo `"unit: $(systemctl is-enabled u), $(systemctl is-active u)"` appears 6 times (lines 334, 416, 431, 443, 450, 513; the last is the Framework 16 step from main). Units are installed by two methods: `sed @SETUP_DIR@ | sudo tee` (module-options) and `sudo install -Dm644` (udev-reload).
 - [ ] Q-4. `sudo` is inconsistent: `systemctl enable` without it for `ufw`, `cups`, the display manager, `expressvpn`, `teamviewer`; with it for `bluetooth`, `fstrim`, `module-options`, `udev-reload`.
-- [ ] Q-5. 826 of the 1,205 lines are not steps: drawing and selection helpers (lines 1-280), the menu, key reading, location prompts (lines 661-1205), including a second ANSI key decoder beside the python one. Candidates for `setup/lib/` files.
+- [ ] Q-5. 838 of the 1,245 lines are not steps: drawing and selection helpers (lines 1-280), the menu, key reading, location prompts (lines 699-1245), including a second ANSI key decoder beside the python one. Candidates for `setup/lib/` files.
 
 ## 12. Convention drift (low value, large diff)
 
