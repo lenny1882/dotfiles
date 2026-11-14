@@ -71,7 +71,7 @@ nothing here. The Tags panel is selectable (green border) but has no row selecti
 
 ### Launching
 
-`shortcuts.autostart`: `hc keybind $ModPri-l spawn $SCRIPTS_DIR/tui-wrap.sh $SCRIPTS_DIR/monitor-tui-wrap.sh`
+`shortcuts.autostart`: `hc keybind $ModPri-l spawn $SCRIPTS_DIR/tui-wrap.sh --inset $SCRIPTS_DIR/monitor-tui-wrap.sh`
 (`$ModPri` is Super+Alt). The `wrapper` instance name makes the window float, centered, 1280x720 (rule in
 `rules.autostart`), like `nnn` and `btm`. `monitor-tui-wrap.sh` follows `nnn-wrap.sh`: a `/bin/sh` wrapper
 that sets what a keybinding session lacks (a UTF-8 locale for the box characters) and runs the TUI.
