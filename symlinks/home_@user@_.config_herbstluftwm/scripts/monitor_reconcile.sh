@@ -18,7 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAYOUTS_CONF="${LAYOUTS_CONF:-$SCRIPT_DIR/monitor_layouts.conf}"
 ATTR=my_monitor_layout
 
-declare -F hc >/dev/null || hc() { herbstclient "$@"; }
+source "$SCRIPT_DIR/common.sh"
 
 log() { printf 'monitor_reconcile: %s\n' "$*" >&2; }
 

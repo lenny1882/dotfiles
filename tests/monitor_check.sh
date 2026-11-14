@@ -298,7 +298,7 @@ fi
 # ---------------------------------------------------------------- hooks
 head_ "3b. hook dispatch (rule_hook.sh, with stubs for everything it runs)"
 H="$TMP/hooks"; mkdir -p "$H/bin"
-cp "$DIR/rule_hook.sh" "$H/rule_hook.sh"
+cp "$DIR/rule_hook.sh" "$DIR/common.sh" "$H/"
 for stub in monitor_reconcile.sh panel.sh background.sh tag_layouts.sh; do
     printf '#!/bin/sh\necho "%s $*" >> "$STUBLOG"\n' "$stub" >"$H/$stub"; chmod +x "$H/$stub"
 done
@@ -366,7 +366,7 @@ if [[ $got == '0 left 3;1 foo 2;2 right 1;3 4 4;4 5 5;5 6 6;6 7 7;7 8 8;8 9 9;' 
 # ---------------------------------------------------------------- tag layouts: none
 head_ "3d. tag_layouts.sh"
 mkdir -p "$TMP/tl"
-cp "$DIR/tag_layouts.sh" "$DIR/tagconf.sh" "$DIR/hlwm_layouts.conf" "$TMP/tl/"
+cp "$DIR/tag_layouts.sh" "$DIR/common.sh" "$DIR/tagconf.sh" "$DIR/hlwm_layouts.conf" "$TMP/tl/"
 printf '#!/usr/bin/env bash\necho "A-1"\n' >"$TMP/tl/monitor_reconcile.sh"
 cat >"$TMP/tl/herbstclient" <<'STUB'
 #!/usr/bin/env bash

@@ -3,7 +3,7 @@
 # usage: keybinds.sh [--list]
 # a rofi list of the live herbstluftwm keybinds, grouped and reworded; --list prints it instead
 
-hc() { "${herbstclient_command[@]:-herbstclient}" "$@"; }
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
 groups=(apps system screenshot window frame tag herbstluftwm mouse)
 key_width=36

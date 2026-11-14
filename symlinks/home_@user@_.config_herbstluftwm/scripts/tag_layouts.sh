@@ -10,7 +10,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAYOUTS_FILE=${HLWM_LAYOUTS:-$SCRIPT_DIR/hlwm_layouts.conf}
 
-hc() { "${herbstclient_command[@]:-herbstclient}" "$@"; }
+source "$SCRIPT_DIR/common.sh"
 log() { echo "tag_layouts: $*" >&2; }
 
 while (($#)); do

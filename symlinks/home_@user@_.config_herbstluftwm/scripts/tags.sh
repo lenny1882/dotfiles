@@ -8,7 +8,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/tagconf.sh"
 
 source ~/.config/herbstluftwm/variables.autostart
-hc() { "${herbstclient_command[@]:-herbstclient}" "$@"; }
 
 if [[ $1 == --dry-run ]]; then
     tagconf_tags

@@ -5,9 +5,7 @@ winid=$3
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-hc() { 
-    "${herbstclient_command[@]:-herbstclient}" "$@"
-}
+source "$SCRIPT_DIR/common.sh"
 
 case $hook in
     rule)

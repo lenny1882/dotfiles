@@ -3,10 +3,6 @@
 # --------------------------------
 # Setup
 
-hc() { 
-    "${herbstclient_command[@]:-herbstclient}" "$@"
-}
-
 # --------------------------------
 # variables
 source ~/.config/herbstluftwm/variables.autostart

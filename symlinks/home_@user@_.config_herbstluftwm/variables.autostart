@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
-hc() {
-    herbstclient "$@"
-}
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/common.sh"
 
 DOTFILES_DIR=$(cd -P "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 export DOTFILES_DIR
