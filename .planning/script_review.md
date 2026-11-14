@@ -16,7 +16,7 @@ Branch `script-review`. Main merged in on 2026-11-14 (merge 538df6f, up to 39666
 | 4 tests: `tests/run.sh`, `tests/lib.sh`, hermetic, no env leak | done | cf1ab79 |
 | 3 security | done except SEC-1 (deferred: accepted for now, the symlink design stays), SEC-5 (accepted as is) and SEC-6 (new, open) | f5c50c7 |
 | 5 paths and colours | partly done: DUP-3 (DOTFILES_DIR, col_urgent) and DUP-11 (polybar colours) | c8e029b, 921668e, 315ab31 |
-| 6, 7, 8, 9, 10, 11 | not started | |
+| 6, 7, 8, 9, 10, 11, 12 | not started | |
 
 Decisions: D-C settled (option 1, export `DOTFILES_DIR`). D-D settled in the user's favour of the symlink design, with SEC-1 left open as an accepted risk. D-A (xrandr owner), D-B (margin mechanism) and D-E (split `monitor_tui.py`) are still open and are asked when their packages start.
 
@@ -194,7 +194,8 @@ Not recorded anywhere:
 | 9 | Quickstart registry and helpers (Q-1 to Q-5) | 3 | 3 | `bash -n` and counts only |
 | 10 | xrandr single owner (DUP-8, decision D-A) | 4 | 4 | yes |
 | 11 | Tabs/spaces, shebangs, argument parsing (section 12) | 3 | 3 | none |
+| 12 | Script location review (added 2026-11-14, not scored): no part of this review asked where scripts live. Look at each and decide whether it is in the right place: `rofi-wrap.sh`, `bottom-wrap.sh` and `xrdb-wrap.sh` sit in the herbstluftwm `scripts/` folder but are launchers for other programs that depend on `setup/colours*` through `DOTFILES_DIR` (`.shellrc_aliases` calls two of them); `setup/` mixes installers (`quickstart_arch.sh`, `config_links.sh`, `add_drive_fstab.sh`), the colours code (`colours*`) and theme files; the nnn scripts (`nnn-wrap.sh`, `nnn-pick-save.sh`, `nnn-portal.py`) sit beside window-manager scripts; `polybar/scripts/` holds one script and the colours file. Output is a list of proposed moves with the references each would break (`DOTFILES_DIR` users, `.shellrc_aliases`, polybar and hlwm rules, the nnn desktop and D-Bus files, the tests that copy scripts into temp directories), for the user to approve before any file moves | ? | ? | `monitor_check.sh`, `colours_check.sh` for the references |
 
-Suggested order: 1, 2, 4, 3, 5, 6, 7, 8, 9, then 10 and 11. Doing WP4 early means the later packages are checked as they land. WP9 can only be checked with `bash -n` and step counts (never run quickstart). Nothing here adds a language or runtime.
+Suggested order: 1, 2, 4, 3, 5, 6, 7, 8, 9, then 10 and 11; WP12 is not placed yet, and since it decides where shared `lib/` files go (WP6, WP9) it is best settled before WP6. Doing WP4 early means the later packages are checked as they land. WP9 can only be checked with `bash -n` and step counts (never run quickstart). Nothing here adds a language or runtime.
 
 Todo scoring: `todo.md` item 8 is scored effort 5, blast 5, improvement 3 (priority 0.30). The packages above are mostly small and independent; only WP10 and WP11 are large. Rescore item 8 when work starts (not done).
