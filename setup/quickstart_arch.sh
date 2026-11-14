@@ -555,10 +555,6 @@ step_window_manager() {
 			[[ -n $session_target ]] && echo "herbstluftwm install failed - removed symlink was $session -> $session_target"
 		fi
 		installer polybar
-		mkdir -p ~/.config/herbstluftwm
-		# -n: ~/.config/herbstluftwm is usually a symlink into this repo (see
-		# config_links), so never overwrite the existing, customised autostart
-		cp -n /etc/xdg/herbstluftwm/autostart ~/.config/herbstluftwm/
 	} 2>&1 | pinnedOutput
 }
 
