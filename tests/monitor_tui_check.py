@@ -8,6 +8,7 @@ monitor_reconcile.sh --layout over stdin. Run from anywhere:
 import contextlib
 import importlib.util
 import os
+import subprocess
 import sys
 import tempfile
 import time
@@ -1306,6 +1307,29 @@ DP-5 connected 1920x1080+0+1600 (normal left inverted right x axis y axis) 530mm
     tui.load_model = lambda: model(OFF)
     ro = tui.MonitorScreen(); ro.handle("RIGHT"); ro.handle("o")
     check("o on a monitor that is off says to turn it on first", ro.message == "DP-4 is off: r to turn it on", ro.message)
+
+section("tag lines: python parser and tagconf.sh agree")
+TAGCONF = os.path.join(SCRIPTS, "tagconf.sh")
+with tempfile.TemporaryDirectory() as tmp:
+    conf_path = os.path.join(tmp, "tags.conf")
+    bad = []
+    lines = [l.rstrip("\n").replace("\\t", "\t") for l in open(os.path.join(HERE, "tag_lines.txt")) if not l.startswith("#")]
+    for line in lines:
+        text = 'declare -gA TAG_LAYOUTS=()\nTAG_LAYOUTS["K"]="\n%s\n"\n' % line
+        open(conf_path, "w").write(text)
+        py = [(t, v, k or "1", " ".join(f"{i}:{x}" for i, x in pr)) for t, v, k, pr in tui.parse_tag_blocks(text)["K"]]
+        out = subprocess.run(["bash", "-c", 'source "$1"; tagconf_rows K', "_", TAGCONF], capture_output=True, text=True,
+                             env=dict(os.environ, HLWM_TAG_LAYOUTS=conf_path)).stdout
+        sh = [tuple((l.split("\t")[1:] + [""] * 4)[:4]) for l in out.split("\n") if l]
+        if py != sh:
+            bad.append((line, py, sh))
+    check(f"{len(lines)} tag lines parse the same in both", not bad, bad[:3])
+    nine = 'declare -gA TAG_LAYOUTS=()\nTAG_LAYOUTS["K"]="\n' + "".join(f"t{i} max\n" for i in range(11)) + '"\n'
+    open(conf_path, "w").write(nine)
+    out = subprocess.run(["bash", "-c", 'source "$1"; tagconf_rows K | wc -l', "_", TAGCONF], capture_output=True, text=True,
+                         env=dict(os.environ, HLWM_TAG_LAYOUTS=conf_path)).stdout.strip()
+    check("tagconf.sh reads at most 9 lines of a block", out == "9", out)
+    check("a colon-less program is an instance with no index", tui.parse_tag_blocks('TAG_LAYOUTS["K"]="\na max [vivaldi]\n"\n')["K"][0][3] == [("vivaldi", "")])
 
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

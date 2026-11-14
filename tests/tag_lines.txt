@@ -1,0 +1,37 @@
+# One tag line per row, checked by monitor_tui_check.py against both parsers (python parse_tag_blocks and tagconf.sh).
+# \t stands for a tab.
+T1 max
+lonely
+T1 max {3}
+T1 max [i:0]
+T1 max {3} [i:0]
+T1 max [i:0] {3}
+T1 max {10}
+T1 max {0}
+T1\tmax
+   T1   max   
+T1 max extra {3}
+T1 max [a:1 b:2]
+T1 max []
+T1 max {3}[i:0]
+T1 max{3}
+my tag max
+T1 max [a:1] trailing
+T1 none [i:0]
+# T1 max
+T1 max [vivaldi]
+T1 max [a:b:c]
+T1|2 max
+T1 bogus
+T1 max  {3}   [i:0]  
+{3}
+[i:0]
+T1 [i:0]
+T1 {3}
+x [a] [b]
+a  b   c  {2}
+a b c d
+T1 max [a:1 b:2] [c:3]
+T1 {3} [i:0]
+T1 max {3} {4}
+a [x y] max

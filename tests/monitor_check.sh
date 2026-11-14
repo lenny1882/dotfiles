@@ -330,7 +330,7 @@ expect "monitor_changes.sh still emits monitors_changed" "$DIR/monitor_changes.s
 # ---------------------------------------------------------------- tag programs
 head_ "3b. tag_programs.sh"
 mkdir -p "$TMP/tp"
-cp "$DIR/tag_programs.sh" "$TMP/tp/"
+cp "$DIR/tag_programs.sh" "$DIR/tagconf.sh" "$TMP/tp/"
 printf '#!/usr/bin/env bash\necho "A-1 B-2"\n' >"$TMP/tp/monitor_reconcile.sh"; chmod +x "$TMP/tp/monitor_reconcile.sh"
 cat >"$TMP/tp/hlwm_tag_layouts.conf" <<'CONF'
 declare -gA TAG_LAYOUTS=()
@@ -350,7 +350,7 @@ if [[ $got == $'rambox=left|3:01\nspotify=left|3:00\nvivaldi-stable=my tag:02' ]
 # ---------------------------------------------------------------- tags
 head_ "3c. tags.sh"
 mkdir -p "$TMP/tg"
-cp "$DIR/tags.sh" "$TMP/tg/"
+cp "$DIR/tags.sh" "$DIR/tagconf.sh" "$TMP/tg/"
 printf '#!/usr/bin/env bash\necho "A-1"\n' >"$TMP/tg/monitor_reconcile.sh"; chmod +x "$TMP/tg/monitor_reconcile.sh"
 cat >"$TMP/tg/hlwm_tag_layouts.conf" <<'CONF'
 declare -gA TAG_LAYOUTS=()
@@ -366,7 +366,7 @@ if [[ $got == '0 left 3;1 foo 2;2 right 1;3 4 4;4 5 5;5 6 6;6 7 7;7 8 8;8 9 9;' 
 # ---------------------------------------------------------------- tag layouts: none
 head_ "3d. tag_layouts.sh"
 mkdir -p "$TMP/tl"
-cp "$DIR/tag_layouts.sh" "$DIR/hlwm_layouts.conf" "$TMP/tl/"
+cp "$DIR/tag_layouts.sh" "$DIR/tagconf.sh" "$DIR/hlwm_layouts.conf" "$TMP/tl/"
 printf '#!/usr/bin/env bash\necho "A-1"\n' >"$TMP/tl/monitor_reconcile.sh"
 cat >"$TMP/tl/herbstclient" <<'STUB'
 #!/usr/bin/env bash
@@ -416,7 +416,7 @@ PATH="$TMP/tl:$PATH" LISTMON="$LM" LOADLOG="$TMP/load.log" "$TMP/tl/tag_layouts.
 # ---------------------------------------------------------------- tag windows
 head_ "3e. tag_windows.sh"
 W="$TMP/tw"; mkdir -p "$W/bin"
-cp "$DIR/tag_windows.sh" "$DIR/tags.sh" "$DIR/tag_programs.sh" "$W/"
+cp "$DIR/tag_windows.sh" "$DIR/tagconf.sh" "$W/"
 printf '#!/usr/bin/env bash\necho "$NEWSET"\n' >"$W/monitor_reconcile.sh"
 cat >"$W/bin/herbstclient" <<'STUB'
 #!/usr/bin/env bash

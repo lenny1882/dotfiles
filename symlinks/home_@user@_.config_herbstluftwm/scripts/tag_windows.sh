@@ -6,6 +6,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+source "$SCRIPT_DIR/tagconf.sh"
 source ~/.config/herbstluftwm/variables.autostart
 hc() { "${herbstclient_command[@]:-herbstclient}" "$@"; }
 log() { echo "tag_windows: $*" >&2; }
@@ -29,10 +30,6 @@ if [[ -n $RECORD || -z $old || $old == "$new" ]]; then
     exit 0
 fi
 
-programs() {
-    TAG_SET_KEY=$1 bash -c 'source "$1/tag_programs.sh"; for i in "${!PROG_TAG[@]}"; do printf "%s\t%s\t%s\n" "$i" "${PROG_TAG[$i]}" "${PROG_INDEX[$i]}"; done' _ "$SCRIPT_DIR"
-}
-
 pos() {
     local -n names=$1
     local i
@@ -43,12 +40,12 @@ pos() {
 }
 
 declare -A old_tag new_tag new_index
-while IFS=$'\t' read -r inst tag _; do old_tag[$inst]=$tag; done < <(programs "$old")
-while IFS=$'\t' read -r inst tag index; do new_tag[$inst]=$tag new_index[$inst]=$index; done < <(programs "$new")
+while IFS=$'\t' read -r inst tag _; do old_tag[$inst]=$tag; done < <(tagconf_programs "$old")
+while IFS=$'\t' read -r inst tag index; do new_tag[$inst]=$tag new_index[$inst]=$index; done < <(tagconf_programs "$new")
 
 old_names=() new_names=()
-while read -r i rest; do old_names[i]=${rest% *}; done < <(TAG_SET_KEY=$old "$SCRIPT_DIR/tags.sh" --dry-run)
-while read -r i rest; do new_names[i]=${rest% *}; done < <(TAG_SET_KEY=$new "$SCRIPT_DIR/tags.sh" --dry-run)
+while read -r i rest; do old_names[i]=${rest% *}; done < <(tagconf_tags "$old")
+while read -r i rest; do new_names[i]=${rest% *}; done < <(tagconf_tags "$new")
 
 for inst in "${!old_tag[@]}"; do
     [[ -n ${new_tag[$inst]} ]] || continue

@@ -5,39 +5,21 @@
 #   Existing tags are renamed in place, so their windows stay. --dry-run prints "index name key".
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TAG_LAYOUTS_FILE=${HLWM_TAG_LAYOUTS:-$SCRIPT_DIR/hlwm_tag_layouts.conf}
+source "$SCRIPT_DIR/tagconf.sh"
 
 source ~/.config/herbstluftwm/variables.autostart
 hc() { "${herbstclient_command[@]:-herbstclient}" "$@"; }
 
-[[ $1 == --dry-run ]] && DRY=1
-
-source "$TAG_LAYOUTS_FILE"
-set_key=${TAG_SET_KEY:-$("$SCRIPT_DIR/monitor_reconcile.sh" --key)}
-
-names=() keys=()
-if [[ -v TAG_LAYOUTS[$set_key] ]]; then
-    while read -r line; do
-        [[ -z $line ]] && continue
-        [[ $line =~ ^(.*[^[:space:]])[[:space:]]*\[[^]]*\][[:space:]]*$ ]] && line=${BASH_REMATCH[1]}
-        key=$((${#names[@]} + 1))
-        [[ $line =~ ^(.*[^[:space:]])[[:space:]]*\{([1-9])\}[[:space:]]*$ ]] && { line=${BASH_REMATCH[1]}; key=${BASH_REMATCH[2]}; }
-        tag=${line% *}
-        tag=${tag%"${tag##*[![:space:]]}"}
-        names+=("$tag")
-        keys+=("$key")
-    done <<< "${TAG_LAYOUTS[$set_key]}"
-fi
-names=("${names[@]:0:9}") keys=("${keys[@]:0:9}")
-while ((${#names[@]} < 9)); do
-    names+=("$((${#names[@]} + 1))")
-    keys+=("${#names[@]}")
-done
-
-if [[ -n $DRY ]]; then
-    for i in "${!names[@]}"; do echo "$i ${names[$i]} ${keys[$i]}"; done
+if [[ $1 == --dry-run ]]; then
+    tagconf_tags
     exit 0
 fi
+
+names=() keys=()
+while read -r i rest; do
+    names[i]=${rest% *}
+    keys[i]=${rest##* }
+done < <(tagconf_tags)
 
 for ((i = $(hc get_attr tags.count); i < 9; i++)); do hc add ".new$i"; done
 

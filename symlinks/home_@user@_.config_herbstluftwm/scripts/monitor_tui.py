@@ -504,7 +504,7 @@ def parse_tag_blocks(text):
                     if m2:
                         progs = (m2.group(6) or "").strip()[1:-1].split()
                         block.append((m2.group(2), m2.group(4), (m2.group(5) or "").strip()[1:-1],
-                                      [tuple(p.rpartition(":")[::2]) for p in progs]))
+                                      [tuple(p.rsplit(":", 1)) if ":" in p else (p, "") for p in progs]))
                 if closed or i + 1 >= len(lines):
                     break
                 i += 1

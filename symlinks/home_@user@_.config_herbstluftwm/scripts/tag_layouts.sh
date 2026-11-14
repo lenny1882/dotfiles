@@ -9,7 +9,6 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAYOUTS_FILE=${HLWM_LAYOUTS:-$SCRIPT_DIR/hlwm_layouts.conf}
-TAG_LAYOUTS_FILE=${HLWM_TAG_LAYOUTS:-$SCRIPT_DIR/hlwm_tag_layouts.conf}
 
 hc() { "${herbstclient_command[@]:-herbstclient}" "$@"; }
 log() { echo "tag_layouts: $*" >&2; }
@@ -39,23 +38,17 @@ shape() {
 }
 
 source "$LAYOUTS_FILE"
-source "$TAG_LAYOUTS_FILE"
+source "$SCRIPT_DIR/tagconf.sh"
 
-key=$("$SCRIPT_DIR/monitor_reconcile.sh" --key)
-[[ -v TAG_LAYOUTS[$key] ]] || { log "no assignments for '$key'"; exit 0; }
+key=$(tagconf_key)
+rows=$(tagconf_rows "$key") || { log "no assignments for '$key'"; exit 0; }
 
 named=()
 while read -r var; do
     named+=("$(shape "${!var}")" "$(shape "$(transpose "${!var}")")")
 done < <(grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' "$LAYOUTS_FILE" | tr -d =)
 
-while read -r line; do
-    [[ -z $line ]] && continue
-    [[ $line =~ ^(.*[^[:space:]])[[:space:]]*\[[^]]*\][[:space:]]*$ ]] && line=${BASH_REMATCH[1]}
-    [[ $line =~ ^(.*[^[:space:]])[[:space:]]*\{[1-9]\}[[:space:]]*$ ]] && line=${BASH_REMATCH[1]}
-    var=${line##* }
-    tag=${line% *}
-    tag=${tag%"${tag##*[![:space:]]}"}
+while IFS=$'\t' read -r _ tag var _; do
     [[ $var == none ]] && continue
     [[ -n $ONLY && $tag != "$ONLY" ]] && continue
     [[ -v $var ]] || { log "$tag: unknown layout '$var'"; continue; }
@@ -77,4 +70,4 @@ while read -r line; do
 
     log "$tag: $var$how"
     [[ -n $DRY ]] || hc load "$tag" "$layout"
-done <<< "${TAG_LAYOUTS[$key]}"
+done <<< "$rows"
