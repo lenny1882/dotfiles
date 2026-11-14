@@ -311,8 +311,8 @@ expect "monitors_changed runs monitor_reconcile.sh" "$TMP/hooks.log" '^monitor_r
 reject "monitors_changed runs nothing else" "$TMP/hooks.log" 'panel|background'
 hook monitors_applied
 expect "monitors_applied runs panel.sh, which reads the active and urgent colours itself" "$TMP/hooks.log" '^panel.sh *$'
-urgent=$(bash -c 'source ~/.config/herbstluftwm/variables.autostart; echo "$col_urgent"')
-purple=$(bash -c 'source ~/.config/herbstluftwm/variables.autostart; echo "$col_purple"')
+urgent=$(bash -c 'source "$1/variables.autostart"; echo "$col_urgent"' _ "$CONF_DIR")
+purple=$(bash -c 'source "$1/variables.autostart"; echo "$col_purple"' _ "$CONF_DIR")
 [[ -n $urgent && $urgent == "$purple" ]] && ok "variables.autostart defines col_urgent once, as purple" || bad "col_urgent is '$urgent', col_purple is '$purple'"
 expect "monitors_applied then resets the background" "$TMP/hooks.log" '^background.sh'
 reject "monitors_applied does not reconcile again" "$TMP/hooks.log" 'monitor_reconcile'
@@ -469,7 +469,7 @@ printf '#!/bin/sh\ncat "$IDS_FILE"\n' >"$B/monitor_reconcile.sh"; chmod +x "$B/m
 printf '#!/bin/sh\ncat "$LISTMONITORS_FILE"\n' >"$B/bin/xrandr"
 printf '#!/bin/sh\necho "$*" >"$FEHLOG"\nfor a in "$@"; do case $a in *.ppm) cp "$a" "$FEHLOG.ppm" ;; esac; done\n' >"$B/bin/feh"
 chmod +x "$B/bin/xrandr" "$B/bin/feh"
-wall=$(bash -c 'source ~/.config/herbstluftwm/variables.autostart; echo $wallpaper')
+wall=$(bash -c 'source "$1/variables.autostart"; echo $wallpaper' _ "$CONF_DIR")
 bg() {
     printf '%s\n' "$1" >"$B/ids"; printf 'Monitors: 2\n%s\n' "$2" >"$B/lm"
     PATH="$B/bin:$PATH" IDS_FILE="$B/ids" LISTMONITORS_FILE="$B/lm" FEHLOG="$B/feh.log" bash "$B/background.sh" >/dev/null 2>&1
