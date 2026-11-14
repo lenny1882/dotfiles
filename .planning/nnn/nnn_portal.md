@@ -1,14 +1,53 @@
 # nnn as the default file explorer
 
-Done. Folders opened from GUI programs, and file open, folder and save dialogs, run nnn in the styled wrapper window. Notes moved here from the todo.
+Folders opened from GUI programs, and file open, folder and save dialogs, run nnn in the styled wrapper window. Notes moved here from the todo. `nnn.desktop` still has `/home/lenny` in its `Exec` line: a `sh -c` form that expands `$HOME` was tried on 2026-11-14 and reverted, because it broke programs that call `xdg-open` (see "Result of the 2026-11-14 change").
 
-Done:
+## Folder opening
+
 - No other file manager is installed, so `inode/directory` resolves to `nnn.desktop` only. The package's entry ran plain `nnn`, and `xdg-open` ignores `Terminal=true`, so a GUI program's "open folder" ran nnn with no terminal (`xdg-open /tmp` printed `0 entries` and opened nothing).
-- `symlinks/home_@user@_.local_share_applications_nnn.desktop` overrides it: `Exec=urxvt -name wrapper -e …/nnn-wrap.sh %f`, `Terminal=false`. Checked live: `xdg-open /tmp` opens a styled nnn window. The path is hardcoded to `/home/lenny`, as `home_@user@_.fehbg` is.
+- `symlinks/home_@user@_.local_share_applications_nnn.desktop` overrides it with `Terminal=false` and an `urxvt -name wrapper -e …/nnn-wrap.sh %f` command. Until 2026-11-14 the path in it was `/home/lenny/.config/herbstluftwm/scripts/nnn-wrap.sh`. Checked live with that line: `xdg-open /tmp` opened a styled nnn window.
+- Tried on 2026-11-14 and reverted the same day (to remove the hard-coded user): `Exec=urxvt -name wrapper -e /bin/sh -c "exec \\"\\$HOME/.config/herbstluftwm/scripts/nnn-wrap.sh\\" \\"\\$@\\"" sh %f`, quotes and `$` escaped twice as the desktop-entry spec requires. It passes `desktop-file-validate` and GLib's parser reads it correctly (`Gio.DesktopAppInfo.launch_uris` with a stub `urxvt` gave the right arguments, with and without a folder). Checked live with it in place: VS Code and the other programs listed below open nnn, but **`xdg-open /tmp` opens no window**, the Minecraft launcher opens nothing and Bambu Studio hangs.
+- Why `xdg-open` fails (xdg-utils 1.2.1, `search_desktop_file` in `/usr/bin/xdg-open`, reproduced with a stub `urxvt` on `PATH`): it does not implement the spec's quoting. `first_word` and `last_word` use `read` without `-r` ("handles backslashes but not quote marks"), the first word is looked up with `command -v`, the rest is split on whitespace with `set -- $(…)`, and the command runs as `env "$command" "$@"`. An argument can therefore never contain a space, and the stub received `<-c> <"exec> <\"\$HOME/…\"> <\"\$@\"">`. `sh -c` gets `"exec` as its script and exits at once.
+- The desktop-entry spec (fetched 2026-11-14): no expansion of environment variables or `~` in `Exec`, `Path` or `TryExec`; `$` and `~` are reserved characters that force double quotes; the first word is a full path or a name looked up in the desktop environment's `PATH`; `TryExec` is only a presence check and `Path` only sets the working directory. An `Exec` line that works for GLib and for `xdg-open` has to be flat words with no user name in it.
+- The D-Bus activation file `symlinks/home_@user@_.local_share_dbus-1_services_org.freedesktop.impl.portal.desktop.nnn.service` was changed the same way and kept: `Exec=/bin/sh -c 'exec "$HOME/.config/herbstluftwm/scripts/nnn-portal.py"'`. `xdg-open` does not read it. The D-Bus spec defines no quoting for `Exec` ("similar to desktop entries"), GLib's parser reads the line correctly, but the sandbox could not test dbus-daemon's own parser (it cannot create a bus socket), so it was checked live on 2026-11-14: after `pkill -f nnn-portal.py` and `busctl --user introspect org.freedesktop.impl.portal.desktop.nnn /org/freedesktop/portal/desktop`, `pgrep -af nnn-portal.py` showed `python3 /home/lenny/.config/herbstluftwm/scripts/nnn-portal.py` running, so D-Bus started the portal through this line and `$HOME` expanded. A file dialog served by that newly started process was not recorded separately.
 - A session load ignores the `PATH` argument, so `nnn-wrap.sh`, given a folder, starts nnn with `-s startup -P o`, where `o` is an inline `NNN_PLUG` command writing `+c<folder>` to nnn's plugin pipe (`+` is the first inactive context after the current one). Checked live: the folder opens in context 5 and nnn switches to it. Contexts 1 to 4 still hold the session. The plugins folder must be a working link (`~/.config/nnn/plugins` to `/usr/share/nnn/plugins`, see the "nnn plugins" quickstart step); a dangling link made the plugin fail with "no such file or directory".
+- `nnn-wrap.sh` stops with "DOTFILES_DIR is not set" without that variable (`startup.autostart` exports it with `hc export`). A herbstluftwm session started before that line was in place needs `herbstclient reload` (or a new login), or the keybind and `xdg-open` both fail. Seen 2026-11-14: the session started on `main` and the branch was checked out three minutes later.
 - VS Code's "Open Containing Folder" asks the portal first, and GLib found no handler for folders (the user-level `nnn.desktop` shadows the package's, and the user `mimeinfo.cache` did not list it), so an empty "Open With" chooser appeared before the `xdg-open` fallback. Fixed by `update-desktop-database ~/.local/share/applications`, now run by the quickstart's "Link config files" step. Checked live: it opens straight in nnn, for "Open Containing Folder" and for the command palette's "Open Logs Folder" and similar commands.
 
-File open and save dialogs: built as our own portal backend, no new package. VS Code's "Open Folder" is a `GtkFileChooserDialog` served by `xdg-desktop-portal-gtk`, so the portal's FileChooser backend had to be replaced, not a launcher.
+## Result of the 2026-11-14 change
+
+The `.desktop` file was changed to expand `$HOME` through `sh -c`, and the user tested every program installed by the quickstart's package list. Three opened nothing (Dunst, Obsidian "show in file explorer", Minecraft launcher) and Bambu Studio hung. The file was then reverted to the committed absolute path and those were retested:
+- Minecraft launcher: nothing with the quoted line, opens nnn with the absolute path. Broken by the change, so it calls `xdg-open`.
+- Bambu Studio: hung with the quoted line, works (own dialog) with the absolute path. Broken by the change.
+- Obsidian "show in file explorer": nothing with either version. Not caused by the change; not investigated (an AppImage, so its files could not be scanned).
+- Dunst: nothing with either version, and ignored by the user as a very rare use. Its context menu needs `dmenu` (`/etc/dunst/dunstrc:264`), which is not installed (`command -v dmenu` finds nothing, only rofi exists), and `browser = /usr/bin/xdg-open` (line 267) is only reached through that menu. Peek works when it is set to open the location automatically.
+
+So programs that go through `xdg-open` break with the quoted `Exec`. Current state: the `.desktop` file has the absolute `/home/lenny` path again (the committed version).
+
+Options for removing that path, none chosen:
+- Keep the absolute path (the one place `/home/lenny` stays in the repo).
+- Generate the file at install with the real path (a template, a generator, a quickstart step, `.gitignore` entries; a fresh clone has no file until the step runs).
+- A launcher at a fixed path in `/usr/local/bin`, installed through `symlinks/` and finding the scripts from its own location (needs `readlink -f` because `nnn-wrap.sh` uses `dirname "$0"`; a user-writable file on root's `PATH` is a new exposure on a world-writable mount, see SEC-1 in the script review).
+- Put the scripts folder on `PATH` from `startup.autostart`: only reaches processes that inherit herbstluftwm's environment, not D-Bus-started ones. Ruled out.
+
+## Programs tested, 2026-11-14 (by the user, with the quoted `Exec` in place; retests after the revert are in the section above)
+
+- Opens nnn: FreeCAD, Krita, Orca Slicer, VS Code, Vivaldi, Rambox, GThumb, Sublime Text, EasyEffects, Spotify.
+- Own file dialog: Blender, Inkscape, Peek, Xarchiver, gnome-disk-utility, gpick, TigerVNC.
+- Bambu Studio: hung with the quoted `Exec`; with the absolute path it works with its own dialog, as the earlier notes had it.
+- Open nothing with the quoted `Exec`: Dunst, Minecraft launcher, Obsidian "show in file explorer". After the revert the Minecraft launcher opens nnn; Obsidian and Dunst still open nothing.
+- Nothing to test: gvfs, mpv, pavucontrol, scangear, physlock, bluetui, polybar, ExpressVPN.
+- Unsure: feh, Claude. TeamViewer is not installed.
+
+Which of them can call `xdg-open`, from a search of the installed files (capability only, not confirmed use; nothing was run):
+- Runs `xdg-open` directly: Blender (`bl_operators/wm.py:1209`, `subprocess.check_call(["xdg-open", filepath])`); FreeCAD and Krita (Qt 6, whose `libQt6Gui` holds the `xdg-open`, `kde-open` and `gnome-open` launcher list, used by `QDesktopServices::openUrl`); Orca Slicer, Bambu Studio and Inkscape (the string is in the binary); Peek (also `FileManager1`, `gtk_show_uri`); Xarchiver; Dunst (the `browser` setting above).
+- Tries `FileManager1`, the portal's `OpenURI` or `OpenDirectory`, then falls back to `xdg-open`: VS Code, Vivaldi, Rambox.
+- GLib only, no `xdg-open` string: gnome-disk-utility, GThumb, Sublime Text.
+- No opener string: Dropbox, EasyEffects, gpick, gvfs, mpv, Minecraft launcher, pavucontrol, scangear, TigerVNC, feh, physlock, bluetui, polybar; rofi only in a docs example. Not scanned: Obsidian, ExpressVPN, Spotify, TeamViewer, Claude.
+
+## File open and save dialogs
+
+Built as our own portal backend, no new package. VS Code's "Open Folder" is a `GtkFileChooserDialog` served by `xdg-desktop-portal-gtk`, so the portal's FileChooser backend had to be replaced, not a launcher.
 - `scripts/nnn-portal.py` (Python, Gio) owns `org.freedesktop.impl.portal.desktop.nnn` and implements `OpenFile` and `SaveFile`. Each dialog runs `nnn-wrap.sh --pick file|dir|save OUT START [NAME]` in the urxvt wrapper window; nnn writes the chosen path to OUT, which is gone or empty on a cancel (replied as cancelled). The startup session is loaded and the application's `current_folder` opens in the first inactive context (`-P o`).
 - Keys in picker mode: Enter picks a file or the selection, `;p` (or Alt+p) picks the folder shown (dir dialogs), `;s` (Alt+s) asks for a file name, prefilled, in the folder shown (`scripts/nnn-pick-save.sh`, which ends the pick with the plugin pipe's `0p`).
 - Registration, linked from `symlinks/`: the D-Bus activation file, `/usr/share/xdg-desktop-portal/portals/nnn.portal`, and `~/.config/xdg-desktop-portal/portals.conf` (FileChooser prefers `nnn;gtk`). The portal does not fall back to gtk when the backend fails at runtime.
