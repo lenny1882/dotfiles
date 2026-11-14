@@ -16,7 +16,7 @@ Branch `script-review`. Main merged in on 2026-11-14 (merge 538df6f, up to 39666
 | 4 tests: `tests/run.sh`, `tests/lib.sh`, hermetic, no env leak | done | cf1ab79 |
 | 3 security | done except SEC-1 (deferred: accepted for now, the symlink design stays), SEC-5 (accepted as is) and SEC-6 (new, open) | f5c50c7 |
 | 5 paths and colours | done, not checked live: DUP-3 (DOTFILES_DIR, col_urgent), DUP-7 (hard-coded paths, widened) and DUP-11 (polybar colours) | c8e029b, 921668e, 315ab31, 571b0e8, 00bd379 and the nnn `.desktop` commit |
-| 6 tagconf | DUP-1 (189b54d) and DUP-4 (33e28d3) done and committed, not run live; DUP-5 skipped for the herbstluftwm scripts (user), the `setup/` half left to WP9. WP6 is complete | |
+| 6 tagconf | DUP-1 (189b54d) and DUP-4 (33e28d3) done and committed, checked live by the user on 2026-11-14 ("looks good"; which of the listed checks were run was not recorded); DUP-5 skipped for the herbstluftwm scripts (user), the `setup/` half left to WP9. WP6 is complete | |
 | 7, 8, 9, 10, 11, 12 | not started | |
 
 Decisions: D-C settled (option 1, export `DOTFILES_DIR`). D-D settled in the user's favour of the symlink design, with SEC-1 left open as an accepted risk. D-A (xrandr owner), D-B (margin mechanism) and D-E (split `monitor_tui.py`) are still open and are asked when their packages start.
